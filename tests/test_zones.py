@@ -827,6 +827,28 @@ class Command(unittest.TestCase):
         self.assertIn("R:R 3.0", out)
         self.assertIn("        same trade also seen from the 15m demand zone 99.10-99.90", lines)
 
+    def test_setup_warns_when_the_one_minute_bars_carry_a_single_price(self):
+        m5, m3, zone, targets = entry_data()
+        flat = [{"t": b["t"], "o": b["c"], "h": b["c"], "l": b["c"], "c": b["c"]} for b in m3]
+        saved = (z.collect_zones, z.get_bars, z.resample)
+        z.collect_zones = lambda *a, **k: [zone]
+        z.resample = lambda *a, **k: m3
+        try:
+            z.get_bars = lambda sym, tf, *a, **k: flat if tf == "1m" else m5
+            _, flat_out, _ = self.run_cli(["setup", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json"])
+            z.get_bars = lambda sym, tf, *a, **k: m3 if tf == "1m" else m5
+            _, real_out, _ = self.run_cli(["setup", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json"])
+        finally:
+            z.collect_zones, z.get_bars, z.resample = saved
+        self.assertIn("1-minute bars for MGC carry one price each", flat_out)
+        self.assertNotIn("carry one price each", real_out)
+
+    def test_flat_share_counts_only_bars_with_no_range(self):
+        bars = [{"o": 1.0, "h": 1.0, "l": 1.0, "c": 1.0}, {"o": 1.0, "h": 1.1, "l": 1.0, "c": 1.0},
+                {"o": 1.0, "h": 1.0, "l": 0.9, "c": 1.0}, {"o": 1.0, "h": 1.0, "l": 1.0, "c": 1.0}]
+        self.assertEqual(z.flat_share(bars), 0.5)
+        self.assertEqual(z.flat_share([]), 0.0)
+
     def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
         text = chart_json(mk(ZSTART, 1800, zone_rows()))
         calls = []

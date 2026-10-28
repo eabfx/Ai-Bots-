@@ -968,6 +968,17 @@ def merge_same_trade(results):
     return out
 
 
+def flat_share(bars):
+    """Share of bars whose open, high, low and close are all the same price."""
+    if not bars:
+        return 0.0
+    return sum(1 for b in bars if b["o"] == b["h"] == b["l"] == b["c"]) / float(len(bars))
+
+
+FLAT_NOTE = ("Note: Yahoo's 1-minute bars for %s carry one price each (no highs or lows), so the 3-minute "
+             "candles are built from a few price samples and their wicks and swings are approximate.")
+
+
 def cmd_setup(args, cfg, now):
     sym = resolve(args.symbol)
     zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, args.offline)
@@ -993,6 +1004,8 @@ def cmd_setup(args, cfg, now):
     else:
         print("%s (%s)  as of %s ET  zones: %d (%d fresh, %d touched)"
               % (sym, MARKETS[sym]["yahoo"], fmt_et(now), len(zones), len(fresh), len(zones) - len(fresh)))
+        if flat_share(m1) > 0.9:
+            print(FLAT_NOTE % sym)
         if not results:
             for z, best, trace in staged:
                 print(stage_line(sym, z, best))

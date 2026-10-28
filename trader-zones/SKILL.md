@@ -60,6 +60,11 @@ reason is one plain line).
 | NQ | NQ=F | Nasdaq 100 futures (NAS100, US100 and NDX are accepted) |
 | MGC | MGC=F | micro gold futures |
 
+Yahoo's forex 1-minute bars (GBPUSD, EURUSD) carry one price per minute, with no highs or
+lows, so the 3-minute candles built from them have approximate wicks and swings, and `setup`
+says so. The gold and Nasdaq futures bars are real candles. Expect forex entries to differ from a
+chart on another feed by a pip or two.
+
 Gold futures and spot gold are close but not the same price: the futures carry a
 premium and roll to a new contract. Treat a gold zone as an area, not an exact
 tick, and check it against your own chart. Yahoo's forex and futures bars can lag
