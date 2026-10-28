@@ -14,6 +14,7 @@ from _load import load
 
 z = load("trader-zones", "zones")
 CFG = z.read_config(None)
+NY_CFG = dict(CFG, session_tz="ny", sessions=dict(z.NY_SESSIONS))   # the short New York kill zones
 
 
 def et(y, mo, d, h=0, mi=0):
@@ -160,10 +161,44 @@ class Time(unittest.TestCase):
         with self.assertRaises(z.ZoneError):
             z.parse_now("26/10/2026 8am")
 
-    def test_session_windows(self):
+    def test_new_york_kill_zone_windows(self):
         for h, mi, want in ((2, 30, True), (4, 59, True), (5, 0, False), (7, 0, True), (9, 59, True),
                             (10, 0, False), (12, 0, False), (19, 0, True), (23, 30, True), (0, 0, False)):
-            self.assertEqual(z.in_session(et(2026, 10, 26, h, mi), CFG), want, "%d:%02d" % (h, mi))
+            self.assertEqual(z.in_session(et(2026, 10, 26, h, mi), NY_CFG), want, "%d:%02d" % (h, mi))
+
+    def utc(self, y, mo, d, h=0, mi=0):
+        return int((datetime.datetime(y, mo, d, h, mi) - z.EPOCH).total_seconds())
+
+    def test_the_default_sessions_are_dublin_time(self):
+        self.assertEqual(CFG["session_tz"], "dublin")
+        # 26 Oct 2026 is winter time in Ireland (UTC+0): UTC clock = Dublin clock
+        for h, mi, want in ((0, 0, "asia"), (4, 30, "asia"), (7, 59, "asia"), (8, 0, "london"), (12, 59, "london"),
+                            (13, 0, "london"), (15, 59, "london"), (16, 0, "ny"), (20, 59, "ny"),
+                            (21, 0, None), (23, 59, None)):
+            self.assertEqual(z.session_of(self.utc(2026, 10, 26, h, mi), CFG), want, "%d:%02d" % (h, mi))
+
+    def test_a_zone_at_0430_utc_is_in_the_asia_window(self):
+        # the 00:30 New York candle on Wed 28 Oct 2026 is 04:30 Dublin time
+        self.assertTrue(z.in_session(et(2026, 10, 28, 0, 30), CFG))
+        self.assertFalse(z.in_session(et(2026, 10, 28, 0, 30), NY_CFG))
+
+    def test_irish_summer_time_moves_the_window_an_hour(self):
+        # 1 July 2026: Dublin is UTC+1, so 23:30 UTC is 00:30 the next day, inside Asia
+        self.assertTrue(z.in_session(self.utc(2026, 7, 1, 23, 30), CFG))
+        # 1 December 2026: Dublin is UTC+0, so 23:30 UTC is 23:30, in no window
+        self.assertFalse(z.in_session(self.utc(2026, 12, 1, 23, 30), CFG))
+
+    def test_irish_clock_change_edges(self):
+        self.assertEqual(z.dublin_offset(datetime.datetime(2026, 3, 29, 0, 59)), 0)
+        self.assertEqual(z.dublin_offset(datetime.datetime(2026, 3, 29, 1, 0)), 1)
+        self.assertEqual(z.dublin_offset(datetime.datetime(2026, 10, 25, 0, 59)), 1)
+        self.assertEqual(z.dublin_offset(datetime.datetime(2026, 10, 25, 1, 0)), 0)
+
+    def test_dublin_time_in_a_zone_line(self):
+        ts = et(2026, 10, 28, 2, 0)
+        self.assertEqual(z.fmt_dublin(ts, ts), "06:00")
+        late = et(2026, 10, 27, 21, 0)      # 01:00 on Wed in Dublin: the weekday is shown
+        self.assertEqual(z.fmt_dublin(late, late), "Wed 01:00")
 
 
 class Bars(unittest.TestCase):
@@ -378,8 +413,14 @@ class LimitZones(unittest.TestCase):
 
     def test_zone_candles_outside_asia_london_new_york_are_dropped(self):
         zs = [self.zone(26, 11, 0, 1), self.zone(26, 8, 0, 2), self.zone(26, 3, 0, 3)]
-        got = z.limit_zones(zs, self.NOW, CFG)
-        self.assertEqual(sorted(g["di"] for g in got), [2, 3])  # 11:00 is in no window
+        got = z.limit_zones(zs, self.NOW, NY_CFG)
+        self.assertEqual(sorted(g["di"] for g in got), [2, 3])  # 11:00 New York is in no kill zone
+
+    def test_in_dublin_time_the_dropped_hours_are_21_to_24(self):
+        # New York 16:30 = 20:30 Dublin (kept), 17:00 = 21:00 and 19:59 = 23:59 (dropped), 20:00 = 00:00 (kept)
+        zs = [self.zone(26, 16, 30, 1), self.zone(26, 17, 0, 2), self.zone(26, 19, 59, 3), self.zone(26, 20, 0, 4)]
+        got = z.limit_zones(zs, et(2026, 10, 26, 23, 0), CFG)
+        self.assertEqual(sorted(g["di"] for g in got), [1, 4])
 
     def test_sessions_can_be_switched_off(self):
         cfg = dict(CFG, zones_in_sessions=False)
@@ -415,8 +456,14 @@ class Entry(unittest.TestCase):
         self.assertIn("reward to risk", z.STAGES[best])
 
     def test_no_entry_when_the_choch_comes_outside_the_sessions(self):
-        m5, m3, zone, targets = entry_data(et(2026, 10, 26, 12, 0))
+        m5, m3, zone, targets = entry_data(et(2026, 10, 26, 15, 0))     # CHoCH about 21:10 Dublin: in no window
         res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, min_rr=0.5))
+        self.assertEqual(res, [])
+        self.assertEqual(best, 5)
+
+    def test_no_entry_when_the_choch_comes_outside_the_new_york_kill_zones(self):
+        m5, m3, zone, targets = entry_data(et(2026, 10, 26, 12, 0))
+        res, best = z.long_setups(zone, m5, m3, targets, dict(NY_CFG, min_rr=0.5))
         self.assertEqual(res, [])
         self.assertEqual(best, 5)
 
@@ -525,7 +572,8 @@ class Command(unittest.TestCase):
             cfg = z.read_config(path)
         self.assertEqual(cfg["min_rr"], 3)
         self.assertEqual(cfg["sessions"]["ny"], [8, 9])
-        self.assertEqual(cfg["sessions"]["london"], [2, 5])
+        self.assertEqual(cfg["sessions"]["london"], [8, 16])
+        self.assertEqual(cfg["session_tz"], "dublin")
         self.assertEqual(cfg["max_per_day"], 3)
 
     def test_bad_config_json_is_a_plain_error(self):
@@ -615,9 +663,17 @@ class Explain(unittest.TestCase):
         self.assertIn("Result: not a zone: no big displacement and no slow move", out)
 
     def test_a_candle_outside_the_sessions_is_flagged(self):
-        # 6:00 AM New York is between the London window (2 to 5) and the New York window (7 to 10)
-        code, out, _ = self.run_explain(zone_rows(), "2026-10-26 06:00")
+        windows = {"sessions": {"asia": [0, 2], "london": [2, 4], "ny": [4, 6]}}      # Dublin hours
+        code, out, _ = self.run_explain(zone_rows(), "2026-10-26 06:00", windows)    # 10:00 Dublin
+        self.assertIn("Opened at 10:00 Dublin time", out)
         self.assertIn("NO, so zones_in_sessions drops it", out)
+        code, out, _ = self.run_explain(zone_rows(), "2026-10-26 07:00")             # 11:00 Dublin
+        self.assertIn("Opened at 11:00 Dublin time. In an Asia, London or New York window: yes (london)", out)
+
+    def test_a_bad_session_clock_is_a_plain_error(self):
+        code, _, err = self.run_explain(zone_rows(), "2026-10-26 07:00", {"session_tz": "paris"})
+        self.assertEqual(code, 2)
+        self.assertIn('session_tz must be "dublin" or "ny"', err)
 
     def test_a_time_with_no_bar_is_a_plain_error(self):
         code, _, err = self.run_explain(zone_rows(), "2026-10-20 07:00")

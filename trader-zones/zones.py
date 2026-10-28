@@ -46,7 +46,9 @@ The entry (long side shown, short is the mirror image):
   stop below the sweep low (sweep_buffer_atr x ATR), target the nearest opposing
   zone or swing, and the trade is dropped when the reward to risk is under min_rr.
 
-Time is New York time for sessions, so daylight saving is handled. The 3-minute
+Session hours are Dublin time by default (session_tz "dublin", Asia 0 to 8, London
+8 to 16, New York 13 to 21), with Irish daylight saving; session_tz "ny" reads them as
+New York time instead. Zone lines show New York time and Dublin time. The 3-minute
 bars are built from 1-minute bars, so Yahoo's roughly week of 1-minute history
 is how far back `setup` can look.
 
@@ -55,7 +57,7 @@ Data: Yahoo's free chart JSON (unofficial, can lag, forex and futures bars).
   example GBPUSD_30m.json, GBPUSD_5m.json and GBPUSD_1m.json.
 
 trader/config.json (optional): a "zones" object overrides any default, for
-example {"zones": {"min_rr": 3, "sessions": {"ny": [7, 10]}}}.
+example {"zones": {"min_rr": 3, "sessions": {"ny": [13, 17]}}}.
 
 Exit codes: 0 when something was found, 1 when nothing was, 2 on an error.
 """
@@ -103,9 +105,12 @@ DEFAULTS = {
     "days": 2,
     "max_per_day": 3,
     "zones_in_sessions": True,
-    # New York hours [start, end). 24 means midnight.
-    "sessions": {"asia": [19, 24], "london": [2, 5], "ny": [7, 10]},
+    # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
+    # own daylight saving) or "ny" (New York time). 24 means midnight.
+    "session_tz": "dublin",
+    "sessions": {"asia": [0, 8], "london": [8, 16], "ny": [13, 21]},
 }
+NY_SESSIONS = {"asia": [19, 24], "london": [2, 5], "ny": [7, 10]}   # the short New York kill zones
 
 
 class ZoneError(Exception):
@@ -154,13 +159,45 @@ def fmt_et(ts):
     return to_eastern(ts).strftime("%a %m-%d %H:%M")
 
 
-def in_session(ts, cfg):
-    e = to_eastern(ts)
-    minutes = e.hour * 60 + e.minute
-    for lo, hi in cfg["sessions"].values():
+def _last_sunday(year, month):
+    d = datetime.date(year, month, 31)
+    return d - datetime.timedelta(days=(d.weekday() + 1) % 7)
+
+
+def dublin_offset(utc):
+    """Hours from UTC for Ireland: +1 in summer time (EU rule: last Sunday of March 01:00 UTC to
+    last Sunday of October 01:00 UTC), 0 otherwise."""
+    y = utc.year
+    start = datetime.datetime.combine(_last_sunday(y, 3), datetime.time(1, 0))
+    end = datetime.datetime.combine(_last_sunday(y, 10), datetime.time(1, 0))
+    return 1 if start <= utc.replace(tzinfo=None) < end else 0
+
+
+def to_dublin(ts):
+    u = utc_of(ts)
+    return u + datetime.timedelta(hours=dublin_offset(u))
+
+
+def fmt_dublin(ts, ref_ts):
+    """Dublin time of ts, with the weekday only when it differs from the New York weekday."""
+    d = to_dublin(ts)
+    if d.date() == to_eastern(ref_ts).date():
+        return d.strftime("%H:%M")
+    return d.strftime("%a %H:%M")
+
+
+def session_of(ts, cfg):
+    """Name of the session window the bar opened in, or None."""
+    local = to_eastern(ts) if cfg.get("session_tz") == "ny" else to_dublin(ts)
+    minutes = local.hour * 60 + local.minute
+    for name, (lo, hi) in cfg["sessions"].items():
         if lo * 60 <= minutes < hi * 60:
-            return True
-    return False
+            return name
+    return None
+
+
+def in_session(ts, cfg):
+    return session_of(ts, cfg) is not None
 
 
 # ---------------------------------------------------------------- data
@@ -612,6 +649,8 @@ def read_config(path):
                 cfg["sessions"].update(v)
             elif k in cfg:
                 cfg[k] = v
+    if cfg["session_tz"] not in ("dublin", "ny"):
+        raise ZoneError('session_tz must be "dublin" or "ny"')
     return cfg
 
 
@@ -620,8 +659,9 @@ def px(sym, x):
 
 
 def zone_line(sym, tf, z):
-    return "%-6s %-4s zone candle %s ET  %s to %s  %s" % (
-        z["kind"].upper(), tf, fmt_et(z["t"]), px(sym, z["low"]), px(sym, z["high"]), z["status"])
+    return "%-6s %-4s zone candle %s ET (%s Dublin)  %s to %s  %s" % (
+        z["kind"].upper(), tf, fmt_et(z["t"]), fmt_dublin(z["t"], z["t"]), px(sym, z["low"]), px(sym, z["high"]),
+        z["status"])
 
 
 def collect_zones(sym, tfs, now, cfg, offline):
@@ -653,8 +693,10 @@ def explain_lines(sym, bars, cfg, k):
                % (body / a[k], cfg["base_body_atr"], "ok" if body < cfg["base_body_atr"] * a[k] else "TOO BIG"))
     out.append("Wicks are %.0f%% of its range (needs over %.0f%%): %s"
                % (100 * wick, 100 * cfg["base_wick"], "ok" if wick > cfg["base_wick"] else "TOO SHORT"))
-    out.append("Opened in an Asia, London or New York window: %s"
-               % ("yes" if in_session(c["t"], cfg) else "NO, so zones_in_sessions drops it"))
+    sess = session_of(c["t"], cfg)
+    out.append("Opened at %s Dublin time. In an Asia, London or New York window: %s"
+               % (fmt_dublin(c["t"], c["t"]),
+                  "yes (%s)" % sess if sess else "NO, so zones_in_sessions drops it"))
     if not is_base(bars, a, k, cfg):
         out.append("Result: not a zone candle by the rule, so nothing after it is checked.")
         return out

@@ -76,7 +76,7 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    gets one zone.
 3. Fresh until price trades back into it, then touched.
 4. Only zones from the last 2 days, at most 3 per day, and only candles that
-   opened in an Asia, London or New York window.
+   opened in an Asia, London or New York window (Dublin time).
 
 ## The entry (long shown, short is the mirror image)
 
@@ -99,10 +99,10 @@ no FVG or IFVG with its midpoint in the OTE", so a quiet day is explained.
 
 | file | what |
 | --- | --- |
-| `trader/config.json` | optional `zones` object that overrides any default, for example `{"zones": {"min_rr": 3, "sessions": {"ny": [7, 10]}}}` |
+| `trader/config.json` | optional `zones` object that overrides any default, for example `{"zones": {"min_rr": 3, "sessions": {"ny": [13, 17]}}}` |
 | `trader/zones.json` | written with `--write`: the zones or the setups, with times as Unix seconds |
 
-Session hours are New York time, so daylight saving is handled. The 3-minute
+Session hours are Dublin time (Asia 00:00 to 08:00, London 08:00 to 16:00, New York 13:00 to 21:00), with Irish daylight saving. Set `session_tz` to `ny` to read them as New York time instead, for example the short kill zones. The 3-minute
 bars are built from 1-minute bars, and Yahoo keeps about a week of 1-minute
 history, so `setup` cannot look further back than that.
 
