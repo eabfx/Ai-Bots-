@@ -551,8 +551,9 @@ def m3_choch(m3, ph3, from_idx, sweep_idx, stop_low):
     return None
 
 
-def long_setups(zone, m5, m3, targets, cfg):
-    """Every long entry for one demand zone, and how far the best attempt got (an index into STAGES)."""
+def long_setups(zone, m5, m3, targets, cfg, trace=None):
+    """Every long entry for one demand zone, and how far the best attempt got (an index into STAGES).
+    When `trace` is a list, each sweep is appended to it with the gaps looked at after it."""
     best = 0
     out = []
     if zone["touched_t"] is None or len(m5) < 10 or len(m3) < 10:
@@ -572,10 +573,16 @@ def long_setups(zone, m5, m3, targets, cfg):
         if not (sw["l"] < swing and sw["c"] > swing and sw["l"] <= zone["high"]):
             continue
         best = max(best, 2)
+        rec = {"t": sw["t"], "swing": swing, "extreme": sw["l"], "gaps": []}
+        if trace is not None:
+            trace.append(rec)
         for avail, lo, hi, kind in gaps_after(m5, j, cfg, a5):
             leg_hi = max(b["h"] for b in m5[j:avail + 1])
             ote_lo, ote_hi = ote_band(sw["l"], leg_hi)
-            if not ote_lo <= (lo + hi) / 2.0 <= ote_hi:
+            inside = ote_lo <= (lo + hi) / 2.0 <= ote_hi
+            rec["gaps"].append({"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
+                                "inside": inside})
+            if not inside:
                 continue
             best = max(best, 3)
             touch = None
@@ -611,18 +618,23 @@ def long_setups(zone, m5, m3, targets, cfg):
     return out, best
 
 
-def setups_for(zone, m5, m3, fresh_other, cfg):
-    """Run the long logic for a demand zone, or for a supply zone on mirrored prices."""
+def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
+    """Run the long logic for a demand zone, or for a supply zone on mirrored prices.
+    `trace`, when given, receives the sweeps and gaps looked at, in real (not mirrored) prices."""
     ph5, pl5 = pivots(m5, cfg["swing_n"])
     if zone["kind"] == "demand":
         targets = [z["low"] for z in fresh_other if z["kind"] == "supply"] + [p[2] for p in ph5]
-        res, best = long_setups(zone, m5, m3, targets, cfg)
+        res, best = long_setups(zone, m5, m3, targets, cfg, trace)
         for r in res:
             r["side"] = "long"
         return res, best
     mirrored = dict(zone, high=-zone["low"], low=-zone["high"])
     targets = [-z["high"] for z in fresh_other if z["kind"] == "demand"] + [-p[2] for p in pl5]
-    res, best = long_setups(mirrored, flip_bars(m5), flip_bars(m3), targets, cfg)
+    mirror_trace = [] if trace is not None else None
+    res, best = long_setups(mirrored, flip_bars(m5), flip_bars(m3), targets, cfg, mirror_trace)
+    for rec in mirror_trace or []:
+        trace.append({"t": rec["t"], "swing": -rec["swing"], "extreme": -rec["extreme"], "gaps": [
+            dict(g, lo=-g["hi"], hi=-g["lo"], ote=(-g["ote"][1], -g["ote"][0])) for g in rec["gaps"]]})
     for r in res:
         r["side"] = "short"
         r["sweep_low"] = -r["sweep_low"]
@@ -666,9 +678,33 @@ def zone_line(sym, tf, z):
 
 def stage_line(sym, z, best):
     """One touched zone and the furthest step of the entry it reached."""
+    text = STAGES[best]
+    if z["kind"] == "supply":
+        text = text.replace("swing low", "swing high")     # the supply side is the mirror image
     return "  %-6s %-4s %s ET (%s Dublin)  %s to %s: %s" % (
         z["kind"].upper(), z["tf"], fmt_et(z["t"]), fmt_dublin(z["t"], z["t"]), px(sym, z["low"]),
-        px(sym, z["high"]), STAGES[best])
+        px(sym, z["high"]), text)
+
+
+def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
+    """What the entry logic saw after a zone was touched: each sweep and the gaps after it."""
+    out = []
+    word = "high" if z["kind"] == "supply" else "low"
+    for rec in trace[-max_sweeps:]:
+        out.append("      sweep %s ET (%s Dublin): took the swing %s %s, extreme %s, closed back inside"
+                   % (fmt_et(rec["t"]), fmt_dublin(rec["t"], rec["t"]), word, px(sym, rec["swing"]),
+                      px(sym, rec["extreme"])))
+        if not rec["gaps"]:
+            out.append("        no FVG or IFVG formed after it")
+        for g in rec["gaps"][:max_gaps]:
+            mid = (g["lo"] + g["hi"]) / 2.0
+            out.append("        %s %s to %s (%s Dublin), midpoint %s, band %s to %s: %s"
+                       % (g["kind"], px(sym, g["lo"]), px(sym, g["hi"]), fmt_dublin(g["t"], rec["t"]),
+                          px(sym, mid), px(sym, g["ote"][0]), px(sym, g["ote"][1]),
+                          "inside" if g["inside"] else "outside"))
+        if len(rec["gaps"]) > max_gaps:
+            out.append("        and %d more" % (len(rec["gaps"]) - max_gaps))
+    return out
 
 
 def collect_zones(sym, tfs, now, cfg, offline):
@@ -819,8 +855,9 @@ def cmd_setup(args, cfg, now):
     for z in zones:
         if z["touched_t"] is None:
             continue
-        res, best = setups_for(z, m5, m3, fresh, cfg)
-        staged.append((z, best))
+        trace = []
+        res, best = setups_for(z, m5, m3, fresh, cfg, trace)
+        staged.append((z, best, trace))
         best_all = max(best_all, best)
         for r in res:
             r["zone"] = {"tf": z["tf"], "kind": z["kind"], "low": z["low"], "high": z["high"], "t": z["t"]}
@@ -832,8 +869,10 @@ def cmd_setup(args, cfg, now):
         print("%s (%s)  as of %s ET  zones: %d (%d fresh, %d touched)"
               % (sym, MARKETS[sym]["yahoo"], fmt_et(now), len(zones), len(fresh), len(zones) - len(fresh)))
         if not results:
-            for z, best in staged:
+            for z, best, trace in staged:
                 print(stage_line(sym, z, best))
+                for line in trace_lines(sym, z, trace):
+                    print(line)
         for r in results:
             z = r["zone"]
             rr = "no target found" if r["rr"] is None else "R:R %.1f" % r["rr"]

@@ -516,8 +516,66 @@ class StageLines(unittest.TestCase):
                                "swept, no FVG or IFVG with its midpoint in the OTE")
 
     def test_every_stage_has_a_line(self):
+        demand = dict(self.ZONE, kind="demand")
         for best in range(len(z.STAGES)):
-            self.assertIn(z.STAGES[best], z.stage_line("GBPUSD", self.ZONE, best))
+            self.assertIn(z.STAGES[best], z.stage_line("GBPUSD", demand, best))
+
+    def test_a_supply_zone_talks_about_the_swing_high(self):
+        self.assertIn("zone touched, no sweep of a swing high yet", z.stage_line("GBPUSD", self.ZONE, 1))
+        demand = dict(self.ZONE, kind="demand")
+        self.assertIn("zone touched, no sweep of a swing low yet", z.stage_line("GBPUSD", demand, 1))
+
+    def test_trace_lines_show_the_sweep_and_each_gap(self):
+        rec = {"t": et(2026, 10, 28, 1, 0), "swing": 1.32990, "extreme": 1.33010, "gaps": [
+            {"kind": "FVG", "t": et(2026, 10, 28, 1, 15), "lo": 1.32940, "hi": 1.32960, "ote": (1.32950, 1.32990),
+             "inside": False}]}
+        lines = z.trace_lines("GBPUSD", self.ZONE, [rec])
+        self.assertEqual(lines[0], "      sweep Wed 10-28 01:00 ET (05:00 Dublin): took the swing high 1.32990, "
+                                   "extreme 1.33010, closed back inside")
+        self.assertEqual(lines[1], "        FVG 1.32940 to 1.32960 (05:15 Dublin), midpoint 1.32950, "
+                                   "band 1.32950 to 1.32990: outside")
+
+    def test_a_sweep_with_no_gap_says_so_and_long_lists_are_cut(self):
+        rec = {"t": et(2026, 10, 28, 1, 0), "swing": 1.0, "extreme": 1.1, "gaps": []}
+        self.assertIn("no FVG or IFVG formed after it", z.trace_lines("GBPUSD", self.ZONE, [rec])[1])
+        gap = {"kind": "FVG", "t": rec["t"], "lo": 1.0, "hi": 1.2, "ote": (1.0, 1.1), "inside": True}
+        many = dict(rec, gaps=[gap] * 6)
+        out = z.trace_lines("GBPUSD", self.ZONE, [many])
+        self.assertEqual(len(out), 1 + 4 + 1)
+        self.assertEqual(out[-1], "        and 2 more")
+        five = [dict(rec, t=et(2026, 10, 28, h, 0)) for h in (1, 2, 3, 4, 5)]
+        only_last = [ln for ln in z.trace_lines("GBPUSD", self.ZONE, five) if "sweep" in ln]
+        self.assertEqual(len(only_last), 3)
+        self.assertEqual([ln.split(" ET")[0].split()[-1] for ln in only_last], ["03:00", "04:00", "05:00"])   # the latest three
+
+    def test_a_long_trace_lists_the_sweep_and_the_gaps_it_checked(self):
+        m5, m3, zone, targets = entry_data()
+        trace = []
+        res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, min_rr=0.5), trace)
+        self.assertEqual(best, 6)
+        self.assertEqual(len(trace), 1)
+        rec = trace[0]
+        self.assertEqual(rec["t"], m5[16]["t"])
+        self.assertEqual(rec["extreme"], 98.6)
+        self.assertTrue(any(g["inside"] for g in rec["gaps"]))
+        self.assertTrue(all(g["ote"][0] < g["ote"][1] for g in rec["gaps"]))
+
+    def test_a_trace_asks_for_nothing_when_no_trace_is_given(self):
+        m5, m3, zone, targets = entry_data()
+        res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, min_rr=0.5))
+        self.assertEqual(best, 6)
+
+    def test_a_supply_trace_is_in_real_prices(self):
+        m5, m3, zone, targets = entry_data()
+        supply = dict(zone, kind="supply", low=-zone["high"], high=-zone["low"])
+        trace = []
+        z.setups_for(supply, z.flip_bars(m5), z.flip_bars(m3), [], dict(CFG, min_rr=0.5), trace)
+        self.assertEqual(trace[0]["extreme"], -98.6)           # the highest high of a supply sweep
+        inside = [g for g in trace[0]["gaps"] if g["inside"]]
+        self.assertIn((-102.4, -101.6), [(g["lo"], g["hi"]) for g in inside])
+        for g in trace[0]["gaps"]:
+            self.assertLess(g["lo"], g["hi"])
+            self.assertLess(g["ote"][0], g["ote"][1])
 
 
 class Command(unittest.TestCase):

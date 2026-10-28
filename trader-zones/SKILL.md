@@ -94,7 +94,9 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
 
 When nothing triggered, `setup` prints one line per touched zone with how far it got,
 for example "swept, no FVG or IFVG with its midpoint in the OTE", so a quiet day is
-explained zone by zone.
+explained zone by zone. Under each swept zone it also lists the sweep (when, which swing it
+took) and each FVG or IFVG after it, with the gap's midpoint against the 62% to 79% band,
+so the output can be set beside the user's own 5-minute chart.
 
 ## What it reads and writes
 
