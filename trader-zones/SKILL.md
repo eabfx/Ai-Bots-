@@ -47,6 +47,10 @@ is missing from `zones`. It also says which candle the tool picked instead and w
 (`DIR/GBPUSD_1m.json` and so on). Replay them later with `--offline DIR --now "..."`, or send them
 along when a result needs checking against the user's own chart.
 
+`--spot PRICE` (on `zones`, `setup`, `explain` and `bars`) takes the gap between the futures price and the
+user's own spot chart off every price. Give the price the chart shows now; run it again on another day,
+because the gap moves a little. It fixes the price level only: futures and spot candles still differ in shape.
+
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
 

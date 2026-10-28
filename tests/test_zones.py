@@ -849,6 +849,33 @@ class Command(unittest.TestCase):
         self.assertEqual(z.flat_share(bars), 0.5)
         self.assertEqual(z.flat_share([]), 0.0)
 
+    def test_spot_shifts_every_price_so_the_latest_close_matches_the_chart(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, "MGC_30m.json"), "w") as fh:
+            fh.write(chart_json(mk(ZSTART, 1800, zone_rows())))
+        ones = mk(ZSTART, 60, [(105.0, 105.5, 104.5, 105.0)] * 60)           # the futures close is 105.0
+        with open(os.path.join(tmp.name, "MGC_1m.json"), "w") as fh:
+            fh.write(chart_json(ones))
+        argv = ["zones", "MGC", "--tf", "30m", "--offline", tmp.name, "--now", "2026-10-26 12:00",
+                "--config", "none.json"]
+        _, plain, _ = self.run_cli(argv)
+        code, shifted, err = self.run_cli(argv + ["--spot", "100"])
+        self.assertEqual(code, 0)
+        self.assertIn("99.20 to 100.80", plain)
+        self.assertIn("94.20 to 95.80", shifted)                              # everything moved down by 5
+        self.assertIn("Prices shifted by 5.00", err)
+        self.assertIn("reads 100.00", err)
+        self.assertEqual(z.SHIFT, 0.0)                                        # not left over for the next run
+        _, again, _ = self.run_cli(argv)
+        self.assertEqual(again, plain)
+
+    def test_spot_needs_one_minute_bars_to_line_up_with(self):
+        code, _, err = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", self.folder(), "--spot", "100",
+                                     "--now", "2026-10-26 12:00", "--config", "none.json"])
+        self.assertEqual(code, 2)
+        self.assertIn("no offline file", err)
+
     def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
         text = chart_json(mk(ZSTART, 1800, zone_rows()))
         calls = []

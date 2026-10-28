@@ -60,6 +60,8 @@ Data: Yahoo's free chart JSON (unofficial, can lag, forex and futures bars).
   --offline DIR reads DIR/<SYMBOL>_<interval>.json (a saved Yahoo chart), for
   example GBPUSD_30m.json, GBPUSD_5m.json and GBPUSD_1m.json.
   --save DIR writes those files when it downloads, so a live run can be replayed exactly.
+  --spot PRICE takes the gap between futures and your spot chart off every price: give the
+  price your chart shows now and the latest close is shifted to match it.
 
 trader/config.json (optional): a "zones" object overrides any default, for
 example {"zones": {"min_rr": 3, "sessions": {"ny": [13, 17]}}}.
@@ -278,9 +280,18 @@ def parse_chart(text, sym):
 
 
 SAVE_DIR = None     # set by --save: where get_bars writes the Yahoo charts it downloads
+SHIFT = 0.0         # set by --spot: points taken off every price, so futures line up with a spot chart
 
 
 def get_bars(sym, interval, days, offline=None):
+    bars = _raw_bars(sym, interval, days, offline)
+    if not SHIFT:
+        return bars
+    return [{"t": b["t"], "o": b["o"] - SHIFT, "h": b["h"] - SHIFT, "l": b["l"] - SHIFT, "c": b["c"] - SHIFT}
+            for b in bars]
+
+
+def _raw_bars(sym, interval, days, offline=None):
     if offline:
         path = os.path.join(offline, "%s_%s.json" % (sym, interval))
         if not os.path.exists(path):
@@ -888,6 +899,18 @@ def explain_lines(sym, bars, cfg, k):
     return out
 
 
+def spot_shift(sym, spot, now, offline, cfg):
+    """Points to take off the data so its latest close equals `spot`, the price on the user's own chart.
+    Futures trade above spot, and the gap moves a little from day to day, so a fresh --spot keeps it true."""
+    bars = closed_only(_raw_bars(sym, "1m", cfg["days"], offline), 60, now)
+    if not bars:
+        raise ZoneError("no recent 1-minute bars for %s to line up with --spot" % sym)
+    shift = bars[-1]["c"] - spot
+    print("Prices shifted by %s so the latest close %s (%s ET) reads %s, your spot price."
+          % (px(sym, shift), px(sym, bars[-1]["c"]), fmt_et(bars[-1]["t"]), px(sym, spot)), file=sys.stderr)
+    return shift
+
+
 def cmd_explain(args, cfg, now):
     sym = resolve(args.symbol)
     secs = INTERVAL_SECS[args.tf]
@@ -1065,6 +1088,7 @@ def build_parser():
         s.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
         s.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
         s.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
+        s.add_argument("--spot", type=float, help="the price on your own chart right now; the data is shifted to match it")
         s.add_argument("--config", default="trader/config.json")
         s.add_argument("--days", type=int)
         s.add_argument("--max-per-day", type=int)
@@ -1081,6 +1105,7 @@ def build_parser():
     e.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
     e.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
     e.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
+    e.add_argument("--spot", type=float, help="the price on your own chart right now; the data is shifted to match it")
     e.add_argument("--config", default="trader/config.json")
     b = sub.add_parser("bars", help="print recent candles in Dublin time with the swing highs and lows marked")
     b.add_argument("symbol")
@@ -1089,11 +1114,13 @@ def build_parser():
     b.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
     b.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
     b.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
+    b.add_argument("--spot", type=float, help="the price on your own chart right now; the data is shifted to match it")
     b.add_argument("--config", default="trader/config.json")
     return p
 
 
 def main(argv=None):
+    global SAVE_DIR, SHIFT
     args = build_parser().parse_args(argv)
     try:
         if args.cmd == "markets":
@@ -1103,8 +1130,10 @@ def main(argv=None):
             return 2
         cfg = read_config(args.config)
         now = parse_now(args.now)
-        global SAVE_DIR
         SAVE_DIR = args.save
+        SHIFT = 0.0
+        if args.spot is not None:
+            SHIFT = spot_shift(resolve(args.symbol), args.spot, now, args.offline, cfg)
         if args.cmd == "explain":
             return cmd_explain(args, cfg, now)
         if args.cmd == "bars":
@@ -1119,6 +1148,8 @@ def main(argv=None):
     except ZoneError as e:
         print("error: %s" % e, file=sys.stderr)
         return 2
+    finally:
+        SAVE_DIR, SHIFT = None, 0.0
 
 
 if __name__ == "__main__":
