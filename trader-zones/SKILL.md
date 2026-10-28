@@ -96,8 +96,10 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    into the gap, or as it stands now if price has not come back yet, so a gap
    that formed in the middle of the leg still counts once the leg is finished.
 4. Price trades back into that gap without breaking the sweep low.
-5. On 3-minute bars a close above the last lower high made after the sweep (the
-   CHoCH) is the trigger, inside a session window.
+5. On 3-minute bars, once price is back in the gap, a close above the last swing high made
+   after the sweep (the CHoCH) is the trigger, inside a session window. Set
+   `choch_needs_trend` to true to also require that swing to be a lower high than the one
+   before it (the stricter, older rule).
 6. The stop sits under the sweep low, the target is the nearest opposing zone or
    swing, and the entry is dropped when the reward to risk is under 2.
 
@@ -107,7 +109,7 @@ explained zone by zone. Under each swept zone it also lists the sweep (when, whi
 took) and each FVG or IFVG after it, with the gap's midpoint against the 62% to 79% band,
 so the output can be set beside the user's own 5-minute chart.
 Under each gap in the band that price has come back to, one more line shows the 3-minute check: the
-last swing after the sweep (the CHoCH level), whether it is a lower high (higher low for a short), the
+last swing after the sweep (the CHoCH level), whether it is a lower high (higher low for a short, shown only with `choch_needs_trend`), the
 latest 3-minute close and its time, or that the sweep extreme was taken out first. Set it beside the
 3-minute chart to see why a CHoCH did or did not count.
 

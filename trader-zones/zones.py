@@ -42,8 +42,10 @@ The entry (long side shown, short is the mirror image):
      from the sweep low to the highest high, measured when price comes back to
      the gap (or as it stands now, if it has not come back yet)
   4. price trades back into that gap without breaking the sweep low
-  5. on 3-minute bars a close above the last lower high made after the sweep
-     (the CHoCH) is the trigger, inside an Asia, London or New York window
+  5. on 3-minute bars, once price is back in the gap, a close above the last swing
+     high made after the sweep (the CHoCH) is the trigger, inside an Asia, London
+     or New York window (choch_needs_trend true also asks that swing to be a lower
+     high than the one before it)
   stop below the sweep low (sweep_buffer_atr x ATR), target the nearest opposing
   zone or swing, and the trade is dropped when the reward to risk is under min_rr.
 
@@ -106,6 +108,7 @@ DEFAULTS = {
     "min_rr": 2.0,
     "days": 2,
     "max_per_day": 3,
+    "choch_needs_trend": False,
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -546,9 +549,9 @@ def gaps_after(m5, j, cfg, a5):
     return sorted(out)
 
 
-def m3_choch(m3, ph3, from_idx, sweep_idx, stop_low):
-    """First 3-minute close above the last lower high made after the sweep; None if the
-    sweep low breaks first."""
+def m3_choch(m3, ph3, from_idx, sweep_idx, stop_low, need_trend=False):
+    """First 3-minute close above the last swing high made after the sweep; None if the sweep low
+    breaks first. With need_trend that swing must also be a lower high than the one before it."""
     for k in range(from_idx, len(m3)):
         if m3[k]["l"] < stop_low:
             return None
@@ -557,12 +560,14 @@ def m3_choch(m3, ph3, from_idx, sweep_idx, stop_low):
             continue
         _, pidx, price = known[-1]
         before = [q for q in ph3 if q[1] < pidx]
-        if before and before[-1][2] > price and m3[k]["c"] > price:
+        if need_trend and not (before and before[-1][2] > price):
+            continue
+        if m3[k]["c"] > price:
             return k
     return None
 
 
-def m3_choch_state(m3, ph3, from_idx, sweep_idx, stop_low):
+def m3_choch_state(m3, ph3, from_idx, sweep_idx, stop_low, need_trend=False):
     """What the CHoCH check sees at the latest 3-minute bar: the swing it would break, whether that
     swing is a lower high, the latest close, and whether the sweep low went first."""
     n = len(m3)
@@ -577,7 +582,8 @@ def m3_choch_state(m3, ph3, from_idx, sweep_idx, stop_low):
     if known:
         _, pidx, price = known[-1]
         before = [q for q in ph3 if q[1] < pidx]
-        state.update(pivot=price, pivot_t=m3[pidx]["t"], lower_high=bool(before and before[-1][2] > price))
+        state.update(pivot=price, pivot_t=m3[pidx]["t"],
+                     lower_high=bool(before and before[-1][2] > price) if need_trend else True)
     return state
 
 
@@ -629,8 +635,9 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
                 continue
             best = max(best, 4)
             gd["choch"] = m3_choch_state(m3, ph3, bisect.bisect_left(t3, t5[touch]),
-                                         bisect.bisect_left(t3, sw["t"]), sw["l"])
-            k = m3_choch(m3, ph3, bisect.bisect_left(t3, t5[touch]), bisect.bisect_left(t3, sw["t"]), sw["l"])
+                                         bisect.bisect_left(t3, sw["t"]), sw["l"], cfg["choch_needs_trend"])
+            k = m3_choch(m3, ph3, bisect.bisect_left(t3, t5[touch]), bisect.bisect_left(t3, sw["t"]), sw["l"],
+                         cfg["choch_needs_trend"])
             if k is None:
                 continue
             best = max(best, 5)

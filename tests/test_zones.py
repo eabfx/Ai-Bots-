@@ -664,6 +664,35 @@ class StageLines(unittest.TestCase):
         st = z.m3_choch_state(m3, ph3, 0, 0, min(b["l"] for b in m3) - 1.0)
         self.assertIsNone(st["broken_t"])
 
+    def test_choch_breaks_the_last_swing_even_when_it_is_a_higher_high(self):
+        # price keeps making higher highs after the sweep low (101 then 103), pulls back, then closes above 103
+        m3 = [{"t": 180 * i, "o": 100.0, "h": 100.0, "l": 99.0, "c": c}
+              for i, c in enumerate([100.0, 101.0, 100.5, 103.0, 101.5, 101.0, 102.0, 103.5])]
+        ph3 = [(4, 2, 101.0), (6, 4, 103.0)]
+        self.assertEqual(z.m3_choch(m3, ph3, 5, 0, 90.0), 6)       # the 101 swing is the last known one
+        self.assertIsNone(z.m3_choch(m3, ph3, 5, 0, 90.0, need_trend=True))
+        lower = [(4, 2, 103.0), (6, 4, 101.0)]
+        self.assertEqual(z.m3_choch(m3, lower, 5, 0, 90.0, need_trend=True), 7)
+
+    def test_choch_still_needs_a_close_beyond_the_swing_and_a_swing_after_the_sweep(self):
+        m3 = [{"t": 180 * i, "o": 100.0, "h": 100.0, "l": 99.0, "c": c} for i, c in enumerate([100.0] * 8)]
+        self.assertIsNone(z.m3_choch(m3, [(4, 2, 100.0), (6, 4, 105.0)], 5, 0, 90.0))      # no close above 105
+        self.assertIsNone(z.m3_choch(m3, [(4, 2, 99.5)], 5, 3, 90.0))                       # swing is before the sweep
+        self.assertEqual(z.m3_choch(m3, [(4, 2, 99.5)], 5, 2, 90.0), 5)
+
+    def test_the_default_rule_does_not_need_the_trend_and_the_option_is_in_the_config(self):
+        self.assertIs(z.DEFAULTS["choch_needs_trend"], False)
+        m5, m3, zone, targets = entry_data()
+        for flag in (False, True):
+            res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, min_rr=0.5, choch_needs_trend=flag))
+            self.assertEqual(best, 6)
+
+    def test_the_state_only_judges_the_trend_when_asked_to(self):
+        m3 = [{"t": 180 * i, "o": 100.0, "h": 100.0, "l": 99.0, "c": 100.0} for i in range(8)]
+        ph3 = [(4, 2, 101.0), (6, 4, 103.0)]
+        self.assertTrue(z.m3_choch_state(m3, ph3, 5, 0, 90.0)["lower_high"])
+        self.assertFalse(z.m3_choch_state(m3, ph3, 5, 0, 90.0, need_trend=True)["lower_high"])
+
     def test_no_swing_after_the_sweep_means_no_choch_level(self):
         m5, m3, zone, targets = entry_data()
         ph3, _ = z.pivots(m3, 2)
