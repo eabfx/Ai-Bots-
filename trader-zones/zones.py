@@ -39,7 +39,8 @@ The entry (long side shown, short is the mirror image):
      above) with the wick reaching into the zone
   3. after the sweep a 5-minute FVG forms, or a bearish FVG is closed through
      (an IFVG), and its midpoint sits in the 62% to 79% retracement of the leg
-     from the sweep low to the highest high since
+     from the sweep low to the highest high, measured when price comes back to
+     the gap (or as it stands now, if it has not come back yet)
   4. price trades back into that gap without breaking the sweep low
   5. on 3-minute bars a close above the last lower high made after the sweep
      (the CHoCH) is the trigger, inside an Asia, London or New York window
@@ -577,14 +578,7 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
         if trace is not None:
             trace.append(rec)
         for avail, lo, hi, kind in gaps_after(m5, j, cfg, a5):
-            leg_hi = max(b["h"] for b in m5[j:avail + 1])
-            ote_lo, ote_hi = ote_band(sw["l"], leg_hi)
-            inside = ote_lo <= (lo + hi) / 2.0 <= ote_hi
-            rec["gaps"].append({"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
-                                "inside": inside})
-            if not inside:
-                continue
-            best = max(best, 3)
+            # price coming back into the gap, without taking out the sweep low first
             touch = None
             for m in range(avail + 1, len(m5)):
                 if m5[m]["l"] < sw["l"]:
@@ -592,6 +586,15 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
                 if m5[m]["l"] <= hi:
                     touch = m
                     break
+            # the leg is measured when price comes back, or as it stands now if it has not
+            leg_hi = max(b["h"] for b in m5[j:(len(m5) if touch is None else touch)])
+            ote_lo, ote_hi = ote_band(sw["l"], leg_hi)
+            inside = ote_lo <= (lo + hi) / 2.0 <= ote_hi
+            rec["gaps"].append({"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
+                                "inside": inside, "touched": touch is not None})
+            if not inside:
+                continue
+            best = max(best, 3)
             if touch is None:
                 continue
             best = max(best, 4)
@@ -698,10 +701,11 @@ def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
             out.append("        no FVG or IFVG formed after it")
         for g in rec["gaps"][:max_gaps]:
             mid = (g["lo"] + g["hi"]) / 2.0
-            out.append("        %s %s to %s (%s Dublin), midpoint %s, band %s to %s: %s"
+            out.append("        %s %s to %s (%s Dublin), midpoint %s, band %s to %s: %s, price %s"
                        % (g["kind"], px(sym, g["lo"]), px(sym, g["hi"]), fmt_dublin(g["t"], rec["t"]),
                           px(sym, mid), px(sym, g["ote"][0]), px(sym, g["ote"][1]),
-                          "inside" if g["inside"] else "outside"))
+                          "inside" if g["inside"] else "outside",
+                          "has come back" if g.get("touched") else "has not come back yet"))
         if len(rec["gaps"]) > max_gaps:
             out.append("        and %d more" % (len(rec["gaps"]) - max_gaps))
     return out

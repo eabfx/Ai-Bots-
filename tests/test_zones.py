@@ -467,6 +467,58 @@ class Entry(unittest.TestCase):
         self.assertEqual(res, [])
         self.assertEqual(best, 5)
 
+    # --- the 62% to 79% band is measured when price comes back to the gap, not when the gap forms ---
+    LEG = [(99.6, 100.0, 98.6, 99.9),       # 16 the sweep
+           (99.9, 102.4, 99.8, 102.3),      # 17
+           (101.0, 103.0, 100.6, 102.9),    # 18 forms the gap 100.0 to 100.6 (midpoint 100.3)
+           (102.9, 106.0, 102.7, 105.9)]    # 19 the leg goes on to 106.0
+    BACK = (105.9, 106.0, 100.4, 100.5)     # 20 price comes back into the gap
+
+    def late_leg(self, rows):
+        m5 = mk(T0, 300, noise(16) + rows)
+        m3 = mk(T0, 180, M3_ROWS)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        trace = []
+        res, best = z.long_setups(zone, m5, m3, [], dict(CFG, min_rr=0.5), trace)
+        return best, trace
+
+    def test_a_gap_formed_mid_leg_is_in_the_band_of_the_finished_leg(self):
+        best, trace = self.late_leg(self.LEG + [self.BACK])
+        self.assertGreaterEqual(best, 4)                  # in the OTE and price came back into the gap
+        gap = [g for g in trace[0]["gaps"] if g["lo"] == 100.0][0]
+        self.assertTrue(gap["inside"])
+        self.assertTrue(gap["touched"])
+        # the leg when price came back was 98.6 to 106.0, so the band is 100.15 to 101.41
+        self.assertAlmostEqual(gap["ote"][0], 106.0 - 0.79 * 7.4, places=6)
+        self.assertAlmostEqual(gap["ote"][1], 106.0 - 0.62 * 7.4, places=6)
+
+    def test_before_price_comes_back_the_band_uses_the_leg_so_far(self):
+        best, trace = self.late_leg(self.LEG)
+        self.assertEqual(best, 3)                         # in the OTE, price has not come back yet
+        gap = [g for g in trace[0]["gaps"] if g["lo"] == 100.0][0]
+        self.assertTrue(gap["inside"])
+        self.assertFalse(gap["touched"])
+
+    def test_a_new_high_after_price_came_back_does_not_move_the_band(self):
+        best, trace = self.late_leg(self.LEG + [self.BACK, (100.5, 130.0, 100.4, 129.0)])
+        self.assertGreaterEqual(best, 4)
+        gap = [g for g in trace[0]["gaps"] if g["lo"] == 100.0][0]
+        self.assertTrue(gap["inside"])
+
+    def test_the_bar_that_comes_back_into_the_gap_is_not_part_of_the_leg(self):
+        # it spikes to 108.0 on the way back: the leg was still 98.6 to 106.0 when price came back
+        best, trace = self.late_leg(self.LEG + [(105.9, 108.0, 100.4, 100.5)])
+        gap = [g for g in trace[0]["gaps"] if g["lo"] == 100.0][0]
+        self.assertTrue(gap["touched"])
+        self.assertTrue(gap["inside"])
+        self.assertAlmostEqual(gap["ote"][0], 106.0 - 0.79 * 7.4, places=6)
+
+    def test_price_that_breaks_the_sweep_low_before_coming_back_gives_no_touch(self):
+        best, trace = self.late_leg(self.LEG + [(105.9, 106.0, 98.0, 98.5), self.BACK])
+        gap = [g for g in trace[0]["gaps"] if g["lo"] == 100.0][0]
+        self.assertFalse(gap["touched"])
+
     def test_no_sweep_no_entry(self):
         m5, m3, zone, targets = entry_data()
         m5[16] = dict(m5[16], l=99.5)  # the wick no longer goes under the swing low
@@ -533,7 +585,9 @@ class StageLines(unittest.TestCase):
         self.assertEqual(lines[0], "      sweep Wed 10-28 01:00 ET (05:00 Dublin): took the swing high 1.32990, "
                                    "extreme 1.33010, closed back inside")
         self.assertEqual(lines[1], "        FVG 1.32940 to 1.32960 (05:15 Dublin), midpoint 1.32950, "
-                                   "band 1.32950 to 1.32990: outside")
+                                   "band 1.32950 to 1.32990: outside, price has not come back yet")
+        rec["gaps"][0].update(inside=True, touched=True)
+        self.assertTrue(z.trace_lines("GBPUSD", self.ZONE, [rec])[1].endswith("inside, price has come back"))
 
     def test_a_sweep_with_no_gap_says_so_and_long_lists_are_cut(self):
         rec = {"t": et(2026, 10, 28, 1, 0), "swing": 1.0, "extreme": 1.1, "gaps": []}

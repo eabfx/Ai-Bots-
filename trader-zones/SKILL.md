@@ -85,7 +85,9 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    above), with the wick reaching into the zone.
 3. After the sweep a 5-minute FVG forms, or a bearish FVG is closed through (an
    IFVG), and its midpoint sits in the 62 % to 79 % retracement of the leg from
-   the sweep low to the highest high since.
+   the sweep low to the highest high. The leg is measured when price comes back
+   into the gap, or as it stands now if price has not come back yet, so a gap
+   that formed in the middle of the leg still counts once the leg is finished.
 4. Price trades back into that gap without breaking the sweep low.
 5. On 3-minute bars a close above the last lower high made after the sweep (the
    CHoCH) is the trigger, inside a session window.
