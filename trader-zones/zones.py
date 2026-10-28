@@ -62,6 +62,7 @@ Data: Yahoo's free chart JSON (unofficial, can lag, forex and futures bars).
   too: a chart export with a header of time, open, high, low and close (TradingView's
   "Export chart data"), time as Unix seconds or an ISO date and time.
   --save DIR writes those files when it downloads, so a live run can be replayed exactly.
+  --zone KIND LOW HIGH WHEN (setup only) uses a box you drew instead of the detected zones.
   --spot PRICE takes the gap between futures and your spot chart off every price: give the
   price your chart shows now and the latest close is shifted to match it.
 
@@ -1054,10 +1055,55 @@ FLAT_NOTE = ("Note: Yahoo's 1-minute bars for %s carry one price each (no highs 
              "candles are built from a few price samples and their wicks and swings are approximate.")
 
 
+def dublin_to_ts(local):
+    for off in (1, 0):
+        utc = local - datetime.timedelta(hours=off)
+        if dublin_offset(utc) == off:
+            return int((utc - EPOCH).total_seconds())
+    return int((local - EPOCH).total_seconds())
+
+
+def parse_dublin(text, flag):
+    for f in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M"):
+        try:
+            return dublin_to_ts(datetime.datetime.strptime(text, f))
+        except ValueError:
+            pass
+    raise ZoneError('%s wants Dublin time like "2026-10-28 02:00"' % flag)
+
+
+def manual_zone(spec, m5, candle_secs=1800):
+    """A zone the user drew by hand: (kind, low, high, Dublin time of the candle). It counts as touched
+    from the first 5-minute bar after that candle closes that trades back into it."""
+    kind, low, high, when = spec
+    kind = kind.lower()
+    if kind not in ("demand", "supply"):
+        raise ZoneError('--zone kind must be "demand" or "supply", not %r' % kind)
+    try:
+        low, high = float(low), float(high)
+    except ValueError:
+        raise ZoneError("--zone wants two prices, low then high")
+    if low >= high:
+        raise ZoneError("--zone wants the low price first and it must be under the high price")
+    t = parse_dublin(when, "--zone")
+    z = {"kind": kind, "tf": "mine", "t": t, "high": high, "low": low, "di": None, "touched_t": None,
+         "status": "fresh"}
+    for b in m5:
+        if b["t"] < t + candle_secs:
+            continue
+        if (b["l"] <= high) if kind == "demand" else (b["h"] >= low):
+            z["touched_t"], z["status"] = b["t"], "touched"
+            break
+    return z
+
+
 def cmd_setup(args, cfg, now):
     sym = resolve(args.symbol)
-    zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, args.offline)
     m5 = closed_only(get_bars(sym, "5m", cfg["days"], args.offline), 300, now)
+    if args.zone:
+        zones = [manual_zone(spec, m5) for spec in args.zone]
+    else:
+        zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, args.offline)
     m1 = closed_only(get_bars(sym, "1m", cfg["days"], args.offline), 60, now)
     m3 = closed_only(resample(m1, 180), 180, now)
     fresh = [z for z in zones if z["status"] == "fresh"]
@@ -1141,6 +1187,11 @@ def build_parser():
         s.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
         s.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
         s.add_argument("--spot", type=float, help="the price on your own chart right now; the data is shifted to match it")
+        if name == "setup":
+            s.add_argument("--zone", nargs=4, action="append", metavar=("KIND", "LOW", "HIGH", "WHEN"),
+                           help='a zone you drew yourself, used instead of the detected ones: demand or supply, '
+                                'its low and high price, and the Dublin time of its candle, e.g. '
+                                '--zone demand 29841.25 29881.25 "2026-10-28 02:00" (repeat for more)')
         s.add_argument("--config", default="trader/config.json")
         s.add_argument("--days", type=int)
         s.add_argument("--max-per-day", type=int)

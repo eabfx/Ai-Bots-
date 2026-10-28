@@ -52,6 +52,10 @@ A chart export works in place of a saved Yahoo chart: put `SYMBOL_interval.csv` 
 close, with time as Unix seconds or an ISO date and time. This is how the user's own feed (OANDA spot gold, say)
 can replace Yahoo's futures candles when calibrating.
 
+`setup SYMBOL --zone KIND LOW HIGH WHEN` uses a box the user drew by hand instead of the detected zones
+(`--zone demand 29841.25 29881.25 "2026-10-28 02:00"`, the time being the zone candle's open in Dublin time;
+repeat the option for more boxes). It checks the entry logic against the user's own zone.
+
 `--spot PRICE` (on `zones`, `setup`, `explain` and `bars`) takes the gap between the futures price and the
 user's own spot chart off every price. Give the price the chart shows now; run it again on another day,
 because the gap moves a little. It fixes the price level only: futures and spot candles still differ in shape.

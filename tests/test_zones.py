@@ -887,7 +887,7 @@ class Command(unittest.TestCase):
         bars = mk(ZSTART, 1800, zone_rows())
         lines = ["time,open,high,low,close,Volume"] + [
             "%s,%s,%s,%s,%s,0" % (b["t"] if i % 2 else
-                                  datetime.datetime.utcfromtimestamp(b["t"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                  datetime.datetime.fromtimestamp(b["t"], datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                   b["o"], b["h"], b["l"], b["c"]) for i, b in enumerate(bars)]
         folder = self.csv_folder("MGC_30m.csv", "\n".join(lines) + "\n")
         got = z.get_bars("MGC", "30m", 2, folder)
@@ -921,6 +921,50 @@ class Command(unittest.TestCase):
                                  "\ufefftime,open,high,low,close\n1793000300,2,3,1,2\n1793000000,1,2,0,1\n1793000600,,,,\n")
         got = z.get_bars("GBPUSD", "5m", 2, folder)
         self.assertEqual([b["t"] for b in got], [1793000000, 1793000300])
+
+    def test_setup_uses_a_zone_you_drew_instead_of_the_detected_ones(self):
+        m5, m3, zone, targets = entry_data()
+        saved = (z.collect_zones, z.get_bars, z.resample)
+        z.collect_zones = lambda *a, **k: self.fail("detected zones must not be used")
+        z.get_bars = lambda *a, **k: m5
+        z.resample = lambda *a, **k: m3
+        try:
+            code, out, _ = self.run_cli(["setup", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json",
+                                         "--zone", "demand", "99.0", "99.8", "2026-10-26 09:00"])
+        finally:
+            z.collect_zones, z.get_bars, z.resample = saved
+        self.assertEqual(code, 0)
+        self.assertIn("mine demand zone 99.00-99.80", out)
+        self.assertEqual(len([ln for ln in out.splitlines() if ln.startswith("LONG")]), 1)
+
+    def test_a_drawn_zone_that_price_never_trades_back_into_stays_fresh(self):
+        m5, m3, zone, targets = entry_data()
+        far = z.manual_zone(("demand", "50", "60", "2026-10-26 09:00"), m5)
+        self.assertEqual((far["status"], far["touched_t"]), ("fresh", None))
+        near = z.manual_zone(("DEMAND", "99.0", "99.8", "2026-10-26 09:00"), m5)
+        self.assertEqual(near["status"], "touched")
+        self.assertGreaterEqual(near["touched_t"], z.parse_dublin("2026-10-26 09:30", "x"))
+        late = z.manual_zone(("demand", "99.0", "99.8", "2026-10-26 20:00"), m5)       # drawn after every bar
+        self.assertIsNone(late["touched_t"])
+        sup = z.manual_zone(("supply", "108", "112", "2026-10-26 09:00"), m5)
+        self.assertEqual(sup["status"], "touched")                                       # the 110 high trades into it
+        self.assertEqual(sup["tf"], "mine")
+
+    def test_a_drawn_zone_is_checked_and_times_are_dublin_time(self):
+        m5, m3, zone, targets = entry_data()
+        for bad in (("range", "1", "2", "2026-10-26 09:00"), ("demand", "a", "2", "2026-10-26 09:00"),
+                    ("demand", "2", "1", "2026-10-26 09:00"), ("demand", "1", "2", "yesterday")):
+            with self.assertRaises(z.ZoneError):
+                z.manual_zone(bad, m5)
+        self.assertEqual(z.parse_dublin("2026-10-26 02:00", "x"), z.eastern_to_ts(datetime.datetime(2026, 10, 25, 22, 0)))
+        self.assertEqual(z.parse_dublin("2026-07-01 12:00", "x"),                       # summer time is one hour ahead
+                         z.parse_dublin("2026-07-01 11:00", "x") + 3600)
+        self.assertEqual(z.to_dublin(z.parse_dublin("2026-07-01 12:00", "x")).hour, 12)
+        self.assertEqual(z.to_dublin(z.parse_dublin("2026-10-26 02:00", "x")).hour, 2)
+        # 01:30 happens twice when the clocks go back; the first time (summer time, 00:30 UTC) is used
+        self.assertEqual(z.parse_dublin("2026-10-25 01:30", "x"), z.eastern_to_ts(datetime.datetime(2026, 10, 24, 20, 30)))
+        with self.assertRaises(z.ZoneError):
+            z.manual_zone(("demand", "5", "5", "2026-10-26 09:00"), [])                 # a zone needs some height
 
     def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
         text = chart_json(mk(ZSTART, 1800, zone_rows()))
