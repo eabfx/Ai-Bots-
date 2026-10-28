@@ -631,6 +631,83 @@ class StageLines(unittest.TestCase):
             self.assertLess(g["lo"], g["hi"])
             self.assertLess(g["ote"][0], g["ote"][1])
 
+    def test_a_long_gap_that_price_came_back_to_carries_the_choch_state(self):
+        m5, m3, zone, targets = entry_data()
+        trace = []
+        z.long_setups(zone, m5, m3, targets, dict(CFG, min_rr=0.5), trace)
+        states = [g["choch"] for g in trace[0]["gaps"] if "choch" in g]
+        self.assertTrue(states)
+        c = states[0]
+        self.assertEqual(c["pivot"], 104.6)
+        self.assertTrue(c["lower_high"])
+        self.assertEqual(c["close"], 105.1)
+        self.assertEqual(c["pivot_t"], 1793018700)
+        self.assertIsNone(c["broken_t"])
+        for g in trace[0]["gaps"]:
+            if not g["inside"] or not g["touched"]:
+                self.assertNotIn("choch", g)
+
+    def test_a_supply_trace_choch_state_is_in_real_prices(self):
+        m5, m3, zone, targets = entry_data()
+        supply = dict(zone, kind="supply", low=-zone["high"], high=-zone["low"])
+        trace = []
+        z.setups_for(supply, z.flip_bars(m5), z.flip_bars(m3), [], dict(CFG, min_rr=0.5), trace)
+        c = [g["choch"] for g in trace[0]["gaps"] if "choch" in g][0]
+        self.assertEqual(c["pivot"], -104.6)
+        self.assertEqual(c["close"], -105.1)
+
+    def test_the_sweep_extreme_going_first_is_reported(self):
+        m5, m3, zone, targets = entry_data()
+        ph3, _ = z.pivots(m3, 2)
+        st = z.m3_choch_state(m3, ph3, 0, 0, max(b["l"] for b in m3) + 1.0)
+        self.assertEqual(st["broken_t"], m3[0]["t"])
+        st = z.m3_choch_state(m3, ph3, 0, 0, min(b["l"] for b in m3) - 1.0)
+        self.assertIsNone(st["broken_t"])
+
+    def test_no_swing_after_the_sweep_means_no_choch_level(self):
+        m5, m3, zone, targets = entry_data()
+        ph3, _ = z.pivots(m3, 2)
+        st = z.m3_choch_state(m3, ph3, 0, len(m3) - 1, 0.0)
+        self.assertIsNone(st["pivot"])
+        self.assertIsNone(st["lower_high"])
+        self.assertEqual(st["close"], m3[-1]["c"])
+
+    def test_choch_line_wording_for_a_short(self):
+        c = {"pivot": 1.32870, "pivot_t": et(2026, 10, 28, 5, 30), "lower_high": True, "close": 1.32885,
+             "close_t": et(2026, 10, 28, 6, 40), "broken_t": None}
+        self.assertEqual(z.choch_line("GBPUSD", self.ZONE, c),
+                         "          3-minute: last swing low after the sweep 1.32870 (09:30 Dublin); "
+                         "latest close 1.32885 (10:40 Dublin); a close below 1.32870 is the CHoCH")
+        self.assertIn("but it is not a higher low so it cannot be the CHoCH level",
+                      z.choch_line("GBPUSD", self.ZONE, dict(c, lower_high=False)))
+        none = z.choch_line("GBPUSD", self.ZONE, dict(c, pivot=None, pivot_t=None, lower_high=None))
+        self.assertIn("no swing low after the sweep yet", none)
+        self.assertIn("latest close 1.32885", none)
+        cut = z.choch_line("GBPUSD", self.ZONE, dict(c, broken_t=et(2026, 10, 28, 6, 5)))
+        self.assertEqual(cut, "          3-minute: price traded beyond the sweep extreme at 10:05 Dublin, "
+                              "so this attempt is cancelled")
+
+    def test_choch_line_wording_for_a_long(self):
+        demand = dict(self.ZONE, kind="demand")
+        c = {"pivot": 1.32870, "pivot_t": et(2026, 10, 28, 5, 30), "lower_high": False, "close": 1.32850,
+             "close_t": et(2026, 10, 28, 6, 40), "broken_t": None}
+        line = z.choch_line("GBPUSD", demand, c)
+        self.assertIn("last swing high after the sweep", line)
+        self.assertIn("not a lower high", line)
+        self.assertIn("a close above 1.32870 is the CHoCH", line)
+
+    def test_trace_lines_print_the_choch_line_only_under_gaps_in_the_band(self):
+        c = {"pivot": 1.32870, "pivot_t": et(2026, 10, 28, 5, 30), "lower_high": True, "close": 1.32885,
+             "close_t": et(2026, 10, 28, 6, 40), "broken_t": None}
+        g = {"kind": "FVG", "t": et(2026, 10, 28, 5, 15), "lo": 1.0, "hi": 1.2, "ote": (1.0, 1.1),
+             "inside": True, "touched": True, "choch": c}
+        rec = {"t": et(2026, 10, 28, 5, 0), "swing": 1.0, "extreme": 1.1, "gaps": [g]}
+        out = z.trace_lines("GBPUSD", self.ZONE, [rec])
+        self.assertEqual(len(out), 3)
+        self.assertEqual(out[2], z.choch_line("GBPUSD", self.ZONE, c))
+        g["inside"] = False
+        self.assertEqual(len(z.trace_lines("GBPUSD", self.ZONE, [rec])), 2)
+
 
 class Command(unittest.TestCase):
     def run_cli(self, argv):

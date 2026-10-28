@@ -552,6 +552,25 @@ def m3_choch(m3, ph3, from_idx, sweep_idx, stop_low):
     return None
 
 
+def m3_choch_state(m3, ph3, from_idx, sweep_idx, stop_low):
+    """What the CHoCH check sees at the latest 3-minute bar: the swing it would break, whether that
+    swing is a lower high, the latest close, and whether the sweep low went first."""
+    n = len(m3)
+    broken = None
+    for k in range(from_idx, n):
+        if m3[k]["l"] < stop_low:
+            broken = m3[k]["t"]
+            break
+    state = {"pivot": None, "pivot_t": None, "lower_high": None, "close": m3[-1]["c"],
+             "close_t": m3[-1]["t"], "broken_t": broken}
+    known = [p for p in ph3 if p[0] < n and p[1] >= sweep_idx]
+    if known:
+        _, pidx, price = known[-1]
+        before = [q for q in ph3 if q[1] < pidx]
+        state.update(pivot=price, pivot_t=m3[pidx]["t"], lower_high=bool(before and before[-1][2] > price))
+    return state
+
+
 def long_setups(zone, m5, m3, targets, cfg, trace=None):
     """Every long entry for one demand zone, and how far the best attempt got (an index into STAGES).
     When `trace` is a list, each sweep is appended to it with the gaps looked at after it."""
@@ -590,14 +609,17 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
             leg_hi = max(b["h"] for b in m5[j:(len(m5) if touch is None else touch)])
             ote_lo, ote_hi = ote_band(sw["l"], leg_hi)
             inside = ote_lo <= (lo + hi) / 2.0 <= ote_hi
-            rec["gaps"].append({"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
-                                "inside": inside, "touched": touch is not None})
+            gd = {"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
+                  "inside": inside, "touched": touch is not None}
+            rec["gaps"].append(gd)
             if not inside:
                 continue
             best = max(best, 3)
             if touch is None:
                 continue
             best = max(best, 4)
+            gd["choch"] = m3_choch_state(m3, ph3, bisect.bisect_left(t3, t5[touch]),
+                                         bisect.bisect_left(t3, sw["t"]), sw["l"])
             k = m3_choch(m3, ph3, bisect.bisect_left(t3, t5[touch]), bisect.bisect_left(t3, sw["t"]), sw["l"])
             if k is None:
                 continue
@@ -621,6 +643,16 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
     return out, best
 
 
+def _unmirror_gap(g):
+    out = dict(g, lo=-g["hi"], hi=-g["lo"], ote=(-g["ote"][1], -g["ote"][0]))
+    if "choch" in g:
+        c = dict(g["choch"], close=-g["choch"]["close"])
+        if c["pivot"] is not None:
+            c["pivot"] = -c["pivot"]
+        out["choch"] = c
+    return out
+
+
 def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
     """Run the long logic for a demand zone, or for a supply zone on mirrored prices.
     `trace`, when given, receives the sweeps and gaps looked at, in real (not mirrored) prices."""
@@ -637,7 +669,7 @@ def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
     res, best = long_setups(mirrored, flip_bars(m5), flip_bars(m3), targets, cfg, mirror_trace)
     for rec in mirror_trace or []:
         trace.append({"t": rec["t"], "swing": -rec["swing"], "extreme": -rec["extreme"], "gaps": [
-            dict(g, lo=-g["hi"], hi=-g["lo"], ote=(-g["ote"][1], -g["ote"][0])) for g in rec["gaps"]]})
+            _unmirror_gap(g) for g in rec["gaps"]]})
     for r in res:
         r["side"] = "short"
         r["sweep_low"] = -r["sweep_low"]
@@ -689,6 +721,23 @@ def stage_line(sym, z, best):
         px(sym, z["high"]), text)
 
 
+def choch_line(sym, z, c):
+    """The 3-minute CHoCH check for one gap price has come back to, in plain words."""
+    short = z["kind"] == "supply"
+    swing, level, way = ("low", "higher low", "below") if short else ("high", "lower high", "above")
+    pre = "          3-minute: "
+    if c["broken_t"] is not None:
+        return pre + "price traded beyond the sweep extreme at %s Dublin, so this attempt is cancelled" % (
+            fmt_dublin(c["broken_t"], c["broken_t"]))
+    if c["pivot"] is None:
+        return pre + "no swing %s after the sweep yet, so there is no CHoCH level; latest close %s (%s Dublin)" % (
+            swing, px(sym, c["close"]), fmt_dublin(c["close_t"], c["close_t"]))
+    note = "" if c["lower_high"] else ", but it is not a %s so it cannot be the CHoCH level" % level
+    return pre + "last swing %s after the sweep %s (%s Dublin)%s; latest close %s (%s Dublin); a close %s %s is the CHoCH" % (
+        swing, px(sym, c["pivot"]), fmt_dublin(c["pivot_t"], c["pivot_t"]), note, px(sym, c["close"]),
+        fmt_dublin(c["close_t"], c["close_t"]), way, px(sym, c["pivot"]))
+
+
 def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
     """What the entry logic saw after a zone was touched: each sweep and the gaps after it."""
     out = []
@@ -706,6 +755,8 @@ def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
                           px(sym, mid), px(sym, g["ote"][0]), px(sym, g["ote"][1]),
                           "inside" if g["inside"] else "outside",
                           "has come back" if g.get("touched") else "has not come back yet"))
+            if g.get("choch") and g["inside"]:
+                out.append(choch_line(sym, z, g["choch"]))
         if len(rec["gaps"]) > max_gaps:
             out.append("        and %d more" % (len(rec["gaps"]) - max_gaps))
     return out

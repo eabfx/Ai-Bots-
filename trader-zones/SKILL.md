@@ -99,6 +99,10 @@ for example "swept, no FVG or IFVG with its midpoint in the OTE", so a quiet day
 explained zone by zone. Under each swept zone it also lists the sweep (when, which swing it
 took) and each FVG or IFVG after it, with the gap's midpoint against the 62% to 79% band,
 so the output can be set beside the user's own 5-minute chart.
+Under each gap in the band that price has come back to, one more line shows the 3-minute check: the
+last swing after the sweep (the CHoCH level), whether it is a lower high (higher low for a short), the
+latest 3-minute close and its time, or that the sweep extreme was taken out first. Set it beside the
+3-minute chart to see why a CHoCH did or did not count.
 
 ## What it reads and writes
 
