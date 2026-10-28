@@ -876,6 +876,52 @@ class Command(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("no offline file", err)
 
+    def csv_folder(self, name, text):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, name), "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return tmp.name
+
+    def test_a_chart_export_csv_reads_like_a_saved_yahoo_chart(self):
+        bars = mk(ZSTART, 1800, zone_rows())
+        lines = ["time,open,high,low,close,Volume"] + [
+            "%s,%s,%s,%s,%s,0" % (b["t"] if i % 2 else
+                                  datetime.datetime.utcfromtimestamp(b["t"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                  b["o"], b["h"], b["l"], b["c"]) for i, b in enumerate(bars)]
+        folder = self.csv_folder("MGC_30m.csv", "\n".join(lines) + "\n")
+        got = z.get_bars("MGC", "30m", 2, folder)
+        self.assertEqual(got, bars)
+        code, out, _ = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", folder,
+                                     "--now", "2026-10-26 12:00", "--config", "none.json"])
+        self.assertEqual(code, 0)
+        self.assertIn("99.20 to 100.80", out)
+
+    def test_csv_times_may_be_milliseconds_offsets_or_plain_utc(self):
+        self.assertEqual(z.parse_time("1793000000"), 1793000000)
+        self.assertEqual(z.parse_time("1793000000000"), 1793000000)
+        self.assertEqual(z.parse_time("2026-10-26T12:00:00Z"), z.parse_time("2026-10-26 12:00:00"))
+        self.assertEqual(z.parse_time("2026-10-26T13:00:00+01:00"), z.parse_time("2026-10-26T12:00:00Z"))
+        with self.assertRaises(z.ZoneError):
+            z.parse_time("tomorrow")
+
+    def test_a_csv_without_the_needed_columns_is_a_plain_error_and_json_wins_when_both_exist(self):
+        folder = self.csv_folder("MGC_30m.csv", "time,open,high,close\n1,1,1,1\n")
+        code, _, err = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", folder, "--config", "none.json"])
+        self.assertEqual(code, 2)
+        self.assertIn("missing: low", err)
+        with open(os.path.join(folder, "MGC_30m.json"), "w") as fh:
+            fh.write(chart_json(mk(ZSTART, 1800, zone_rows())))
+        code, out, _ = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", folder,
+                                     "--now", "2026-10-26 12:00", "--config", "none.json"])
+        self.assertEqual(code, 0)
+
+    def test_a_csv_skips_blank_cells_and_a_bom_and_sorts_by_time(self):
+        folder = self.csv_folder("GBPUSD_5m.csv",
+                                 "\ufefftime,open,high,low,close\n1793000300,2,3,1,2\n1793000000,1,2,0,1\n1793000600,,,,\n")
+        got = z.get_bars("GBPUSD", "5m", 2, folder)
+        self.assertEqual([b["t"] for b in got], [1793000000, 1793000300])
+
     def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
         text = chart_json(mk(ZSTART, 1800, zone_rows()))
         calls = []

@@ -58,7 +58,9 @@ is how far back `setup` can look.
 
 Data: Yahoo's free chart JSON (unofficial, can lag, forex and futures bars).
   --offline DIR reads DIR/<SYMBOL>_<interval>.json (a saved Yahoo chart), for
-  example GBPUSD_30m.json, GBPUSD_5m.json and GBPUSD_1m.json.
+  example GBPUSD_30m.json, GBPUSD_5m.json and GBPUSD_1m.json. A .csv with the same name works
+  too: a chart export with a header of time, open, high, low and close (TradingView's
+  "Export chart data"), time as Unix seconds or an ISO date and time.
   --save DIR writes those files when it downloads, so a live run can be replayed exactly.
   --spot PRICE takes the gap between futures and your spot chart off every price: give the
   price your chart shows now and the latest close is shifted to match it.
@@ -71,6 +73,7 @@ Exit codes: 0 when something was found, 1 when nothing was, 2 on an error.
 
 import argparse
 import bisect
+import csv
 import datetime
 import json
 import os
@@ -291,10 +294,59 @@ def get_bars(sym, interval, days, offline=None):
             for b in bars]
 
 
+def parse_time(text):
+    """A bar time from a chart export: Unix seconds or milliseconds, or an ISO date and time (UTC when
+    it carries no offset)."""
+    text = text.strip()
+    try:
+        n = float(text)
+        return int(n / 1000.0) if n > 1e11 else int(n)
+    except ValueError:
+        pass
+    try:
+        d = datetime.datetime.fromisoformat(text.replace("Z", "+00:00").replace(" UTC", "+00:00"))
+    except ValueError:
+        raise ZoneError("cannot read the time %r in the CSV" % text)
+    if d.tzinfo is not None:
+        d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return int((d - EPOCH).total_seconds())
+
+
+def parse_csv(text, name):
+    """Bars from a chart export (TradingView's Export chart data): a header with time, open, high, low
+    and close, one bar per line."""
+    rows = list(csv.reader(text.splitlines()))
+    if not rows:
+        raise ZoneError("%s is empty" % name)
+    head = [h.strip().lower() for h in rows[0]]
+    need = ["time", "open", "high", "low", "close"]
+    missing = [k for k in need if k not in head]
+    if missing:
+        raise ZoneError("%s needs a header with time, open, high, low and close (missing: %s)"
+                        % (name, ", ".join(missing)))
+    idx = {k: head.index(k) for k in need}
+    bars = []
+    for row in rows[1:]:
+        try:
+            vals = [row[idx[k]].strip() for k in need]
+        except IndexError:
+            continue
+        if not all(vals):
+            continue
+        bars.append({"t": parse_time(vals[0]), "o": float(vals[1]), "h": float(vals[2]), "l": float(vals[3]),
+                     "c": float(vals[4])})
+    bars.sort(key=lambda b: b["t"])
+    return bars
+
+
 def _raw_bars(sym, interval, days, offline=None):
     if offline:
         path = os.path.join(offline, "%s_%s.json" % (sym, interval))
         if not os.path.exists(path):
+            csv_path = os.path.join(offline, "%s_%s.csv" % (sym, interval))
+            if os.path.exists(csv_path):
+                with open(csv_path, encoding="utf-8-sig") as fh:
+                    return parse_csv(fh.read(), csv_path)
             raise ZoneError("no offline file %s" % path)
         with open(path, encoding="utf-8") as fh:
             return parse_chart(fh.read(), sym)
