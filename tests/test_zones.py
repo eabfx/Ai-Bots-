@@ -441,5 +441,71 @@ class Command(unittest.TestCase):
             self.assertNotIn(word, src)
 
 
+class Explain(unittest.TestCase):
+    """The `explain` command: why one candle is or is not a zone, in the rule's own numbers."""
+
+    def run_explain(self, rows, at, extra=()):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, "MGC_30m.json"), "w") as fh:
+            fh.write(chart_json(mk(ZSTART, 1800, rows)))
+        out, err = io.StringIO(), io.StringIO()
+        argv = ["explain", "MGC", "--at", at, "--offline", tmp.name, "--now", "2026-10-26 12:00",
+                "--config", "none.json"] + list(extra)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = z.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_real_zone_is_confirmed_with_its_numbers(self):
+        code, out, _ = self.run_explain(zone_rows(), "2026-10-26 07:00")
+        self.assertEqual(code, 0)
+        self.assertIn("MGC candle Mon 10-26 07:00 ET", out)
+        self.assertIn("(a zone candle needs under 0.40): ok", out)
+        self.assertIn("displacement. Move away", out)
+        self.assertIn("this IS a zone by the rule (demand)", out)
+
+    def test_a_big_bodied_candle_says_too_big_and_stops(self):
+        rows = noise(PRE) + [SOLID, DISPLACEMENT] + AFTER_UP
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:00")
+        self.assertEqual(code, 0)
+        self.assertIn("TOO BIG", out)
+        self.assertIn("not a zone candle by the rule", out)
+        self.assertNotIn("Next 5 bars", out)
+
+    def test_a_close_that_does_not_pass_the_swing_is_named(self):
+        code, out, _ = self.run_explain(swing_rows(106.0), "2026-10-26 07:00")
+        self.assertIn("does not pass the latest swing high 106.00", out)
+        self.assertIn("so it is not a zone by the rule", out)
+
+    def test_a_short_move_away_is_named(self):
+        weak = (100.8, 102.65, 100.75, 102.6)
+        code, out, _ = self.run_explain(noise(PRE) + [ZONE_CANDLE, weak] + AFTER_UP[:1], "2026-10-26 07:00")
+        self.assertIn("the move away is too short", out)
+
+    def test_a_closer_qualifying_candle_takes_the_zone(self):
+        second = (100.0, 100.8, 99.3, 100.05)
+        rows = noise(PRE) + [ZONE_CANDLE, second, DISPLACEMENT] + AFTER_UP
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:00")
+        self.assertIn("also qualifies and is closer to the move", out)
+        self.assertIn("Mon 10-26 07:30", out)
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:30")
+        self.assertIn("this IS a zone by the rule", out)
+
+    def test_a_candle_outside_the_sessions_is_flagged(self):
+        # 6:00 AM New York is between the London window (2 to 5) and the New York window (7 to 10)
+        code, out, _ = self.run_explain(zone_rows(), "2026-10-26 06:00")
+        self.assertIn("NO, so zones_in_sessions drops it", out)
+
+    def test_a_time_with_no_bar_is_a_plain_error(self):
+        code, _, err = self.run_explain(zone_rows(), "2026-10-20 07:00")
+        self.assertEqual(code, 2)
+        self.assertIn("no 30m bar at 2026-10-20 07:00 ET", err)
+
+    def test_a_bad_time_names_the_flag(self):
+        code, _, err = self.run_explain(zone_rows(), "tuesday")
+        self.assertEqual(code, 2)
+        self.assertIn("--at wants New York time", err)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -550,6 +550,95 @@ def collect_zones(sym, tfs, now, cfg, offline):
     return sorted(found, key=lambda z: z["t"])
 
 
+def explain_lines(sym, bars, cfg, k):
+    """Why the candle at index k is, or is not, a zone: every number the rule looks at."""
+    n = len(bars)
+    a = atr_series(bars, cfg["atr_len"])
+    ph, pl = pivots(bars, cfg["swing_n"])
+    sh, sl = last_known(ph, n), last_known(pl, n)
+    c = bars[k]
+    out = ["%s candle %s ET  open %s high %s low %s close %s"
+           % (sym, fmt_et(c["t"]), px(sym, c["o"]), px(sym, c["h"]), px(sym, c["l"]), px(sym, c["c"]))]
+    if a[k] is None or a[k] <= 0:
+        out.append("Not enough bars before it to work out the ATR, so it cannot be checked.")
+        return out
+    rng, body = c["h"] - c["l"], abs(c["c"] - c["o"])
+    wick = (rng - body) / rng if rng > 0 else 0.0
+    small = body < cfg["base_body_atr"] * a[k]
+    wicky = wick > cfg["base_wick"]
+    out.append("ATR(%d) there: %s" % (cfg["atr_len"], px(sym, a[k])))
+    out.append("Body %.2f x ATR (a zone candle needs under %.2f): %s"
+               % (body / a[k], cfg["base_body_atr"], "ok" if small else "TOO BIG"))
+    out.append("Wicks are %.0f%% of its range (needs over %.0f%%): %s"
+               % (100 * wick, 100 * cfg["base_wick"], "ok" if wicky else "TOO SHORT"))
+    out.append("Opened in an Asia, London or New York window: %s"
+               % ("yes" if in_session(c["t"], cfg) else "NO, so zones_in_sessions drops it"))
+    if not (small and wicky):
+        out.append("Result: not a zone candle by the rule, so nothing after it is checked.")
+        return out
+    out.append("Next %d bars, looking for a strong move away (the first one that passes makes the zone):"
+               % cfg["base_lookback"])
+    first = cfg["atr_len"] + 2 * cfg["swing_n"] + 2
+    verdict = "Result: no displacement candle within %d bars, so it is not a zone by the rule." % cfg["base_lookback"]
+    for i in range(k + 1, min(k + cfg["base_lookback"], n - 1) + 1):
+        b = bars[i]
+        brng, bbody = b["h"] - b["l"], abs(b["c"] - b["o"])
+        up = b["c"] > b["o"]
+        why = []
+        if i < first or a[i] is None or a[i] <= 0:
+            out.append("  %s  too early in the data for the ATR and swings" % fmt_et(b["t"]))
+            continue
+        if bbody < cfg["disp_atr"] * a[i]:
+            why.append("body %.2f x ATR, needs %.2f" % (bbody / a[i], cfg["disp_atr"]))
+        if brng <= 0 or bbody < cfg["disp_body"] * brng:
+            why.append("body is %.0f%% of its range, needs %.0f%%"
+                       % (100 * bbody / brng if brng > 0 else 0, 100 * cfg["disp_body"]))
+        ref = sh[i - 1] if up else sl[i - 1]
+        if ref is None or not (b["c"] > ref if up else b["c"] < ref):
+            why.append("close %s does not pass the latest swing %s %s"
+                       % (px(sym, b["c"]), "high" if up else "low", px(sym, ref)))
+        line = "  %s  %s  " % (fmt_et(b["t"]), "up  " if up else "down")
+        if why:
+            out.append(line + "not a displacement: " + "; ".join(why))
+            continue
+        move = (max(x["h"] for x in bars[k + 1:i + 1]) - c["h"]) if up else (c["l"] - min(x["l"] for x in bars[k + 1:i + 1]))
+        out.append(line + "displacement. Move away %.2f x ATR (needs %.2f)" % (move / a[i], cfg["move_atr"]))
+        nearer = None
+        for k2 in range(i - 1, k, -1):
+            z2 = bars[k2]
+            r2, b2 = z2["h"] - z2["l"], abs(z2["c"] - z2["o"])
+            if a[k2] and r2 > 0 and b2 < cfg["base_body_atr"] * a[k2] and (r2 - b2) / r2 > cfg["base_wick"]:
+                nearer = k2
+                break
+        if move < cfg["move_atr"] * a[i]:
+            verdict = "Result: the move away is too short, so it is not a zone."
+        elif nearer is not None:
+            verdict = ("Result: the candle at %s ET also qualifies and is closer to the move, so the tool "
+                       "takes that one as the zone and not this one." % fmt_et(bars[nearer]["t"]))
+        else:
+            verdict = "Result: this IS a zone by the rule (%s)." % ("demand" if up else "supply")
+        break
+    out.append(verdict)
+    return out
+
+
+def cmd_explain(args, cfg, now):
+    sym = resolve(args.symbol)
+    secs = INTERVAL_SECS[args.tf]
+    bars = closed_only(get_bars(sym, args.tf, 5, args.offline), secs, now)
+    at = parse_now(args.at, "--at")
+    k = None
+    for i, b in enumerate(bars):
+        if b["t"] <= at < b["t"] + secs:
+            k = i
+    if k is None:
+        raise ZoneError("no %s bar at %s ET in the data Yahoo sent (it keeps about a month, and weekends have no bars)"
+                        % (args.tf, args.at))
+    for line in explain_lines(sym, bars, cfg, k):
+        print(line)
+    return 0
+
+
 def cmd_zones(args, cfg, now):
     sym = resolve(args.symbol)
     tfs = ["60m", "30m", "15m"] if args.tf == "all" else [args.tf]
@@ -620,7 +709,7 @@ def cmd_markets():
     return 0
 
 
-def parse_now(text):
+def parse_now(text, flag="--now"):
     if not text:
         return now_ts()
     for f in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M"):
@@ -628,7 +717,7 @@ def parse_now(text):
             return eastern_to_ts(datetime.datetime.strptime(text, f))
         except ValueError:
             pass
-    raise ZoneError('--now wants New York time like "2026-10-26 08:15"')
+    raise ZoneError('%s wants New York time like "2026-10-26 08:15"' % flag)
 
 
 def build_parser():
@@ -649,6 +738,13 @@ def build_parser():
         s.add_argument("--out", default="trader/zones.json")
         if name == "zones":
             s.add_argument("--tf", default="all", choices=["all", "60m", "30m", "15m"])
+    e = sub.add_parser("explain", help="why one candle is or is not a zone")
+    e.add_argument("symbol")
+    e.add_argument("--at", required=True, help='New York time of the candle, e.g. "2026-10-27 02:00"')
+    e.add_argument("--tf", default="30m", choices=["60m", "30m", "15m"])
+    e.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
+    e.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
+    e.add_argument("--config", default="trader/config.json")
     return p
 
 
@@ -657,17 +753,19 @@ def main(argv=None):
     try:
         if args.cmd == "markets":
             return cmd_markets()
-        if args.cmd not in ("zones", "setup"):
+        if args.cmd not in ("zones", "setup", "explain"):
             build_parser().print_help()
             return 2
         cfg = read_config(args.config)
+        now = parse_now(args.now)
+        if args.cmd == "explain":
+            return cmd_explain(args, cfg, now)
         if args.days:
             cfg["days"] = args.days
         if args.max_per_day:
             cfg["max_per_day"] = args.max_per_day
         if args.min_rr is not None:
             cfg["min_rr"] = args.min_rr
-        now = parse_now(args.now)
         return cmd_zones(args, cfg, now) if args.cmd == "zones" else cmd_setup(args, cfg, now)
     except ZoneError as e:
         print("error: %s" % e, file=sys.stderr)

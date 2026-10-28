@@ -32,7 +32,13 @@ python3 "${CLAUDE_SKILL_DIR}/zones.py" zones XAUUSD --tf 30m --days 2 --max-per-
 python3 "${CLAUDE_SKILL_DIR}/zones.py" setup NQ                     # sweep + FVG/IFVG in the OTE + M3 CHoCH
 python3 "${CLAUDE_SKILL_DIR}/zones.py" setup MGC --now "2026-10-26 08:15" --offline DIR
 python3 "${CLAUDE_SKILL_DIR}/zones.py" setup EURUSD --write         # also writes trader/zones.json
+python3 "${CLAUDE_SKILL_DIR}/zones.py" explain GBPUSD --at "2026-10-27 02:00" --tf 30m   # why that candle is or is not a zone
 ```
+
+`explain` takes the New York time of one candle and prints every number the rule
+looked at: body against ATR, wick share, each following bar's displacement test,
+the move away, and the session window. Use it when a zone the user marks by hand
+is missing from `zones`.
 
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
