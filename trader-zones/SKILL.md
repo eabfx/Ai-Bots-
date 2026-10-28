@@ -38,7 +38,7 @@ python3 "${CLAUDE_SKILL_DIR}/zones.py" explain GBPUSD --at "2026-10-27 02:00" --
 `explain` takes the New York time of one candle and prints every number the rule
 looked at: body against ATR, wick share, each following bar's displacement test,
 the move away, and the session window. Use it when a zone the user marks by hand
-is missing from `zones`.
+is missing from `zones`. It also says which candle the tool picked instead and why.
 
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
@@ -65,9 +65,14 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
 1. Displacement: a candle whose body is at least 1.5 x ATR(14) and 60 % of its
    own range, and that closes beyond the last confirmed swing high (demand) or
    swing low (supply).
-2. Zone candle: the latest candle before it, up to 5 back, with a body under
-   0.4 x ATR, wicks making up more than half its range, and a move away from its
-   extreme of at least 2 x ATR.
+2. Zone candle: a candle up to 5 back from it with a body under 0.4 x ATR, wicks
+   making up more than half its range, and a move away from its extreme of at
+   least 2 x ATR. When several candles in a row qualify, the most extreme one is
+   the zone: the highest high for supply, the lowest low for demand.
+2b. Slow move: no single big candle is needed. A small-bodied, long-wicked candle
+   that is the top (supply) or bottom (demand) of the area, followed by a close
+   2 x ATR beyond it within 10 bars and no close back through its far edge, is a
+   zone too. One move gets one zone.
 3. Fresh until price trades back into it, then touched.
 4. Only zones from the last 2 days, at most 3 per day, and only candles that
    opened in an Asia, London or New York window.

@@ -17,10 +17,16 @@ The zone (one candle, high to low):
   displacement  a candle whose body is at least disp_atr x ATR(14) and
                 disp_body of its own range, and that CLOSES beyond the last
                 confirmed swing high (demand) or swing low (supply).
-  zone candle   the latest candle before it (up to base_lookback back) with a
-                small body (under base_body_atr x ATR), wicks making up more
-                than base_wick of its range, and a move away from its extreme of
-                at least move_atr x ATR. The zone is that one candle, high to low.
+  zone candle   a candle up to base_lookback bars before it with a small body
+                (under base_body_atr x ATR), wicks making up more than base_wick
+                of its range, and a move away from its extreme of at least
+                move_atr x ATR. When several qualify the most extreme one is the
+                zone (the highest high for supply, the lowest low for demand).
+                The zone is that one candle, high to low.
+  slow move     no single big candle is needed: a small-bodied, long-wicked candle
+                that is the top (supply) or bottom (demand) of the area, then
+                price closes away_atr x ATR beyond it within away_bars bars without
+                ever closing back through its far edge, is a zone too.
   fresh         price has not traded back into it. A zone price has entered is
                 "touched".
   caps          only zones from the last --days days, at most --max-per-day per
@@ -88,6 +94,9 @@ DEFAULTS = {
     "base_wick": 0.5,
     "base_lookback": 5,
     "move_atr": 2.0,
+    "away_bars": 10,
+    "away_atr": 2.0,
+    "extreme_tol_atr": 0.1,
     "fvg_min_atr": 0.1,
     "sweep_buffer_atr": 0.2,
     "min_rr": 2.0,
@@ -310,46 +319,120 @@ def flip_bars(bars):
 
 # ---------------------------------------------------------------- zones
 
+def is_base(bars, a, k, cfg):
+    """A small body and long wicks: the one-candle shape of a zone."""
+    z = bars[k]
+    rk = z["h"] - z["l"]
+    kb = abs(z["c"] - z["o"])
+    if a[k] is None or a[k] <= 0 or rk <= 0:
+        return False
+    return kb < cfg["base_body_atr"] * a[k] and (rk - kb) / rk > cfg["base_wick"]
+
+
+def pick_extreme(bars, ks, up):
+    """Among zone candles in one move, the lowest low (demand) or the highest high (supply);
+    the earliest wins a tie."""
+    if up:
+        return min(ks, key=lambda k: (bars[k]["l"], k))
+    return min(ks, key=lambda k: (-bars[k]["h"], k))
+
+
+def gradual_away(bars, a, k, up, cfg):
+    """A slow move away from the zone candle at k: the first bar, within away_bars, that closes
+    away_atr x ATR beyond its near edge, with no close back through its far edge on the way.
+    Returns (bar index or None, best distance in ATR, why not)."""
+    z = bars[k]
+    need = cfg["away_atr"] * a[k]
+    best = 0.0
+    for j in range(k + 1, min(k + cfg["away_bars"], len(bars) - 1) + 1):
+        c = bars[j]["c"]
+        if (up and c < z["l"]) or (not up and c > z["h"]):
+            return None, best / a[k], "price closed back through the far edge of the zone"
+        d = (c - z["h"]) if up else (z["l"] - c)
+        best = max(best, d)
+        if d >= need:
+            return j, d / a[k], ""
+    return None, best / a[k], "price never got far enough away"
+
+
+def is_extreme_of_area(bars, a, k, j, up, cfg):
+    """The zone candle is the bottom (demand) or top (supply) of the area from swing_n bars
+    before it to the bar that confirms the move, give or take extreme_tol_atr x ATR."""
+    lo = max(k - cfg["swing_n"], 0)
+    tol = cfg["extreme_tol_atr"] * a[k]
+    if up:
+        return bars[k]["l"] <= min(x["l"] for x in bars[lo:j + 1]) + tol
+    return bars[k]["h"] >= max(x["h"] for x in bars[lo:j + 1]) - tol
+
+
+def displacement_direction(bars, a, sh, sl, i, cfg):
+    """True for an up displacement candle, False for a down one, None when bar i is neither."""
+    b = bars[i]
+    rng = b["h"] - b["l"]
+    body = abs(b["c"] - b["o"])
+    if a[i] is None or a[i] <= 0 or rng <= 0 or body < cfg["disp_atr"] * a[i] or body < cfg["disp_body"] * rng:
+        return None
+    up = b["c"] > b["o"]
+    if up and not (sh[i - 1] is not None and b["c"] > sh[i - 1]):
+        return None
+    if not up and not (sl[i - 1] is not None and b["c"] < sl[i - 1]):
+        return None
+    return up
+
+
+def base_candidates(bars, a, i, up, cfg):
+    """Zone candles before displacement bar i: base shape plus a move away of move_atr x ATR."""
+    out = []
+    for k in range(i - 1, max(i - 1 - cfg["base_lookback"], 0), -1):
+        if not is_base(bars, a, k, cfg):
+            continue
+        if up:
+            move = max(x["h"] for x in bars[k + 1:i + 1]) - bars[k]["h"]
+        else:
+            move = bars[k]["l"] - min(x["l"] for x in bars[k + 1:i + 1])
+        if move >= cfg["move_atr"] * a[i]:
+            out.append(k)
+    return out
+
+
 def find_zones(bars, cfg):
     """Supply and demand zones in one chart's bars, with whether price has come back."""
     n = len(bars)
     a = atr_series(bars, cfg["atr_len"])
     ph, pl = pivots(bars, cfg["swing_n"])
     sh, sl = last_known(ph, n), last_known(pl, n)
+    first = cfg["atr_len"] + 2 * cfg["swing_n"] + 2
     zones, seen = [], set()
-    for i in range(cfg["atr_len"] + 2 * cfg["swing_n"] + 2, n):
-        if a[i] is None or a[i] <= 0:
+
+    def add(k, up, di):
+        seen.add((k, up))
+        zones.append({"kind": "demand" if up else "supply", "t": bars[k]["t"], "disp_t": bars[di]["t"],
+                      "high": bars[k]["h"], "low": bars[k]["l"], "di": di, "touched_t": None,
+                      "status": "fresh"})
+
+    for i in range(first, n):
+        up = displacement_direction(bars, a, sh, sl, i, cfg)
+        if up is None:
             continue
-        b = bars[i]
-        rng = b["h"] - b["l"]
-        body = abs(b["c"] - b["o"])
-        if rng <= 0 or body < cfg["disp_atr"] * a[i] or body < cfg["disp_body"] * rng:
+        cands = base_candidates(bars, a, i, up, cfg)
+        if cands:
+            k = pick_extreme(bars, cands, up)
+            if (k, up) not in seen:
+                add(k, up, i)
+    # a slow move away: no single big candle, but the candle is the top or bottom of the area
+    for k in range(first, n - 1):
+        if not is_base(bars, a, k, cfg):
             continue
-        up = b["c"] > b["o"]
-        if up and not (sh[i - 1] is not None and b["c"] > sh[i - 1]):
-            continue
-        if not up and not (sl[i - 1] is not None and b["c"] < sl[i - 1]):
-            continue
-        for k in range(i - 1, max(i - 1 - cfg["base_lookback"], 0), -1):
-            z = bars[k]
-            rk = z["h"] - z["l"]
-            kb = abs(z["c"] - z["o"])
-            if a[k] is None or rk <= 0:
-                continue
-            if not (kb < cfg["base_body_atr"] * a[k] and (rk - kb) / rk > cfg["base_wick"]):
-                continue
-            if up:
-                move = max(x["h"] for x in bars[k + 1:i + 1]) - z["h"]
-            else:
-                move = z["l"] - min(x["l"] for x in bars[k + 1:i + 1])
-            if move < cfg["move_atr"] * a[i]:
-                continue
+        for up in (True, False):
+            kind = "demand" if up else "supply"
             if (k, up) in seen:
-                break
-            seen.add((k, up))
-            zones.append({"kind": "demand" if up else "supply", "t": z["t"], "disp_t": b["t"],
-                          "high": z["h"], "low": z["l"], "di": i, "touched_t": None, "status": "fresh"})
-            break
+                continue
+            if any(zz["kind"] == kind and k < zz["di"] <= k + cfg["away_bars"] for zz in zones):
+                continue    # that move already has its zone
+            j, _, _ = gradual_away(bars, a, k, up, cfg)
+            if j is not None and is_extreme_of_area(bars, a, k, j, up, cfg):
+                add(k, up, j)
+    zones.sort(key=lambda zz: (zz["di"], zz["t"]))
     for z in zones:
         for m in range(z["di"] + 1, n):
             hit = bars[m]["l"] <= z["high"] if z["kind"] == "demand" else bars[m]["h"] >= z["low"]
@@ -564,30 +647,28 @@ def explain_lines(sym, bars, cfg, k):
         return out
     rng, body = c["h"] - c["l"], abs(c["c"] - c["o"])
     wick = (rng - body) / rng if rng > 0 else 0.0
-    small = body < cfg["base_body_atr"] * a[k]
-    wicky = wick > cfg["base_wick"]
     out.append("ATR(%d) there: %s" % (cfg["atr_len"], px(sym, a[k])))
     out.append("Body %.2f x ATR (a zone candle needs under %.2f): %s"
-               % (body / a[k], cfg["base_body_atr"], "ok" if small else "TOO BIG"))
+               % (body / a[k], cfg["base_body_atr"], "ok" if body < cfg["base_body_atr"] * a[k] else "TOO BIG"))
     out.append("Wicks are %.0f%% of its range (needs over %.0f%%): %s"
-               % (100 * wick, 100 * cfg["base_wick"], "ok" if wicky else "TOO SHORT"))
+               % (100 * wick, 100 * cfg["base_wick"], "ok" if wick > cfg["base_wick"] else "TOO SHORT"))
     out.append("Opened in an Asia, London or New York window: %s"
                % ("yes" if in_session(c["t"], cfg) else "NO, so zones_in_sessions drops it"))
-    if not (small and wicky):
+    if not is_base(bars, a, k, cfg):
         out.append("Result: not a zone candle by the rule, so nothing after it is checked.")
         return out
-    out.append("Next %d bars, looking for a strong move away (the first one that passes makes the zone):"
-               % cfg["base_lookback"])
     first = cfg["atr_len"] + 2 * cfg["swing_n"] + 2
-    verdict = "Result: no displacement candle within %d bars, so it is not a zone by the rule." % cfg["base_lookback"]
+    out.append("Next %d bars, looking for one big displacement candle:" % cfg["base_lookback"])
+    reasons = []
+    disp = None
     for i in range(k + 1, min(k + cfg["base_lookback"], n - 1) + 1):
         b = bars[i]
         brng, bbody = b["h"] - b["l"], abs(b["c"] - b["o"])
         up = b["c"] > b["o"]
-        why = []
         if i < first or a[i] is None or a[i] <= 0:
             out.append("  %s  too early in the data for the ATR and swings" % fmt_et(b["t"]))
             continue
+        why = []
         if bbody < cfg["disp_atr"] * a[i]:
             why.append("body %.2f x ATR, needs %.2f" % (bbody / a[i], cfg["disp_atr"]))
         if brng <= 0 or bbody < cfg["disp_body"] * brng:
@@ -601,24 +682,43 @@ def explain_lines(sym, bars, cfg, k):
         if why:
             out.append(line + "not a displacement: " + "; ".join(why))
             continue
-        move = (max(x["h"] for x in bars[k + 1:i + 1]) - c["h"]) if up else (c["l"] - min(x["l"] for x in bars[k + 1:i + 1]))
-        out.append(line + "displacement. Move away %.2f x ATR (needs %.2f)" % (move / a[i], cfg["move_atr"]))
-        nearer = None
-        for k2 in range(i - 1, k, -1):
-            z2 = bars[k2]
-            r2, b2 = z2["h"] - z2["l"], abs(z2["c"] - z2["o"])
-            if a[k2] and r2 > 0 and b2 < cfg["base_body_atr"] * a[k2] and (r2 - b2) / r2 > cfg["base_wick"]:
-                nearer = k2
-                break
-        if move < cfg["move_atr"] * a[i]:
-            verdict = "Result: the move away is too short, so it is not a zone."
-        elif nearer is not None:
-            verdict = ("Result: the candle at %s ET also qualifies and is closer to the move, so the tool "
-                       "takes that one as the zone and not this one." % fmt_et(bars[nearer]["t"]))
-        else:
-            verdict = "Result: this IS a zone by the rule (%s)." % ("demand" if up else "supply")
+        out.append(line + "displacement")
+        disp = (i, up)
         break
-    out.append(verdict)
+    if disp is not None:
+        i, up = disp
+        cands = base_candidates(bars, a, i, up, cfg)
+        if k not in cands:
+            move = (max(x["h"] for x in bars[k + 1:i + 1]) - c["h"]) if up else (c["l"] - min(x["l"] for x in bars[k + 1:i + 1]))
+            reasons.append("the move away is %.2f x ATR, needs %.2f" % (move / a[i], cfg["move_atr"]))
+        else:
+            out.append("  move away is long enough (needs %.2f x ATR)" % cfg["move_atr"])
+            pick = pick_extreme(bars, cands, up)
+            if pick != k:
+                reasons.append("the candle at %s ET is the %s in the same move, so the tool takes that one"
+                               % (fmt_et(bars[pick]["t"]), "lowest low" if up else "highest high"))
+    else:
+        out.append("No displacement candle. Slow move check (a zone can also be a candle at the top or bottom "
+                   "of the area, then price drifts %.1f x ATR away within %d bars):" % (cfg["away_atr"], cfg["away_bars"]))
+        slow = False
+        for up in (True, False):
+            j, dist, why = gradual_away(bars, a, k, up, cfg)
+            side = "demand (price rises)" if up else "supply (price falls)"
+            if j is None:
+                out.append("  %s: no, best %.2f x ATR away (needs %.2f); %s" % (side, dist, cfg["away_atr"], why))
+                continue
+            ext = is_extreme_of_area(bars, a, k, j, up, cfg)
+            out.append("  %s: %.2f x ATR away by %s ET; the candle is the %s of the area: %s"
+                       % (side, dist, fmt_et(bars[j]["t"]), "bottom" if up else "top", "yes" if ext else "NO"))
+            slow = slow or ext
+        if not slow:
+            reasons.append("no big displacement and no slow move away that the rule accepts")
+    listed = [zz for zz in find_zones(bars, cfg) if zz["t"] == c["t"]]
+    if listed:
+        out.append("Result: this IS a zone by the rule (%s)." % listed[0]["kind"])
+    else:
+        why = "; ".join(reasons) or "another zone in the same move already claimed it"
+        out.append("Result: not a zone: %s." % why)
     return out
 
 

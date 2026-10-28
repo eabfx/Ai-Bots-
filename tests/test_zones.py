@@ -206,8 +206,13 @@ class Bars(unittest.TestCase):
 
 
 class FindZones(unittest.TestCase):
-    def find(self, rows):
-        return z.find_zones(mk(ZSTART, 1800, rows), CFG)
+    def find(self, rows, **over):
+        cfg = dict(CFG)
+        cfg.update(over)
+        return z.find_zones(mk(ZSTART, 1800, rows), cfg)
+
+    # the slow-move rule is switched off (away_bars=0) in the tests that isolate the single-candle rule
+    ONE_CANDLE = {"away_bars": 0}
 
     def test_a_long_wicked_small_candle_before_a_strong_break_is_a_demand_zone(self):
         zones = self.find(zone_rows())
@@ -246,16 +251,97 @@ class FindZones(unittest.TestCase):
     def test_a_weak_move_away_is_not_a_zone(self):
         # a displacement body that clears 1.5 x ATR but only travels 1.85 from the zone, under 2 x ATR
         weak = (100.8, 102.65, 100.75, 102.6)
-        self.assertEqual(len(self.find(noise(PRE) + [ZONE_CANDLE, weak] + AFTER_UP[:1])), 0)
+        self.assertEqual(len(self.find(noise(PRE) + [ZONE_CANDLE, weak] + AFTER_UP[:1], **self.ONE_CANDLE)), 0)
 
     def test_a_break_must_close_beyond_the_latest_swing_high(self):
-        self.assertEqual(len(self.find(swing_rows(104.4))), 1)   # 104.4 is under the 104.5 close: a break
-        self.assertEqual(len(self.find(swing_rows(106.0))), 0)   # 106.0 is above it: no break
+        self.assertEqual(len(self.find(swing_rows(104.4), **self.ONE_CANDLE)), 1)   # 104.4 is under the 104.5 close: a break
+        self.assertEqual(len(self.find(swing_rows(106.0), **self.ONE_CANDLE)), 0)   # 106.0 is above it: no break
 
     def test_nothing_is_read_before_the_warm_up(self):
         # the same zone shape but with the break inside the first 20 bars: skipped, on purpose
         early = noise(16) + [ZONE_CANDLE, DISPLACEMENT] + AFTER_UP
         self.assertEqual(len(self.find(early)), 0)
+
+    # --- a slow move away: no single big candle ---
+    DRIFT = [(100.0, 100.7, 99.9, 100.55), (100.55, 101.2, 100.45, 101.05), (101.05, 101.7, 100.95, 101.55),
+             (101.55, 102.2, 101.45, 102.05), (102.05, 102.7, 101.95, 102.55), (102.55, 103.2, 102.45, 103.05)]
+
+    def test_a_slow_move_away_makes_a_zone_when_the_candle_is_the_bottom(self):
+        got = self.find(noise(PRE) + [ZONE_CANDLE] + self.DRIFT)
+        self.assertEqual([(g["kind"], g["low"], g["high"]) for g in got], [("demand", 99.2, 100.8)])
+        self.assertEqual(got[0]["t"], ZSTART + 1800 * PRE)
+        # ATR there is 0.863, so a close of 100.8 + 2 x 0.863 = 102.53 is needed: the 102.55 close, 5 bars on
+        self.assertEqual(got[0]["di"], PRE + 5)
+
+    def test_the_single_candle_rule_alone_would_miss_that_slow_move(self):
+        self.assertEqual(self.find(noise(PRE) + [ZONE_CANDLE] + self.DRIFT, **self.ONE_CANDLE), [])
+
+    def test_a_slow_move_that_stalls_is_not_a_zone(self):
+        stall = [(100.0, 100.7, 99.9, 100.55)] * 6
+        self.assertEqual(self.find(noise(PRE) + [ZONE_CANDLE] + stall), [])
+
+    def test_a_close_back_through_the_far_edge_cancels_a_slow_move(self):
+        # one bar closes at 99.19, just under the zone low 99.2 (its own low, 99.15, is inside the
+        # area tolerance, so the only thing that can stop the zone is that close)
+        broken = [(100.0, 100.4, 99.15, 99.19)] + self.DRIFT
+        self.assertEqual(self.find(noise(PRE) + [ZONE_CANDLE] + broken, away_bars=8), [])
+        # the same bar closing at 99.3, just inside the zone, leaves the slow move alone
+        inside = [(100.0, 100.4, 99.25, 99.3)] + self.DRIFT
+        self.assertEqual(len(self.find(noise(PRE) + [ZONE_CANDLE] + inside, away_bars=8)), 1)
+
+    def test_a_slow_move_needs_the_candle_to_be_the_bottom_of_the_area(self):
+        # two big-bodied bars before it reach a lower low (98.4), so the small candle at 99.2 is
+        # not the bottom of the area and the slow move gives it no zone
+        lower = [(100.9, 101.0, 98.4, 98.5), (98.9, 99.9, 98.8, 99.8)]
+        got = self.find(noise(PRE - 2) + lower + [ZONE_CANDLE] + self.DRIFT)
+        self.assertNotIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
+        # the same candle with nothing lower beside it is a zone
+        flat = [(100.9, 101.0, 99.4, 99.5), (99.9, 100.9, 99.8, 100.8)]
+        got = self.find(noise(PRE - 2) + flat + [ZONE_CANDLE] + self.DRIFT)
+        self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
+
+    def test_a_neighbour_a_hair_lower_still_leaves_the_candle_the_bottom_of_the_area(self):
+        # a bar two back dips to 99.15, 0.05 under the zone low 99.2 (the tolerance is 0.1 x ATR = 0.086)
+        near = [(100.9, 101.0, 99.15, 99.5), (99.9, 100.9, 99.8, 100.8)]
+        got = self.find(noise(PRE - 2) + near + [ZONE_CANDLE] + self.DRIFT)
+        self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
+        # with a dip of 0.2 it is outside the tolerance
+        far = [(100.9, 101.0, 99.0, 99.5), (99.9, 100.9, 99.8, 100.8)]
+        got = self.find(noise(PRE - 2) + far + [ZONE_CANDLE] + self.DRIFT)
+        self.assertNotIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
+
+    def test_a_lower_small_candle_two_bars_back_is_its_own_zone_not_this_one(self):
+        rows = noise(PRE - 2) + [(100.0, 100.2, 98.4, 99.9)] + [(99.9, 100.1, 99.5, 100.0)] + [ZONE_CANDLE] + self.DRIFT
+        got = self.find(rows)
+        self.assertEqual([(g["low"], g["high"]) for g in got], [(98.4, 100.2)])
+        self.assertEqual(got[0]["t"], ZSTART + 1800 * (PRE - 2))
+
+    def test_a_slow_supply_zone_is_the_mirror_image(self):
+        rows = noise(PRE) + [ZONE_CANDLE] + self.DRIFT
+        got = z.find_zones(z.flip_bars(mk(ZSTART, 1800, rows)), CFG)
+        self.assertEqual([(g["kind"], g["low"], g["high"]) for g in got], [("supply", -100.8, -99.2)])
+
+    def test_one_move_gets_one_zone_not_one_per_small_candle(self):
+        rows = noise(PRE) + [ZONE_CANDLE, (100.0, 100.8, 99.25, 100.05)] + self.DRIFT
+        self.assertEqual(len(self.find(rows)), 1)
+
+    # --- several zone candles before one displacement: the most extreme one is the zone ---
+    def test_the_lowest_low_among_several_small_candles_is_the_demand_zone(self):
+        second = (100.0, 100.8, 99.3, 100.05)       # closer to the move, but its low is higher
+        got = self.find(noise(PRE) + [ZONE_CANDLE, SOLID, second, DISPLACEMENT] + AFTER_UP, **self.ONE_CANDLE)
+        self.assertEqual([(g["low"], g["high"]) for g in got], [(99.2, 100.8)])
+        self.assertEqual(got[0]["t"], ZSTART + 1800 * PRE)
+
+    def test_the_highest_high_among_several_small_candles_is_the_supply_zone(self):
+        second = (100.0, 100.8, 99.3, 100.05)
+        rows = noise(PRE) + [ZONE_CANDLE, SOLID, second, DISPLACEMENT] + AFTER_UP
+        got = z.find_zones(z.flip_bars(mk(ZSTART, 1800, rows)), dict(CFG, **self.ONE_CANDLE))
+        self.assertEqual([(g["kind"], g["low"], g["high"]) for g in got], [("supply", -100.8, -99.2)])
+
+    def test_equal_extremes_take_the_earliest(self):
+        twin = (100.0, 100.8, 99.2, 100.05)
+        got = self.find(noise(PRE) + [ZONE_CANDLE, twin, DISPLACEMENT] + AFTER_UP, **self.ONE_CANDLE)
+        self.assertEqual(got[0]["t"], ZSTART + 1800 * PRE)
 
 
 class LimitZones(unittest.TestCase):
@@ -444,14 +530,19 @@ class Command(unittest.TestCase):
 class Explain(unittest.TestCase):
     """The `explain` command: why one candle is or is not a zone, in the rule's own numbers."""
 
-    def run_explain(self, rows, at, extra=()):
+    OFF = {"away_bars": 0}   # switches the slow-move rule off, to isolate the single-candle rule
+
+    def run_explain(self, rows, at, over=None, extra=()):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         with open(os.path.join(tmp.name, "MGC_30m.json"), "w") as fh:
             fh.write(chart_json(mk(ZSTART, 1800, rows)))
+        cfg = os.path.join(tmp.name, "config.json")
+        with open(cfg, "w") as fh:
+            json.dump({"zones": over or {}}, fh)
         out, err = io.StringIO(), io.StringIO()
         argv = ["explain", "MGC", "--at", at, "--offline", tmp.name, "--now", "2026-10-26 12:00",
-                "--config", "none.json"] + list(extra)
+                "--config", cfg] + list(extra)
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = z.main(argv)
         return code, out.getvalue(), err.getvalue()
@@ -461,7 +552,8 @@ class Explain(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("MGC candle Mon 10-26 07:00 ET", out)
         self.assertIn("(a zone candle needs under 0.40): ok", out)
-        self.assertIn("displacement. Move away", out)
+        self.assertIn("up    displacement", out)
+        self.assertIn("move away is long enough (needs 2.00 x ATR)", out)
         self.assertIn("this IS a zone by the rule (demand)", out)
 
     def test_a_big_bodied_candle_says_too_big_and_stops(self):
@@ -473,23 +565,38 @@ class Explain(unittest.TestCase):
         self.assertNotIn("Next 5 bars", out)
 
     def test_a_close_that_does_not_pass_the_swing_is_named(self):
-        code, out, _ = self.run_explain(swing_rows(106.0), "2026-10-26 07:00")
+        code, out, _ = self.run_explain(swing_rows(106.0), "2026-10-26 07:00", self.OFF)
         self.assertIn("does not pass the latest swing high 106.00", out)
-        self.assertIn("so it is not a zone by the rule", out)
+        self.assertIn("Result: not a zone: no big displacement and no slow move", out)
 
     def test_a_short_move_away_is_named(self):
         weak = (100.8, 102.65, 100.75, 102.6)
-        code, out, _ = self.run_explain(noise(PRE) + [ZONE_CANDLE, weak] + AFTER_UP[:1], "2026-10-26 07:00")
-        self.assertIn("the move away is too short", out)
+        code, out, _ = self.run_explain(noise(PRE) + [ZONE_CANDLE, weak] + AFTER_UP[:1], "2026-10-26 07:00", self.OFF)
+        self.assertIn("Result: not a zone: the move away is 1.", out)
+        self.assertIn("needs 2.00", out)
 
-    def test_a_closer_qualifying_candle_takes_the_zone(self):
-        second = (100.0, 100.8, 99.3, 100.05)
+    def test_a_more_extreme_candle_in_the_same_move_takes_the_zone(self):
+        second = (100.0, 100.8, 99.3, 100.05)       # closer to the move, but its low is higher
         rows = noise(PRE) + [ZONE_CANDLE, second, DISPLACEMENT] + AFTER_UP
-        code, out, _ = self.run_explain(rows, "2026-10-26 07:00")
-        self.assertIn("also qualifies and is closer to the move", out)
-        self.assertIn("Mon 10-26 07:30", out)
-        code, out, _ = self.run_explain(rows, "2026-10-26 07:30")
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:30", self.OFF)
+        self.assertIn("the candle at Mon 10-26 07:00 ET is the lowest low in the same move", out)
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:00", self.OFF)
         self.assertIn("this IS a zone by the rule", out)
+
+    def test_a_slow_move_is_checked_when_there_is_no_big_candle(self):
+        rows = noise(PRE) + [ZONE_CANDLE] + FindZones.DRIFT
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:00")
+        self.assertIn("No displacement candle. Slow move check", out)
+        self.assertIn("demand (price rises): 2.", out)
+        self.assertIn("the candle is the bottom of the area: yes", out)
+        self.assertIn("supply (price falls): no", out)
+        self.assertIn("this IS a zone by the rule (demand)", out)
+
+    def test_a_slow_move_that_the_rule_does_not_accept_says_so(self):
+        rows = noise(PRE) + [ZONE_CANDLE] + FindZones.DRIFT
+        code, out, _ = self.run_explain(rows, "2026-10-26 07:00", self.OFF)
+        self.assertIn("price never got far enough away", out)
+        self.assertIn("Result: not a zone: no big displacement and no slow move", out)
 
     def test_a_candle_outside_the_sessions_is_flagged(self):
         # 6:00 AM New York is between the London window (2 to 5) and the New York window (7 to 10)
