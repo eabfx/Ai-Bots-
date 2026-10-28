@@ -35,6 +35,9 @@ python3 "${CLAUDE_SKILL_DIR}/zones.py" setup EURUSD --write         # also write
 python3 "${CLAUDE_SKILL_DIR}/zones.py" explain GBPUSD --at "2026-10-27 02:00" --tf 30m   # why that candle is or is not a zone
 ```
 
+`bars SYMBOL --tf 3m --last 40` prints the latest candles in Dublin time with the swing highs and
+lows the rules use marked, so the user can set the tool's view beside their own chart.
+
 `explain` takes the New York time of one candle and prints every number the rule
 looked at: body against ATR, wick share, each following bar's displacement test,
 the move away, and the session window. Use it when a zone the user marks by hand

@@ -891,6 +891,38 @@ def cmd_explain(args, cfg, now):
     return 0
 
 
+def bar_lines(sym, bars, cfg, last):
+    """The last `last` bars as text, Dublin time, with the swing highs and lows the rules use marked."""
+    ph, pl = pivots(bars, cfg["swing_n"])
+    high = {j for _, j, _ in ph}
+    low = {j for _, j, _ in pl}
+    out = []
+    for i in range(max(0, len(bars) - last), len(bars)):
+        b = bars[i]
+        marks = ", ".join(m for m, hit in (("swing high", i in high), ("swing low", i in low)) if hit)
+        out.append("%s  open %s  high %s  low %s  close %s  %s" % (
+            fmt_dublin(b["t"], b["t"]).rjust(9), px(sym, b["o"]), px(sym, b["h"]), px(sym, b["l"]), px(sym, b["c"]),
+            marks))
+    return out
+
+
+def cmd_bars(args, cfg, now):
+    sym = resolve(args.symbol)
+    secs = INTERVAL_SECS[args.tf]
+    if args.tf == "3m":
+        bars = resample(get_bars(sym, "1m", cfg["days"], args.offline), 180)
+    else:
+        bars = get_bars(sym, args.tf, cfg["days"], args.offline)
+    bars = closed_only(bars, secs, now)
+    if not bars:
+        raise ZoneError("no %s bars for %s" % (args.tf, sym))
+    print("%s %s bars, Dublin time, last %d as of %s ET (a swing is marked once %d bars follow it)"
+          % (sym, args.tf, min(args.last, len(bars)), fmt_et(now), cfg["swing_n"]))
+    for line in bar_lines(sym, bars, cfg, args.last):
+        print(line)
+    return 0
+
+
 def cmd_zones(args, cfg, now):
     sym = resolve(args.symbol)
     tfs = ["60m", "30m", "15m"] if args.tf == "all" else [args.tf]
@@ -1006,6 +1038,14 @@ def build_parser():
     e.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
     e.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
     e.add_argument("--config", default="trader/config.json")
+    b = sub.add_parser("bars", help="print recent candles in Dublin time with the swing highs and lows marked")
+    b.add_argument("symbol")
+    b.add_argument("--tf", default="3m", choices=["1m", "3m", "5m", "15m", "30m"])
+    b.add_argument("--last", type=int, default=40, help="how many bars to print")
+    b.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
+    b.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
+    b.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
+    b.add_argument("--config", default="trader/config.json")
     return p
 
 
@@ -1014,7 +1054,7 @@ def main(argv=None):
     try:
         if args.cmd == "markets":
             return cmd_markets()
-        if args.cmd not in ("zones", "setup", "explain"):
+        if args.cmd not in ("zones", "setup", "explain", "bars"):
             build_parser().print_help()
             return 2
         cfg = read_config(args.config)
@@ -1023,6 +1063,8 @@ def main(argv=None):
         SAVE_DIR = args.save
         if args.cmd == "explain":
             return cmd_explain(args, cfg, now)
+        if args.cmd == "bars":
+            return cmd_bars(args, cfg, now)
         if args.days:
             cfg["days"] = args.days
         if args.max_per_day:

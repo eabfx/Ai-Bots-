@@ -760,6 +760,47 @@ class Command(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIsNone(z.SAVE_DIR)
 
+    def test_bars_prints_dublin_times_prices_and_swings(self):
+        rows = [(100, 101, 99, 100), (100, 102, 100, 101), (101, 105, 101, 104), (104, 103, 100, 101),
+                (101, 102, 98, 99), (99, 101, 99, 100), (100, 102, 100, 101), (101, 103, 101, 102)]
+        bars = mk(ZSTART, 300, [(o, h, l, c) for o, h, l, c in rows])
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, "MGC_5m.json"), "w") as fh:
+            fh.write(chart_json(bars))
+        code, out, _ = self.run_cli(["bars", "MGC", "--tf", "5m", "--offline", tmp.name, "--last", "5",
+                                     "--now", "2026-10-26 12:00", "--config", "none.json"])
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertIn("MGC 5m bars, Dublin time, last 5", lines[0])
+        self.assertEqual(len(lines), 6)
+        self.assertIn("close 102.00", lines[-1])
+        self.assertTrue(lines[1].lstrip().startswith(z.fmt_dublin(bars[3]["t"], bars[3]["t"])))
+
+    def test_bars_marks_the_swing_low_and_the_swing_high(self):
+        bars = [{"t": 1793000000 + 180 * i, "o": 100.0, "h": h, "l": lo, "c": 100.0}
+                for i, (h, lo) in enumerate([(102, 100), (103, 100), (106, 101), (104, 100), (103, 99),
+                                             (102, 97), (103, 99), (104, 100), (105, 101)])]
+        lines = z.bar_lines("MGC", bars, dict(z.DEFAULTS, swing_n=2), 20)
+        self.assertEqual(len(lines), 9)
+        self.assertTrue(lines[2].endswith("swing high"))
+        self.assertTrue(lines[5].endswith("swing low"))
+        self.assertFalse(lines[3].endswith("swing high") or lines[3].endswith("swing low"))
+        self.assertEqual(len(z.bar_lines("MGC", bars, dict(z.DEFAULTS, swing_n=2), 3)), 3)
+
+    def test_bars_builds_3_minute_candles_from_1_minute_data(self):
+        ones = mk(ZSTART, 60, [(100 + i, 101 + i, 99 + i, 100.5 + i) for i in range(12)])
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, "MGC_1m.json"), "w") as fh:
+            fh.write(chart_json(ones))
+        code, out, _ = self.run_cli(["bars", "MGC", "--offline", tmp.name, "--last", "2",
+                                     "--now", "2026-10-26 12:00", "--config", "none.json"])
+        self.assertEqual(code, 0)
+        self.assertIn("MGC 3m bars", out)
+        self.assertEqual(len(out.splitlines()), 3)
+        self.assertIn("open 106.00  high 109.00  low 105.00  close 108.50", out.splitlines()[1])
+
     def test_the_days_window_drops_an_old_zone(self):
         code, out, _ = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", self.folder(),
                                      "--now", "2026-10-26 12:00", "--config", "none.json", "--days", "1"])
