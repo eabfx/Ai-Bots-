@@ -507,6 +507,19 @@ class Entry(unittest.TestCase):
         self.assertEqual(r["gap"], (-102.4, -101.6))
 
 
+class StageLines(unittest.TestCase):
+    ZONE = {"kind": "supply", "tf": "30m", "t": et(2026, 10, 28, 0, 30), "high": 1.32965, "low": 1.32945}
+
+    def test_a_touched_zone_line_says_how_far_it_got(self):
+        line = z.stage_line("GBPUSD", self.ZONE, 2)
+        self.assertEqual(line, "  SUPPLY 30m  Wed 10-28 00:30 ET (04:30 Dublin)  1.32945 to 1.32965: "
+                               "swept, no FVG or IFVG with its midpoint in the OTE")
+
+    def test_every_stage_has_a_line(self):
+        for best in range(len(z.STAGES)):
+            self.assertIn(z.STAGES[best], z.stage_line("GBPUSD", self.ZONE, best))
+
+
 class Command(unittest.TestCase):
     def run_cli(self, argv):
         out, err = io.StringIO(), io.StringIO()

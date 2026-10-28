@@ -92,8 +92,9 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
 6. The stop sits under the sweep low, the target is the nearest opposing zone or
    swing, and the entry is dropped when the reward to risk is under 2.
 
-`setup` says how far each zone got when nothing triggered, for example "swept,
-no FVG or IFVG with its midpoint in the OTE", so a quiet day is explained.
+When nothing triggered, `setup` prints one line per touched zone with how far it got,
+for example "swept, no FVG or IFVG with its midpoint in the OTE", so a quiet day is
+explained zone by zone.
 
 ## What it reads and writes
 

@@ -664,6 +664,13 @@ def zone_line(sym, tf, z):
         z["status"])
 
 
+def stage_line(sym, z, best):
+    """One touched zone and the furthest step of the entry it reached."""
+    return "  %-6s %-4s %s ET (%s Dublin)  %s to %s: %s" % (
+        z["kind"].upper(), z["tf"], fmt_et(z["t"]), fmt_dublin(z["t"], z["t"]), px(sym, z["low"]),
+        px(sym, z["high"]), STAGES[best])
+
+
 def collect_zones(sym, tfs, now, cfg, offline):
     found = []
     for tf in tfs:
@@ -808,11 +815,12 @@ def cmd_setup(args, cfg, now):
     m1 = closed_only(get_bars(sym, "1m", cfg["days"], args.offline), 60, now)
     m3 = closed_only(resample(m1, 180), 180, now)
     fresh = [z for z in zones if z["status"] == "fresh"]
-    results, lines, best_all = [], [], 0
+    results, staged, best_all = [], [], 0
     for z in zones:
         if z["touched_t"] is None:
             continue
         res, best = setups_for(z, m5, m3, fresh, cfg)
+        staged.append((z, best))
         best_all = max(best_all, best)
         for r in res:
             r["zone"] = {"tf": z["tf"], "kind": z["kind"], "low": z["low"], "high": z["high"], "t": z["t"]}
@@ -823,6 +831,9 @@ def cmd_setup(args, cfg, now):
     else:
         print("%s (%s)  as of %s ET  zones: %d (%d fresh, %d touched)"
               % (sym, MARKETS[sym]["yahoo"], fmt_et(now), len(zones), len(fresh), len(zones) - len(fresh)))
+        if not results:
+            for z, best in staged:
+                print(stage_line(sym, z, best))
         for r in results:
             z = r["zone"]
             rr = "no target found" if r["rr"] is None else "R:R %.1f" % r["rr"]
