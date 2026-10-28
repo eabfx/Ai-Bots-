@@ -117,6 +117,8 @@ DEFAULTS = {
     "days": 2,
     "max_per_day": 3,
     "choch_needs_trend": False,
+    "leg_from_swing": True,   # the leg starts at the last swing low before price breaks up, not the sweep wick
+    "gap_at_turn": True,      # a gap left by the turn out of the band counts without a second return to it
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -653,6 +655,18 @@ def m3_choch_state(m3, ph3, from_idx, sweep_idx, stop_low, need_trend=False):
     return state
 
 
+def leg_origin(m5, ph5, pl5, j, default):
+    """Where the leg starts: the last swing low made after the sweep before price breaks up, that is,
+    before the first 5-minute close above the latest swing high made after the sweep. Falls back to
+    `default` (the sweep low) when there is no such swing low or no break."""
+    for b in range(j + 1, len(m5)):
+        highs = [p for p in ph5 if p[0] < b and p[1] > j]
+        if highs and m5[b]["c"] > highs[-1][2]:
+            lows = [p for p in pl5 if p[0] < b and p[1] > j]
+            return lows[-1][2] if lows else default
+    return default
+
+
 def long_setups(zone, m5, m3, targets, cfg, trace=None):
     """Every long entry for one demand zone, and how far the best attempt got (an index into STAGES).
     When `trace` is a list, each sweep is appended to it with the gaps looked at after it."""
@@ -662,7 +676,7 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
         return out, best
     best = 1
     a5 = atr_series(m5, cfg["atr_len"])
-    _, pl5 = pivots(m5, cfg["swing_n"])
+    ph5, pl5 = pivots(m5, cfg["swing_n"])
     ph3, _ = pivots(m3, cfg["swing_n"])
     t5 = [b["t"] for b in m5]
     t3 = [b["t"] for b in m3]
@@ -678,6 +692,7 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
         rec = {"t": sw["t"], "swing": swing, "extreme": sw["l"], "gaps": []}
         if trace is not None:
             trace.append(rec)
+        origin = leg_origin(m5, ph5, pl5, j, sw["l"]) if cfg["leg_from_swing"] else sw["l"]
         for avail, lo, hi, kind in gaps_after(m5, j, cfg, a5):
             # price coming back into the gap, without taking out the sweep low first
             touch = None
@@ -687,12 +702,22 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
                 if m5[m]["l"] <= hi:
                     touch = m
                     break
+            # a gap left behind by the turn itself: price was already back in the band when it formed
+            turn = False
+            if cfg["gap_at_turn"] and kind == "FVG" and avail - 1 > j:
+                mid = avail - 1
+                pre = m5[j:mid]
+                if pre and min(b["l"] for b in m5[j + 1:avail]) >= sw["l"]:
+                    top = max(range(len(pre)), key=lambda x: (pre[x]["h"], -x))
+                    band_hi = ote_band(origin, pre[top]["h"])[1]
+                    if any(m5[m]["l"] <= band_hi for m in range(j + top + 1, mid)):
+                        touch, turn = mid, True
             # the leg is measured when price comes back, or as it stands now if it has not
             leg_hi = max(b["h"] for b in m5[j:(len(m5) if touch is None else touch)])
-            ote_lo, ote_hi = ote_band(sw["l"], leg_hi)
+            ote_lo, ote_hi = ote_band(origin, leg_hi)
             inside = ote_lo <= (lo + hi) / 2.0 <= ote_hi
             gd = {"kind": kind, "t": t5[avail], "lo": lo, "hi": hi, "ote": (ote_lo, ote_hi),
-                  "inside": inside, "touched": touch is not None}
+                  "inside": inside, "touched": touch is not None, "turn": turn}
             rec["gaps"].append(gd)
             if not inside:
                 continue
@@ -842,7 +867,8 @@ def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
                        % (g["kind"], px(sym, g["lo"]), px(sym, g["hi"]), fmt_dublin(g["t"], rec["t"]),
                           px(sym, mid), px(sym, g["ote"][0]), px(sym, g["ote"][1]),
                           "inside" if g["inside"] else "outside",
-                          "has come back" if g.get("touched") else "has not come back yet"))
+                          ("formed as price turned back from the band" if g.get("turn") else "has come back")
+                          if g.get("touched") else "has not come back yet"))
             if g.get("choch") and g["inside"]:
                 out.append(choch_line(sym, z, g["choch"]))
         if len(rec["gaps"]) > max_gaps:
