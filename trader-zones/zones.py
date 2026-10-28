@@ -23,10 +23,10 @@ The zone (one candle, high to low):
                 move_atr x ATR. When several qualify the most extreme one is the
                 zone (the highest high for supply, the lowest low for demand).
                 The zone is that one candle, high to low.
-  slow move     no single big candle is needed: a small-bodied, long-wicked candle
-                that is the top (supply) or bottom (demand) of the area, then
-                price closes away_atr x ATR beyond it within away_bars bars without
-                ever closing back through its far edge, is a zone too.
+  slow move     no single big candle is needed: a small-bodied, long-wicked candle,
+                then price closes away_atr x ATR beyond it within away_bars bars
+                without trading beyond its extreme (more than extreme_tol_atr x ATR)
+                before that, is a zone too.
   fresh         price has not traded back into it. A zone price has entered is
                 "touched".
   caps          only zones from the last --days days, at most --max-per-day per
@@ -356,13 +356,14 @@ def gradual_away(bars, a, k, up, cfg):
 
 
 def is_extreme_of_area(bars, a, k, j, up, cfg):
-    """The zone candle is the bottom (demand) or top (supply) of the area from swing_n bars
-    before it to the bar that confirms the move, give or take extreme_tol_atr x ATR."""
-    lo = max(k - cfg["swing_n"], 0)
+    """Between the zone candle and the bar that confirms the move, price never trades beyond the
+    candle's extreme (above its high for supply, below its low for demand) by more than
+    extreme_tol_atr x ATR. What came before the candle does not matter: a zone can be a pause
+    inside a leg."""
     tol = cfg["extreme_tol_atr"] * a[k]
     if up:
-        return bars[k]["l"] <= min(x["l"] for x in bars[lo:j + 1]) + tol
-    return bars[k]["h"] >= max(x["h"] for x in bars[lo:j + 1]) - tol
+        return bars[k]["l"] <= min(x["l"] for x in bars[k + 1:j + 1]) + tol
+    return bars[k]["h"] >= max(x["h"] for x in bars[k + 1:j + 1]) - tol
 
 
 def displacement_direction(bars, a, sh, sl, i, cfg):
@@ -698,8 +699,8 @@ def explain_lines(sym, bars, cfg, k):
                 reasons.append("the candle at %s ET is the %s in the same move, so the tool takes that one"
                                % (fmt_et(bars[pick]["t"]), "lowest low" if up else "highest high"))
     else:
-        out.append("No displacement candle. Slow move check (a zone can also be a candle at the top or bottom "
-                   "of the area, then price drifts %.1f x ATR away within %d bars):" % (cfg["away_atr"], cfg["away_bars"]))
+        out.append("No displacement candle. Slow move check (a zone can also be a pause that price then leaves slowly: "
+                   "then price drifts %.1f x ATR away within %d bars):" % (cfg["away_atr"], cfg["away_bars"]))
         slow = False
         for up in (True, False):
             j, dist, why = gradual_away(bars, a, k, up, cfg)
@@ -708,8 +709,9 @@ def explain_lines(sym, bars, cfg, k):
                 out.append("  %s: no, best %.2f x ATR away (needs %.2f); %s" % (side, dist, cfg["away_atr"], why))
                 continue
             ext = is_extreme_of_area(bars, a, k, j, up, cfg)
-            out.append("  %s: %.2f x ATR away by %s ET; the candle is the %s of the area: %s"
-                       % (side, dist, fmt_et(bars[j]["t"]), "bottom" if up else "top", "yes" if ext else "NO"))
+            out.append("  %s: %.2f x ATR away by %s ET; price stays %s the candle's %s until then: %s"
+                       % (side, dist, fmt_et(bars[j]["t"]), "above" if up else "below",
+                          "low" if up else "high", "yes" if ext else "NO"))
             slow = slow or ext
         if not slow:
             reasons.append("no big displacement and no slow move away that the rule accepts")

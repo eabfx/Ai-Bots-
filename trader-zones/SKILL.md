@@ -70,9 +70,10 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    least 2 x ATR. When several candles in a row qualify, the most extreme one is
    the zone: the highest high for supply, the lowest low for demand.
 2b. Slow move: no single big candle is needed. A small-bodied, long-wicked candle
-   that is the top (supply) or bottom (demand) of the area, followed by a close
-   2 x ATR beyond it within 10 bars and no close back through its far edge, is a
-   zone too. One move gets one zone.
+   followed by a close 2 x ATR beyond it within 10 bars, with price never trading
+   beyond its extreme by more than 0.1 x ATR before then, is a zone too. What came
+   before the candle does not matter, so a pause inside a leg counts. One move
+   gets one zone.
 3. Fresh until price trades back into it, then touched.
 4. Only zones from the last 2 days, at most 3 per day, and only candles that
    opened in an Asia, London or New York window.

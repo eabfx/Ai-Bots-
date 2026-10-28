@@ -289,28 +289,44 @@ class FindZones(unittest.TestCase):
         inside = [(100.0, 100.4, 99.25, 99.3)] + self.DRIFT
         self.assertEqual(len(self.find(noise(PRE) + [ZONE_CANDLE] + inside, away_bars=8)), 1)
 
-    def test_a_slow_move_needs_the_candle_to_be_the_bottom_of_the_area(self):
-        # two big-bodied bars before it reach a lower low (98.4), so the small candle at 99.2 is
-        # not the bottom of the area and the slow move gives it no zone
-        lower = [(100.9, 101.0, 98.4, 98.5), (98.9, 99.9, 98.8, 99.8)]
-        got = self.find(noise(PRE - 2) + lower + [ZONE_CANDLE] + self.DRIFT)
+    def test_a_slow_move_cancels_when_price_trades_well_beyond_the_candle_first(self):
+        # a wick to 98.6 (0.6 under the zone low 99.2) before the move is confirmed: no zone
+        wick = [(100.0, 100.4, 98.6, 99.4)]
+        got = self.find(noise(PRE) + [ZONE_CANDLE] + wick + self.DRIFT)
         self.assertNotIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
-        # the same candle with nothing lower beside it is a zone
-        flat = [(100.9, 101.0, 99.4, 99.5), (99.9, 100.9, 99.8, 100.8)]
-        got = self.find(noise(PRE - 2) + flat + [ZONE_CANDLE] + self.DRIFT)
+        # a wick to 99.25 stays inside the candle: the zone stands
+        calm = [(100.0, 100.4, 99.25, 99.4)]
+        got = self.find(noise(PRE) + [ZONE_CANDLE] + calm + self.DRIFT)
         self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
 
-    def test_a_neighbour_a_hair_lower_still_leaves_the_candle_the_bottom_of_the_area(self):
-        # a bar two back dips to 99.15, 0.05 under the zone low 99.2 (the tolerance is 0.1 x ATR = 0.086)
-        near = [(100.9, 101.0, 99.15, 99.5), (99.9, 100.9, 99.8, 100.8)]
-        got = self.find(noise(PRE - 2) + near + [ZONE_CANDLE] + self.DRIFT)
+    def test_a_dip_a_hair_under_the_candle_is_inside_the_tolerance(self):
+        # a bar after it dips to 99.15, 0.05 under the zone low 99.2 (the tolerance is 0.1 x ATR = 0.086)
+        near = [(100.0, 100.4, 99.15, 99.4)]
+        got = self.find(noise(PRE) + [ZONE_CANDLE] + near + self.DRIFT)
         self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
-        # with a dip of 0.2 it is outside the tolerance
-        far = [(100.9, 101.0, 99.0, 99.5), (99.9, 100.9, 99.8, 100.8)]
-        got = self.find(noise(PRE - 2) + far + [ZONE_CANDLE] + self.DRIFT)
+        # a dip to 99.0 is outside it
+        far = [(100.0, 100.4, 99.0, 99.4)]
+        got = self.find(noise(PRE) + [ZONE_CANDLE] + far + self.DRIFT)
         self.assertNotIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
 
-    def test_a_lower_small_candle_two_bars_back_is_its_own_zone_not_this_one(self):
+    def test_what_came_before_the_candle_does_not_matter(self):
+        # price was lower two bars before (it rose into the pause): the pause is still a zone
+        before = [(98.2, 98.6, 98.0, 98.5), (98.5, 99.0, 98.4, 98.9)]
+        got = self.find(noise(PRE - 2) + before + [ZONE_CANDLE] + self.DRIFT)
+        self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in got])
+
+    def test_the_supply_side_has_the_same_extreme_rule(self):
+        def supply(rows):
+            return z.find_zones(z.flip_bars(mk(ZSTART, 1800, rows)), CFG)
+        wick = [(100.0, 100.4, 98.6, 99.4)]        # flipped, a spike 0.6 above the zone's high
+        self.assertNotIn(ZSTART + 1800 * PRE, [g["t"] for g in supply(noise(PRE) + [ZONE_CANDLE] + wick + self.DRIFT)])
+        calm = [(100.0, 100.4, 99.25, 99.4)]
+        self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in supply(noise(PRE) + [ZONE_CANDLE] + calm + self.DRIFT)])
+        # and a supply pause inside a fall: price was higher before it
+        before = [(98.2, 98.6, 98.0, 98.5), (98.5, 99.0, 98.4, 98.9)]
+        self.assertIn(ZSTART + 1800 * PRE, [g["t"] for g in supply(noise(PRE - 2) + before + [ZONE_CANDLE] + self.DRIFT)])
+
+    def test_one_move_gets_its_first_candle_not_the_one_two_bars_later(self):
         rows = noise(PRE - 2) + [(100.0, 100.2, 98.4, 99.9)] + [(99.9, 100.1, 99.5, 100.0)] + [ZONE_CANDLE] + self.DRIFT
         got = self.find(rows)
         self.assertEqual([(g["low"], g["high"]) for g in got], [(98.4, 100.2)])
@@ -588,7 +604,7 @@ class Explain(unittest.TestCase):
         code, out, _ = self.run_explain(rows, "2026-10-26 07:00")
         self.assertIn("No displacement candle. Slow move check", out)
         self.assertIn("demand (price rises): 2.", out)
-        self.assertIn("the candle is the bottom of the area: yes", out)
+        self.assertIn("price stays above the candle's low until then: yes", out)
         self.assertIn("supply (price falls): no", out)
         self.assertIn("this IS a zone by the rule (demand)", out)
 
