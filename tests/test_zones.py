@@ -733,6 +733,33 @@ class Command(unittest.TestCase):
         self.assertIn("99.20 to 100.80", out)
         self.assertIn("fresh", out)
 
+    def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
+        text = chart_json(mk(ZSTART, 1800, zone_rows()))
+        calls = []
+
+        def fake(path, *a, **k):
+            calls.append(path)
+            return text
+
+        saved = tempfile.TemporaryDirectory()
+        self.addCleanup(saved.cleanup)
+        argv = ["zones", "MGC", "--tf", "30m", "--now", "2026-10-26 12:00", "--config", "none.json"]
+        real = z.yahoo_get
+        z.yahoo_get = fake
+        try:
+            code, live, _ = self.run_cli(argv + ["--save", saved.name])
+            self.assertEqual(code, 0)
+            with open(os.path.join(saved.name, "MGC_30m.json"), encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), text)
+            code, again, _ = self.run_cli(argv)
+            self.assertEqual(len(os.listdir(saved.name)), 1)
+        finally:
+            z.yahoo_get = real
+        code, replay, _ = self.run_cli(argv + ["--offline", saved.name])
+        self.assertEqual(replay, live)
+        self.assertEqual(len(calls), 2)
+        self.assertIsNone(z.SAVE_DIR)
+
     def test_the_days_window_drops_an_old_zone(self):
         code, out, _ = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", self.folder(),
                                      "--now", "2026-10-26 12:00", "--config", "none.json", "--days", "1"])

@@ -56,6 +56,7 @@ is how far back `setup` can look.
 Data: Yahoo's free chart JSON (unofficial, can lag, forex and futures bars).
   --offline DIR reads DIR/<SYMBOL>_<interval>.json (a saved Yahoo chart), for
   example GBPUSD_30m.json, GBPUSD_5m.json and GBPUSD_1m.json.
+  --save DIR writes those files when it downloads, so a live run can be replayed exactly.
 
 trader/config.json (optional): a "zones" object overrides any default, for
 example {"zones": {"min_rr": 3, "sessions": {"ny": [13, 17]}}}.
@@ -271,6 +272,9 @@ def parse_chart(text, sym):
     return bars
 
 
+SAVE_DIR = None     # set by --save: where get_bars writes the Yahoo charts it downloads
+
+
 def get_bars(sym, interval, days, offline=None):
     if offline:
         path = os.path.join(offline, "%s_%s.json" % (sym, interval))
@@ -285,7 +289,13 @@ def get_bars(sym, interval, days, offline=None):
     else:
         rng = "5d" if days <= 3 else "1mo"
     path = "/v8/finance/chart/%s?range=%s&interval=%s" % (MARKETS[sym]["yahoo"], rng, interval)
-    return parse_chart(yahoo_get(path), sym)
+    text = yahoo_get(path)
+    bars = parse_chart(text, sym)
+    if SAVE_DIR:
+        os.makedirs(SAVE_DIR, exist_ok=True)
+        with open(os.path.join(SAVE_DIR, "%s_%s.json" % (sym, interval)), "w", encoding="utf-8") as fh:
+            fh.write(text)
+    return bars
 
 
 def closed_only(bars, secs, now):
@@ -978,6 +988,7 @@ def build_parser():
         s.add_argument("symbol")
         s.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
         s.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
+        s.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
         s.add_argument("--config", default="trader/config.json")
         s.add_argument("--days", type=int)
         s.add_argument("--max-per-day", type=int)
@@ -993,6 +1004,7 @@ def build_parser():
     e.add_argument("--tf", default="30m", choices=["60m", "30m", "15m"])
     e.add_argument("--now", help='New York time, e.g. "2026-10-26 08:15"')
     e.add_argument("--offline", help="folder with <SYMBOL>_<interval>.json saved Yahoo charts")
+    e.add_argument("--save", help="folder to save the Yahoo charts into, so a run can be replayed with --offline")
     e.add_argument("--config", default="trader/config.json")
     return p
 
@@ -1007,6 +1019,8 @@ def main(argv=None):
             return 2
         cfg = read_config(args.config)
         now = parse_now(args.now)
+        global SAVE_DIR
+        SAVE_DIR = args.save
         if args.cmd == "explain":
             return cmd_explain(args, cfg, now)
         if args.days:

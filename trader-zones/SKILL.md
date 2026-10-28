@@ -40,6 +40,10 @@ looked at: body against ATR, wick share, each following bar's displacement test,
 the move away, and the session window. Use it when a zone the user marks by hand
 is missing from `zones`. It also says which candle the tool picked instead and why.
 
+`--save DIR` on `zones`, `setup` or `explain` keeps the Yahoo charts that run downloaded
+(`DIR/GBPUSD_1m.json` and so on). Replay them later with `--offline DIR --now "..."`, or send them
+along when a result needs checking against the user's own chart.
+
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
 
