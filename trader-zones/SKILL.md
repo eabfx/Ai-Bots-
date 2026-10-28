@@ -100,8 +100,10 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    after the sweep (the CHoCH) is the trigger, inside a session window. Set
    `choch_needs_trend` to true to also require that swing to be a lower high than the one
    before it (the stricter, older rule).
-6. The stop sits under the sweep low, the target is the nearest opposing zone or
-   swing, and the entry is dropped when the reward to risk is under 2.
+6. The stop sits under the sweep low (above the sweep high for a short) and the target is 3
+   times the risk (`target_r`; set it to 0 to aim at the nearest opposing zone or swing
+   instead). The entry is dropped when the reward to risk is under 2 (`min_rr`). One trade
+   seen through several sweeps or zones is listed once, with the other zones named under it.
 
 When nothing triggered, `setup` prints one line per touched zone with how far it got,
 for example "swept, no FVG or IFVG with its midpoint in the OTE", so a quiet day is
