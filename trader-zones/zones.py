@@ -863,12 +863,12 @@ def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
             out.append("        no FVG or IFVG formed after it")
         for g in rec["gaps"][:max_gaps]:
             mid = (g["lo"] + g["hi"]) / 2.0
-            out.append("        %s %s to %s (%s Dublin), midpoint %s, band %s to %s: %s, price %s"
+            tail = ("formed as price turned back from the band" if g.get("turn") else "price has come back") \
+                if g.get("touched") else "price has not come back yet"
+            out.append("        %s %s to %s (%s Dublin), midpoint %s, band %s to %s: %s, %s"
                        % (g["kind"], px(sym, g["lo"]), px(sym, g["hi"]), fmt_dublin(g["t"], rec["t"]),
                           px(sym, mid), px(sym, g["ote"][0]), px(sym, g["ote"][1]),
-                          "inside" if g["inside"] else "outside",
-                          ("formed as price turned back from the band" if g.get("turn") else "has come back")
-                          if g.get("touched") else "has not come back yet"))
+                          "inside" if g["inside"] else "outside", tail))
             if g.get("choch") and g["inside"]:
                 out.append(choch_line(sym, z, g["choch"]))
         if len(rec["gaps"]) > max_gaps:

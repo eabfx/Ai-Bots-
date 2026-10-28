@@ -741,6 +741,128 @@ class StageLines(unittest.TestCase):
         self.assertEqual(out[0]["also"], [b["zone"]])
         self.assertNotIn("also", out[1])
 
+    # --- a long that turns out of the band: sweep, leg up, pull back into the band, then a gap left by the turn ---
+    TURN_M5 = noise(16) + [
+        (99.6, 100.0, 98.6, 99.9),       # 16 the sweep
+        (100.0, 101.0, 100.0, 100.9),    # 17
+        (100.9, 101.5, 100.6, 101.3),    # 18 swing high 101.5
+        (101.3, 101.4, 100.0, 100.2),    # 19 swing low 100.0: the last one before price breaks up
+        (100.2, 101.0, 100.1, 100.9),    # 20
+        (100.9, 101.2, 100.6, 101.1),    # 21
+        (101.1, 103.0, 101.0, 102.9),    # 22 first close above 101.5: the break up
+        (102.9, 106.0, 102.8, 105.9),    # 23
+        (105.9, 110.0, 105.0, 109.5),    # 24 leg high 110.0
+        (109.5, 109.8, 106.0, 106.5),    # 25
+        (106.5, 107.0, 103.5, 103.8),    # 26 back into the band
+        (103.8, 104.0, 101.0, 101.4),    # 27
+        (101.4, 103.0, 101.2, 102.8),    # 28 gap starts at 103.0
+        (102.8, 105.0, 102.7, 104.8),    # 29 the turn
+        (104.8, 105.5, 103.8, 105.2),    # 30 gap 103.0 to 103.8, midpoint 103.4
+        (105.2, 106.0, 105.0, 105.8),
+        (105.8, 106.5, 105.6, 106.2),
+    ]
+    TURN_M3 = M3_ROWS[:27] + [
+        (100.2, 100.6, 98.8, 100.4),     # 27
+        (100.4, 103.0, 100.3, 102.9),
+        (102.9, 106.0, 102.8, 105.9),
+        (105.9, 110.0, 105.8, 109.8),    # 30
+        (109.8, 109.9, 107.0, 107.2),
+        (107.2, 107.3, 104.0, 104.2),
+        (104.2, 104.3, 102.0, 102.2),
+        (102.2, 103.9, 102.0, 103.8),
+        (103.8, 104.6, 103.5, 104.4),    # 35 the lower high, 104.6
+        (104.4, 104.5, 103.0, 103.2),
+        (103.2, 103.4, 102.2, 102.4),
+    ] + [(102.4, 102.8, 102.0, 102.4)] * 12 + [
+        (102.4, 105.2, 102.3, 105.0),    # 50 closes above 104.6: the CHoCH
+        (105.0, 105.5, 104.5, 105.3),
+        (105.3, 105.6, 104.8, 105.1),
+    ]
+
+    def turn_data(self):
+        m5, m3 = mk(T0, 300, self.TURN_M5), mk(T0, 180, self.TURN_M3)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        return m5, m3, zone
+
+    def test_a_gap_left_by_the_turn_out_of_the_band_gives_an_entry_without_a_second_return(self):
+        m5, m3, zone = self.turn_data()
+        cfg = dict(CFG, target_r=3)
+        res, best = z.long_setups(zone, m5, m3, [], cfg)
+        self.assertEqual(best, 6)
+        r = res[0]
+        self.assertEqual(r["gap"], (103.0, 103.8))
+        self.assertEqual(r["entry"], 105.0)
+        self.assertEqual(r["entry_t"], m3[50]["t"] + 180)
+        self.assertAlmostEqual(r["ote"][0], 102.1)
+        self.assertAlmostEqual(r["ote"][1], 103.8)                 # measured from the swing low 100.0
+        self.assertAlmostEqual(r["target"], 105.0 + 3 * (105.0 - r["stop"]))
+        self.assertLess(r["stop"], 98.6)                           # the stop still sits under the sweep wick
+
+    def test_without_the_turn_rule_that_gap_waits_for_a_return_that_never_comes(self):
+        m5, m3, zone = self.turn_data()
+        res, best = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3, gap_at_turn=False))
+        self.assertEqual((res, best), ([], 3))
+
+    def test_without_the_swing_origin_the_band_is_measured_from_the_sweep_wick(self):
+        m5, m3, zone = self.turn_data()
+        trace = []
+        z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3, leg_from_swing=False), trace)
+        first = [g for g in trace[0]["gaps"] if (g["lo"], g["hi"]) == (101.2, 102.8)][0]
+        self.assertTrue(first["inside"])                            # band from the sweep wick 98.6 takes it in
+        trace = []
+        z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3), trace)
+        first = [g for g in trace[0]["gaps"] if (g["lo"], g["hi"]) == (101.2, 102.8)][0]
+        self.assertFalse(first["inside"])                           # band from the swing low 100.0 does not
+        turn = [g for g in trace[0]["gaps"] if (g["lo"], g["hi"]) == (103.0, 103.8)][0]
+        self.assertTrue(turn["inside"])
+        self.assertTrue(turn["turn"])
+        self.assertTrue(turn["touched"])
+
+    def test_a_turn_gap_needs_price_to_have_been_back_in_the_band_first(self):
+        rows = list(self.TURN_M5)
+        for i in (25, 26, 27):                                      # no pull back: stays above the band until the gap
+            rows[i] = (109.5, 109.8, 108.0, 109.0)
+        rows[28] = (109.0, 109.5, 108.5, 109.2)
+        m5, m3 = mk(T0, 300, rows), mk(T0, 180, self.TURN_M3)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        trace = []
+        z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3), trace)
+        self.assertFalse(any(g["turn"] and g["inside"] for g in trace[0]["gaps"]))
+
+    def test_the_trace_line_says_when_a_gap_formed_as_price_turned_back(self):
+        zone = {"kind": "demand", "tf": "30m", "t": et(2026, 10, 28, 0, 30), "high": 2.0, "low": 1.0}
+        g = {"kind": "FVG", "t": et(2026, 10, 28, 1, 15), "lo": 1.5, "hi": 1.6, "ote": (1.4, 1.7), "inside": True,
+             "touched": True, "turn": True}
+        rec = {"t": et(2026, 10, 28, 1, 0), "swing": 1.0, "extreme": 0.9, "gaps": [g]}
+        self.assertIn("inside, formed as price turned back from the band", z.trace_lines("GBPUSD", zone, [rec])[1])
+        g["turn"] = False
+        self.assertIn("inside, price has come back", z.trace_lines("GBPUSD", zone, [rec])[1])
+
+    def test_leg_origin_is_the_last_swing_low_before_the_break_up(self):
+        m5 = mk(T0, 300, self.TURN_M5)
+        ph, pl = z.pivots(m5, 2)
+        self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 100.0)
+        self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 100.0)
+
+    def test_leg_origin_falls_back_when_there_is_no_break_or_no_swing_low(self):
+        m5 = mk(T0, 300, self.TURN_M5[:21])                            # ends before the break up
+        ph, pl = z.pivots(m5, 2)
+        self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 98.6)
+        m5 = mk(T0, 300, self.TURN_M5)
+        ph, pl = z.pivots(m5, 2)
+        self.assertEqual(z.leg_origin(m5, ph, [], 16, 98.6), 98.6)      # no swing low at all
+        later = [p for p in pl if p[1] > 20]                           # swing lows only after the break
+        self.assertEqual(z.leg_origin(m5, ph, later, 16, 98.6), 98.6)
+
+    def test_leg_origin_takes_the_most_recent_swing_low_and_ignores_older_swings(self):
+        m5 = mk(T0, 300, self.TURN_M5)
+        ph = [(20, 18, 101.5)]
+        pl = [(19, 17, 100.0), (21, 19, 100.4), (24, 22, 99.0)]
+        self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 100.4)     # the 99.0 one is confirmed after the break
+        self.assertEqual(z.leg_origin(m5, [(20, 15, 101.5)], pl, 16, 98.6), 98.6)   # that high was before the sweep
+
     def test_no_swing_after_the_sweep_means_no_choch_level(self):
         m5, m3, zone, targets = entry_data()
         ph3, _ = z.pivots(m3, 2)
