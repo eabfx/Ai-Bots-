@@ -13,7 +13,7 @@ import unittest
 from _load import load
 
 z = load("trader-zones", "zones")
-CFG = z.read_config(None)
+CFG = dict(z.read_config(None), target_r=0)     # these tests use the nearest-level target
 NY_CFG = dict(CFG, session_tz="ny", sessions=dict(z.NY_SESSIONS))   # the short New York kill zones
 
 
@@ -693,6 +693,54 @@ class StageLines(unittest.TestCase):
         self.assertTrue(z.m3_choch_state(m3, ph3, 5, 0, 90.0)["lower_high"])
         self.assertFalse(z.m3_choch_state(m3, ph3, 5, 0, 90.0, need_trend=True)["lower_high"])
 
+    def test_target_is_a_fixed_multiple_of_the_risk_by_default(self):
+        self.assertEqual(z.read_config(None)["target_r"], 3.0)
+        m5, m3, zone, targets = entry_data()
+        res, best = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3))        # no level to aim at is fine
+        self.assertEqual(best, 6)
+        r = res[0]
+        self.assertAlmostEqual(r["target"], r["entry"] + 3 * (r["entry"] - r["stop"]))
+        self.assertEqual(r["rr"], 3.0)
+
+    def test_a_fixed_target_below_min_rr_drops_the_entry_and_zero_means_nearest_level(self):
+        m5, m3, zone, targets = entry_data()
+        res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, target_r=1.5))   # min_rr is 2
+        self.assertEqual((res, best), ([], 5))
+        res, best = z.long_setups(zone, m5, m3, targets, dict(CFG, target_r=0, min_rr=0.5))
+        self.assertEqual(res[0]["target"], 110.0)
+
+    def test_a_short_fixed_target_is_below_the_entry(self):
+        m5, m3, zone, targets = entry_data()
+        supply = dict(zone, kind="supply", low=-zone["high"], high=-zone["low"])
+        res, best = z.setups_for(supply, z.flip_bars(m5), z.flip_bars(m3), [], dict(CFG, target_r=3))
+        r = res[0]
+        self.assertEqual(r["side"], "short")
+        self.assertAlmostEqual(r["target"], r["entry"] - 3 * (r["stop"] - r["entry"]))
+        self.assertLess(r["target"], r["entry"])
+
+    def test_two_sweeps_that_lead_to_the_same_entry_give_one_entry(self):
+        rows = list(M5_ROWS)
+        rows[17] = (99.9, 103.0, 98.7, 102.9)        # a second sweep of the same swing low
+        m5, m3 = mk(T0, 300, rows), mk(T0, 180, M3_ROWS)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        trace = []
+        res, best = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3), trace)
+        self.assertEqual(len(trace), 2)              # both bars were seen as sweeps
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["sweep_low"], 98.6)  # the first one is kept
+
+    def test_the_same_trade_through_two_zones_is_listed_once_with_the_other_zone_named(self):
+        a = {"side": "short", "entry_t": 100, "entry": 1.5, "zone": {"tf": "30m", "kind": "supply", "low": 1.0, "high": 2.0}}
+        b = {"side": "short", "entry_t": 100, "entry": 1.5, "zone": {"tf": "15m", "kind": "supply", "low": 1.2, "high": 1.8}}
+        c = {"side": "short", "entry_t": 200, "entry": 1.5, "zone": {"tf": "15m", "kind": "supply", "low": 1.2, "high": 1.8}}
+        d = {"side": "long", "entry_t": 100, "entry": 1.5, "zone": {"tf": "15m", "kind": "demand", "low": 1.2, "high": 1.8}}
+        out = z.merge_same_trade([a, b, c, d])
+        self.assertEqual(len(out), 3)
+        self.assertIs(out[0], a)
+        self.assertEqual(out[0]["also"], [b["zone"]])
+        self.assertNotIn("also", out[1])
+
     def test_no_swing_after_the_sweep_means_no_choch_level(self):
         m5, m3, zone, targets = entry_data()
         ph3, _ = z.pivots(m3, 2)
@@ -761,6 +809,23 @@ class Command(unittest.TestCase):
         self.assertIn("DEMAND 30m", out)
         self.assertIn("99.20 to 100.80", out)
         self.assertIn("fresh", out)
+
+    def test_setup_lists_a_trade_once_and_names_the_other_zone_that_saw_it(self):
+        m5, m3, zone, targets = entry_data()
+        other = dict(zone, tf="15m", low=99.1, high=99.9)
+        saved = (z.collect_zones, z.get_bars, z.resample)
+        z.collect_zones = lambda *a, **k: [zone, other]
+        z.get_bars = lambda *a, **k: m5
+        z.resample = lambda *a, **k: m3
+        try:
+            code, out, _ = self.run_cli(["setup", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json"])
+        finally:
+            z.collect_zones, z.get_bars, z.resample = saved
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertEqual(len([ln for ln in lines if ln.startswith("LONG")]), 1)
+        self.assertIn("R:R 3.0", out)
+        self.assertIn("        same trade also seen from the 15m demand zone 99.10-99.90", lines)
 
     def test_save_keeps_the_downloaded_charts_and_they_replay_to_the_same_answer(self):
         text = chart_json(mk(ZSTART, 1800, zone_rows()))

@@ -46,8 +46,9 @@ The entry (long side shown, short is the mirror image):
      high made after the sweep (the CHoCH) is the trigger, inside an Asia, London
      or New York window (choch_needs_trend true also asks that swing to be a lower
      high than the one before it)
-  stop below the sweep low (sweep_buffer_atr x ATR), target the nearest opposing
-  zone or swing, and the trade is dropped when the reward to risk is under min_rr.
+  stop below the sweep low (sweep_buffer_atr x ATR), target target_r times the risk
+  (3 by default; 0 uses the nearest opposing zone or swing), and the trade is dropped
+  when the reward to risk is under min_rr.
 
 Session hours are Dublin time by default (session_tz "dublin", Asia 0 to 8, London
 8 to 16, New York 13 to 21), with Irish daylight saving; session_tz "ny" reads them as
@@ -106,6 +107,7 @@ DEFAULTS = {
     "fvg_min_atr": 0.1,
     "sweep_buffer_atr": 0.2,
     "min_rr": 2.0,
+    "target_r": 3.0,      # take profit at this many times the risk; 0 uses the nearest opposing zone or swing
     "days": 2,
     "max_per_day": 3,
     "choch_needs_trend": False,
@@ -647,11 +649,16 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
             risk = entry - stop
             if risk <= 0 or not in_session(when, cfg):
                 continue
-            above = [x for x in targets if x > entry]
-            target = min(above) if above else None
-            rr = (target - entry) / risk if target is not None else None
+            if cfg["target_r"]:
+                target, rr = entry + cfg["target_r"] * risk, float(cfg["target_r"])
+            else:
+                above = [x for x in targets if x > entry]
+                target = min(above) if above else None
+                rr = (target - entry) / risk if target is not None else None
             if rr is not None and rr < cfg["min_rr"]:
                 continue
+            if any(o["entry_t"] == when for o in out):
+                break                      # the same trade seen from an earlier sweep
             best = 6
             out.append({"trigger": kind, "sweep_t": sw["t"], "sweep_low": sw["l"], "gap": (lo, hi),
                         "ote": (ote_lo, ote_hi), "entry_t": when, "entry": entry, "stop": stop,
@@ -948,6 +955,19 @@ def cmd_zones(args, cfg, now):
     return 0 if found else 1
 
 
+def merge_same_trade(results):
+    """One trade found through several zones is listed once; the other zones go in "also"."""
+    out, seen = [], {}
+    for r in results:
+        key = (r["side"], r["entry_t"], r["entry"])
+        if key in seen:
+            seen[key].setdefault("also", []).append(r["zone"])
+        else:
+            seen[key] = r
+            out.append(r)
+    return out
+
+
 def cmd_setup(args, cfg, now):
     sym = resolve(args.symbol)
     zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, args.offline)
@@ -967,6 +987,7 @@ def cmd_setup(args, cfg, now):
             r["zone"] = {"tf": z["tf"], "kind": z["kind"], "low": z["low"], "high": z["high"], "t": z["t"]}
             results.append(r)
     results.sort(key=lambda r: r["entry_t"])
+    results = merge_same_trade(results)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -984,6 +1005,9 @@ def cmd_setup(args, cfg, now):
                   % (r["side"].upper(), z["tf"], z["kind"], px(sym, z["low"]), px(sym, z["high"]),
                      fmt_et(r["sweep_t"]), r["trigger"], px(sym, r["gap"][0]), px(sym, r["gap"][1]),
                      fmt_et(r["entry_t"]), px(sym, r["entry"]), px(sym, r["stop"]), px(sym, r["target"]), rr))
+            for o in r.get("also", []):
+                print("        same trade also seen from the %s %s zone %s-%s"
+                      % (o["tf"], o["kind"], px(sym, o["low"]), px(sym, o["high"])))
         if results:
             print("These are signals from past and current bars. Nothing was placed. Set the stop and size BEFORE any order.")
         else:
