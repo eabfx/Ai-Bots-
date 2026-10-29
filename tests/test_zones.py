@@ -773,8 +773,8 @@ class StageLines(unittest.TestCase):
         (103.8, 104.6, 103.5, 104.4),    # 35 the lower high, 104.6
         (104.4, 104.5, 103.0, 103.2),
         (103.2, 103.4, 102.2, 102.4),
-    ] + [(102.4, 102.8, 102.0, 102.4)] * 12 + [
-        (102.4, 105.2, 102.3, 105.0),    # 50 closes above 104.6: the CHoCH
+    ] + [(102.4, 102.8, 102.0, 102.4)] * 11 + [
+        (102.4, 105.2, 102.3, 105.0),    # 49 closes above 104.6: the CHoCH
         (105.0, 105.5, 104.5, 105.3),
         (105.3, 105.6, 104.8, 105.1),
     ]
@@ -793,7 +793,7 @@ class StageLines(unittest.TestCase):
         r = res[0]
         self.assertEqual(r["gap"], (103.0, 103.8))
         self.assertEqual(r["entry"], 105.0)
-        self.assertEqual(r["entry_t"], m3[50]["t"] + 180)
+        self.assertEqual(r["entry_t"], m3[49]["t"] + 180)
         self.assertAlmostEqual(r["ote"][0], 102.1)
         self.assertAlmostEqual(r["ote"][1], 103.8)                 # measured from the swing low 100.0
         self.assertAlmostEqual(r["target"], 105.0 + 3 * (105.0 - r["stop"]))
@@ -845,6 +845,45 @@ class StageLines(unittest.TestCase):
         ph, pl = z.pivots(m5, 2)
         self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 100.0)
         self.assertEqual(z.leg_origin(m5, ph, pl, 16, 98.6), 100.0)
+
+    def test_a_wick_through_the_swing_high_is_not_a_break_only_a_close_is(self):
+        def bar(h, c):
+            return {"t": 0, "o": c, "h": h, "l": 99.0, "c": c}
+        m5 = [bar(100.0, 100.0), bar(101.5, 101.0), bar(101.0, 100.8), bar(102.0, 101.0), bar(101.0, 100.9),
+              bar(101.2, 101.0), bar(103.0, 102.5)]
+        ph = [(2, 1, 101.5)]
+        pl = [(3, 2, 100.0), (5, 4, 100.6)]
+        # bar 3 only pokes above 101.5 with its wick; the close above comes on bar 6, when both lows are known
+        self.assertEqual(z.leg_origin(m5, ph, pl, 0, 98.6), 100.6)
+
+    def test_a_turn_gap_is_dropped_when_the_sweep_low_went_first(self):
+        rows = list(self.TURN_M5)
+        rows[27] = (103.8, 104.0, 98.0, 101.4)                      # dips under the sweep wick 98.6, then recovers
+        m5, m3 = mk(T0, 300, rows), mk(T0, 180, self.TURN_M3)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        trace = []
+        z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3), trace)
+        gap = [g for g in trace[0]["gaps"] if (g["lo"], g["hi"]) == (103.0, 103.8)][0]
+        self.assertFalse(gap["turn"])
+
+    def test_the_pull_back_into_the_band_is_judged_against_the_band_from_the_swing_low(self):
+        rows = list(self.TURN_M5)
+        rows[27] = (103.8, 104.0, 103.5, 103.9)
+        rows[28] = (103.9, 103.4, 103.0, 103.3)
+        rows[28] = (103.3, 103.4, 103.0, 103.3)                     # a gap can start at 103.4
+        rows[29] = (103.3, 105.5, 103.2, 105.3)
+        rows[30] = (105.3, 106.0, 104.0, 105.8)                     # gap 103.4 to 104.0, midpoint 103.7
+        m5, m3 = mk(T0, 300, rows), mk(T0, 180, self.TURN_M3)
+        zone = {"kind": "demand", "t": m5[10]["t"], "high": 99.8, "low": 99.0, "touched_t": m5[16]["t"],
+                "status": "touched", "di": 5, "tf": "30m"}
+        trace = []
+        z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3), trace)
+        gap = [g for g in trace[0]["gaps"] if (g["lo"], g["hi"]) == (103.4, 104.0)][0]
+        # every low since the leg high is at least 103.0: inside the band from the swing low (top 103.8),
+        # but not inside the one from the sweep wick (top 102.93)
+        self.assertTrue(gap["turn"])
+        self.assertTrue(gap["inside"])
 
     def test_leg_origin_falls_back_when_there_is_no_break_or_no_swing_low(self):
         m5 = mk(T0, 300, self.TURN_M5[:21])                            # ends before the break up
