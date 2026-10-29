@@ -92,8 +92,8 @@ INTERVAL_SECS = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800, "60m":
 
 MARKETS = {
     "XAUUSD": {"yahoo": "GC=F", "digits": 2, "note": "COMEX gold futures stand in for spot gold"},
-    "GBPUSD": {"yahoo": "GBPUSD=X", "digits": 5, "note": "spot forex"},
-    "EURUSD": {"yahoo": "EURUSD=X", "digits": 5, "note": "spot forex"},
+    "GBPUSD": {"yahoo": "GBPUSD=X", "digits": 5, "note": "spot forex", "spot": True},
+    "EURUSD": {"yahoo": "EURUSD=X", "digits": 5, "note": "spot forex", "spot": True},
     "NQ": {"yahoo": "NQ=F", "digits": 2, "note": "Nasdaq 100 futures"},
     "MGC": {"yahoo": "MGC=F", "digits": 2, "note": "micro gold futures"},
 }
@@ -985,7 +985,11 @@ def explain_lines(sym, bars, cfg, k):
 
 def spot_shift(sym, spot, now, offline, cfg):
     """Points to take off the data so its latest close equals `spot`, the price on the user's own chart.
-    Futures trade above spot, and the gap moves a little from day to day, so a fresh --spot keeps it true."""
+    Futures trade above spot, and the gap moves a little from day to day, so a fresh --spot keeps it true.
+    Spot forex pairs need no shift: their prices already line up with a chart to within a pip or two."""
+    if MARKETS[sym].get("spot"):
+        print("%s data is already spot, so --spot is not applied." % sym, file=sys.stderr)
+        return 0.0
     bars = closed_only(_raw_bars(sym, "1m", cfg["days"], offline), 60, now)
     if not bars:
         raise ZoneError("no recent 1-minute bars for %s to line up with --spot" % sym)

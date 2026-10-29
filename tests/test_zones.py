@@ -1062,6 +1062,25 @@ class Command(unittest.TestCase):
         _, again, _ = self.run_cli(argv)
         self.assertEqual(again, plain)
 
+    def test_spot_is_not_applied_to_a_spot_forex_pair(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with open(os.path.join(tmp.name, "EURUSD_30m.json"), "w") as fh:
+            fh.write(chart_json(mk(ZSTART, 1800, zone_rows())))
+        argv = ["zones", "EURUSD", "--tf", "30m", "--offline", tmp.name, "--now", "2026-10-26 12:00",
+                "--config", "none.json"]
+        _, plain, _ = self.run_cli(argv)
+        code, with_spot, err = self.run_cli(argv + ["--spot", "1.5"])      # no 1-minute file needed either
+        self.assertEqual(code, 0)
+        self.assertEqual(with_spot, plain)
+        self.assertIn("EURUSD data is already spot, so --spot is not applied", err)
+        self.assertNotIn("Prices shifted", err)
+        self.assertEqual(z.SHIFT, 0.0)
+
+    def test_gold_and_the_futures_are_still_shifted(self):
+        self.assertFalse(any(z.MARKETS[s].get("spot") for s in ("XAUUSD", "NQ", "MGC")))
+        self.assertTrue(all(z.MARKETS[s].get("spot") for s in ("GBPUSD", "EURUSD")))
+
     def test_spot_needs_one_minute_bars_to_line_up_with(self):
         code, _, err = self.run_cli(["zones", "MGC", "--tf", "30m", "--offline", self.folder(), "--spot", "100",
                                      "--now", "2026-10-26 12:00", "--config", "none.json"])

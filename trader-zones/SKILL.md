@@ -59,6 +59,8 @@ repeat the option for more boxes). It checks the entry logic against the user's 
 `--spot PRICE` (on `zones`, `setup`, `explain` and `bars`) takes the gap between the futures price and the
 user's own spot chart off every price. Give the price the chart shows now; run it again on another day,
 because the gap moves a little. It fixes the price level only: futures and spot candles still differ in shape.
+It does nothing for GBPUSD and EURUSD, which are already spot (shifting them moved a zone about 3 pips off
+the user's own box).
 
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
