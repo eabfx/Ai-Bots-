@@ -1132,14 +1132,14 @@ def manual_zone(spec, m5, candle_secs=1800):
     return z
 
 
-def cmd_setup(args, cfg, now):
-    sym = resolve(args.symbol)
-    m5 = closed_only(get_bars(sym, "5m", cfg["days"], args.offline), 300, now)
-    if args.zone:
-        zones = [manual_zone(spec, m5) for spec in args.zone]
+def analyse(sym, cfg, now, offline, zone_specs=None):
+    """Zones for a market and every entry found in them, as a dict the command line and the dashboard share."""
+    m5 = closed_only(get_bars(sym, "5m", cfg["days"], offline), 300, now)
+    if zone_specs:
+        zones = [manual_zone(spec, m5) for spec in zone_specs]
     else:
-        zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, args.offline)
-    m1 = closed_only(get_bars(sym, "1m", cfg["days"], args.offline), 60, now)
+        zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, offline)
+    m1 = closed_only(get_bars(sym, "1m", cfg["days"], offline), 60, now)
     m3 = closed_only(resample(m1, 180), 180, now)
     fresh = [z for z in zones if z["status"] == "fresh"]
     results, staged, best_all = [], [], 0
@@ -1155,6 +1155,14 @@ def cmd_setup(args, cfg, now):
             results.append(r)
     results.sort(key=lambda r: r["entry_t"])
     results = merge_same_trade(results)
+    return {"zones": zones, "fresh": fresh, "results": results, "staged": staged, "best": best_all, "m1": m1}
+
+
+def cmd_setup(args, cfg, now):
+    sym = resolve(args.symbol)
+    found = analyse(sym, cfg, now, args.offline, args.zone)
+    zones, fresh, results = found["zones"], found["fresh"], found["results"]
+    staged, best_all, m1 = found["staged"], found["best"], found["m1"]
     if args.json:
         print(json.dumps(results, indent=2))
     else:

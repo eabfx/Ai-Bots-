@@ -62,6 +62,16 @@ because the gap moves a little. It fixes the price level only: futures and spot 
 It does nothing for GBPUSD and EURUSD, which are already spot (shifting them moved a zone about 3 pips off
 the user's own box).
 
+## Dashboard
+
+`py trader-zones\dashboard.py` opens a page on the user's own computer (http://127.0.0.1:8765, reachable
+only from that computer). One tab per market shows the last price, the entries found with entry, stop,
+target and reward to risk, a ladder of the zones by timeframe against price, and a table of the zones. All
+times are Dublin. The "your chart price now" box does what `--spot` does and is hidden for GBPUSD and
+EURUSD. Refresh re-runs the tool; it can also refresh every 5 minutes. `--port` changes the port,
+`--no-browser` does not open the browser, `--offline DIR` runs from saved charts. It shows signals only
+and never places an order.
+
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
 
