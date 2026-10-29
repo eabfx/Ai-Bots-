@@ -66,6 +66,9 @@ def snapshot(sym, cfg, now, spot=None, offline=None):
     m1 = found["m1"]
     if z.flat_share(m1) > 0.9:
         notes.append(z.FLAT_NOTE % sym)
+    if sym == "XAUUSD" and not shifted:
+        notes.append("These are COMEX gold futures prices, about 11 to 16 points above spot gold. Type the price your "
+                     "spot chart shows now into the box above and press Refresh to line everything up with it.")
     stages = []
     if not found["results"]:
         for zn, best, trace in found["staged"]:
@@ -74,7 +77,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None):
     market = z.MARKETS[sym]
     return {"symbol": sym, "yahoo": market["yahoo"], "market_note": market["note"], "spot_market": bool(market.get("spot")),
             "digits": market["digits"], "shifted": shifted,
-            "as_of": dublin_text(now), "price": m1[-1]["c"] if m1 else None,
+            "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "notes": notes,
             "zones": [zone_row(zn) for zn in found["zones"]],
@@ -215,6 +218,12 @@ var $=function(id){return document.getElementById(id)};
 function store(k,v){try{if(v===undefined){return localStorage.getItem(k)}localStorage.setItem(k,v)}catch(e){return null}}
 function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
 function fmt(x,d){return x===null||x===undefined?"-":Number(x).toFixed(d)}
+function age(sec){
+  if(sec<0)sec=0;var m=Math.round(sec/60);
+  if(m<60)return m+" min ago";
+  var h=Math.floor(m/60);if(h<48)return h+"h "+(m%60)+"m ago";
+  return Math.floor(h/24)+" days ago";
+}
 function tag(kind){return el("span","tag "+kind,kind.toUpperCase())}
 
 function tabs(){
@@ -286,13 +295,13 @@ function render(d){
     d.stages.forEach(function(s){var b=el("div","stage");b.appendChild(el("div","head",s.head));
       s.lines.forEach(function(l){b.appendChild(el("div","ln",l))});sc.appendChild(b)});
   }
-  d.signals.forEach(function(r){
+  d.signals.slice().reverse().forEach(function(r){
     var b=el("div","sig"),h=el("div");h.appendChild(tag(r.side));
     h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
       ", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE"));
     b.appendChild(h);
     var row=el("div","row");
-    [["Entry time",r.entry_when],["Entry",fmt(r.entry,d.digits)],["Stop",fmt(r.stop,d.digits)],
+    [["Entry time",r.entry_when+" ("+age(d.now_t-r.entry_t)+")"],["Entry",fmt(r.entry,d.digits)],["Stop",fmt(r.stop,d.digits)],
      ["Target",r.target===null?"none":fmt(r.target,d.digits)],["Reward to risk",r.rr===null?"-":r.rr.toFixed(1)]].forEach(function(p){
       var x=el("div");x.appendChild(el("span",null,p[0]));x.appendChild(el("b",null,p[1]));row.appendChild(x)});
     b.appendChild(row);

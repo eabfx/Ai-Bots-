@@ -88,6 +88,16 @@ class Snapshot(Patched):
         s = self.snap()
         self.assertTrue(any("carry one price each" in n for n in s["notes"]))
 
+    def test_gold_without_a_spot_price_says_these_are_futures_prices(self):
+        plain = self.snap("XAUUSD")
+        self.assertTrue(any("COMEX gold futures prices" in n for n in plain["notes"]))
+        with_spot = self.snap("XAUUSD", spot=plain["price"] - 5.0)
+        self.assertFalse(any("COMEX gold futures prices" in n for n in with_spot["notes"]))
+        self.assertFalse(any("COMEX gold futures prices" in n for n in self.snap("MGC")["notes"]))
+
+    def test_snapshot_carries_the_time_it_was_taken_for_working_out_ages(self):
+        self.assertEqual(self.snap()["now_t"], dz.parse_now(NOW))
+
     def test_an_unknown_market_is_a_plain_error(self):
         with self.assertRaises(dz.ZoneError):
             self.snap("DOGE")
@@ -134,6 +144,11 @@ class Server(Patched):
         self.assertNotIn("http://", body.replace("http://www.w3.org/2000/svg", ""))
         self.assertNotIn("https://", body)
         self.assertNotIn("<script src", body)
+
+    def test_the_page_lists_entries_newest_first_with_their_age(self):
+        _, _, body = self.get("/")
+        self.assertIn("d.signals.slice().reverse()", body)
+        self.assertIn("min ago", body)
 
     def test_the_page_writes_server_text_with_textContent_not_innerHTML(self):
         _, _, body = self.get("/")
