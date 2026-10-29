@@ -76,6 +76,36 @@ class Snapshot(Patched):
         self.assertEqual(dz.SHIFT, 0.0)
         self.assertEqual(self.snap()["price"], plain["price"])
 
+    def test_a_gap_measured_earlier_is_reused_not_measured_again(self):
+        plain = self.snap()
+        first = self.snap(spot=plain["price"] - 5.0)
+        self.assertAlmostEqual(first["shift_value"], 5.0)
+        # the market moves on: reusing the gap keeps the shift at 5, where re-reading the old price would not
+        self.m3 = [dict(b, o=b["o"] + 2, h=b["h"] + 2, l=b["l"] + 2, c=b["c"] + 2) for b in self.m3]
+        again = self.snap(shift=first["shift_value"])
+        self.assertAlmostEqual(again["shift_value"], 5.0)
+        self.assertAlmostEqual(again["price"], plain["price"] + 2 - 5.0)
+        self.assertTrue(again["shifted"])
+        self.assertTrue(any("the gap measured when you entered your price" in n for n in again["notes"]))
+        stale = self.snap(spot=plain["price"] - 5.0)                    # the old price read against the new data
+        self.assertAlmostEqual(stale["shift_value"], 7.0)               # shows why re-reading it would be wrong
+        self.assertEqual(dz.SHIFT, 0.0)
+
+    def test_a_new_spot_price_wins_over_a_kept_gap(self):
+        plain = self.snap()
+        both = self.snap(spot=plain["price"] - 3.0, shift=9.0)
+        self.assertAlmostEqual(both["shift_value"], 3.0)
+
+    def test_a_kept_gap_is_ignored_for_a_spot_forex_pair(self):
+        s = self.snap("EURUSD", shift=4.0)
+        self.assertFalse(s["shifted"])
+        self.assertEqual(s["shift_value"], 0.0)
+
+    def test_no_price_means_no_shift(self):
+        s = self.snap()
+        self.assertFalse(s["shifted"])
+        self.assertEqual(s["shift_value"], 0.0)
+
     def test_spot_is_ignored_for_a_spot_forex_pair(self):
         s = self.snap("EURUSD", spot=1.5)
         self.assertFalse(s["shifted"])
@@ -144,6 +174,19 @@ class Server(Patched):
         self.assertNotIn("http://", body.replace("http://www.w3.org/2000/svg", ""))
         self.assertNotIn("https://", body)
         self.assertNotIn("<script src", body)
+
+    def test_the_page_keeps_the_gap_and_reuses_it_until_a_new_price_is_typed(self):
+        _, _, body = self.get("/")
+        self.assertIn('"zd.gap."', body)
+        self.assertIn('"&shift="', body)
+
+    def test_snapshot_takes_a_kept_gap_and_rejects_a_bad_one(self):
+        code, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&shift=4.5")
+        self.assertEqual(code, 200)
+        self.assertAlmostEqual(json.loads(body)["shift_value"], 4.5)
+        code, _, body = self.get("/api/snapshot?symbol=MGC&shift=abc")
+        self.assertEqual(code, 400)
+        self.assertIn("shift must be a number", json.loads(body)["error"])
 
     def test_the_page_lists_entries_newest_first_with_their_age(self):
         _, _, body = self.get("/")

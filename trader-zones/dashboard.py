@@ -45,11 +45,15 @@ def signal_row(r):
             "also": [dict(o, when=dublin_text(o["t"])) for o in r.get("also", [])]}
 
 
-def snapshot(sym, cfg, now, spot=None, offline=None):
-    """Everything the page shows for one market, as plain JSON-ready data. Errors raise z.ZoneError."""
+def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
+    """Everything the page shows for one market, as plain JSON-ready data. Errors raise z.ZoneError.
+    `spot` is the price on the user's chart right now: the gap to the data is measured and applied.
+    `shift` is a gap measured earlier, reused as it is (a price typed an hour ago would give a wrong gap now).
+    Spot wins when both are given. Spot forex pairs take neither."""
     sym = z.resolve(sym)
     notes = []
     shifted = False
+    used = 0.0
     saved = z.SHIFT
     try:
         z.SHIFT = 0.0
@@ -60,6 +64,12 @@ def snapshot(sym, cfg, now, spot=None, offline=None):
             shifted = z.SHIFT != 0.0
             if buf.getvalue().strip():
                 notes.append(buf.getvalue().strip())
+        elif shift is not None and not z.MARKETS[sym].get("spot"):
+            z.SHIFT = shift
+            shifted = shift != 0.0
+            notes.append("Prices shifted by %s, the gap measured when you entered your price. It drifts through the "
+                         "day: type a fresh price to measure it again." % z.px(sym, shift))
+        used = z.SHIFT
         found = z.analyse(sym, cfg, now, offline)
     finally:
         z.SHIFT = saved
@@ -76,7 +86,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None):
                            "lines": [ln.strip() for ln in z.trace_lines(sym, zn, trace)]})
     market = z.MARKETS[sym]
     return {"symbol": sym, "yahoo": market["yahoo"], "market_note": market["note"], "spot_market": bool(market.get("spot")),
-            "digits": market["digits"], "shifted": shifted,
+            "digits": market["digits"], "shifted": shifted, "shift_value": used,
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "notes": notes,
@@ -124,6 +134,11 @@ class Handler(BaseHTTPRequestHandler):
                 spot = float(spot_text) if spot_text else None
             except ValueError:
                 raise z.ZoneError("your price must be a number like 4021.5")
+            shift_text = (q.get("shift") or [""])[0].strip()
+            try:
+                shift = float(shift_text) if shift_text else None
+            except ValueError:
+                raise z.ZoneError("shift must be a number")
             cfg = z.read_config(self.config_path)
             days = (q.get("days") or [""])[0]
             if days:
@@ -131,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise z.ZoneError("days must be a whole number from 1 to 14")
                 cfg["days"] = int(days)
             now = z.parse_now((q.get("now") or [""])[0] or None)
-            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline))
+            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift))
         except z.ZoneError as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:                      # a network or data problem: say so, keep serving
@@ -322,13 +337,19 @@ function load(){
   if(busy||!current)return;busy=true;
   var btn=$("refresh");btn.disabled=true;btn.textContent="Loading...";
   var m=markets.filter(function(x){return x.symbol===current})[0];
-  var spot=(!m||m.spot)?"":$("spot").value.trim();
-  if(m&&!m.spot)store("zd.spot."+current,spot);
+  var typed=(!m||m.spot)?"":$("spot").value.trim(), sym=current, query="";
+  if(m&&!m.spot)store("zd.spot."+sym,typed);
   store("zd.days",$("days").value);
-  var url="/api/snapshot?symbol="+encodeURIComponent(current)+"&days="+encodeURIComponent($("days").value)+
-    (spot?"&spot="+encodeURIComponent(spot):"");
+  var kept=null;try{kept=JSON.parse(store("zd.gap."+sym)||"null")}catch(e){kept=null}
+  if(typed&&kept&&kept.text===typed){query="&shift="+encodeURIComponent(kept.v)}     // same price as before: reuse its gap
+  else if(typed){query="&spot="+encodeURIComponent(typed)}                           // a new price: measure the gap now
+  else{store("zd.gap."+sym,"")}
+  var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+query;
   fetch(url).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){
-    if(x.ok){render(x.j)}else{showError(x.j.error||"Something went wrong")}
+    if(x.ok){
+      if(typed&&query.indexOf("&spot=")===0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value}));
+      render(x.j)
+    }else{showError(x.j.error||"Something went wrong")}
   }).catch(function(e){showError("Could not reach the dashboard server: "+e)}).then(function(){
     busy=false;btn.disabled=false;btn.textContent="Refresh"});
 }
