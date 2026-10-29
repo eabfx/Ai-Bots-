@@ -799,6 +799,37 @@ class StageLines(unittest.TestCase):
         self.assertAlmostEqual(r["target"], 105.0 + 3 * (105.0 - r["stop"]))
         self.assertLess(r["stop"], 98.6)                           # the stop still sits under the sweep wick
 
+    def test_stop_at_leg_low_puts_the_stop_under_the_swing_low_the_leg_started_from(self):
+        m5, m3, zone = self.turn_data()
+        base, _ = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3))
+        res, best = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3, stop_at="leg_low"))
+        self.assertEqual(best, 6)
+        buffer = base[0]["sweep_low"] - base[0]["stop"]            # the same ATR buffer in both modes
+        self.assertGreater(buffer, 0)
+        self.assertAlmostEqual(res[0]["stop"], 100.0 - buffer)     # the swing low is 100.0, the sweep wick 98.6
+        self.assertGreater(res[0]["stop"], base[0]["stop"])
+        self.assertEqual(res[0]["entry"], base[0]["entry"])
+        self.assertAlmostEqual(res[0]["target"], 105.0 + 3 * (105.0 - res[0]["stop"]))
+
+    def test_stop_at_leg_low_falls_back_to_the_sweep_wick_when_the_leg_has_no_swing_low(self):
+        m5, m3, zone = self.turn_data()
+        cfg = dict(CFG, target_r=3, stop_at="leg_low", leg_from_swing=False)
+        res, _ = z.long_setups(zone, m5, m3, [], cfg)
+        base, _ = z.long_setups(zone, m5, m3, [], dict(cfg, stop_at="sweep"))
+        self.assertAlmostEqual(res[0]["stop"], base[0]["stop"])
+
+    def test_the_default_stop_is_under_the_sweep_wick(self):
+        self.assertEqual(z.read_config(None)["stop_at"], "sweep")
+
+    def test_a_bad_stop_setting_is_a_plain_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"zones": {"stop_at": "middle"}}, fh)
+            with self.assertRaises(z.ZoneError) as cm:
+                z.read_config(path)
+        self.assertIn('stop_at must be "sweep" or "leg_low"', str(cm.exception))
+
     def test_without_the_turn_rule_that_gap_waits_for_a_return_that_never_comes(self):
         m5, m3, zone = self.turn_data()
         res, best = z.long_setups(zone, m5, m3, [], dict(CFG, target_r=3, gap_at_turn=False))

@@ -46,7 +46,8 @@ The entry (long side shown, short is the mirror image):
      high made after the sweep (the CHoCH) is the trigger, inside an Asia, London
      or New York window (choch_needs_trend true also asks that swing to be a lower
      high than the one before it)
-  stop below the sweep low (sweep_buffer_atr x ATR), target target_r times the risk
+  stop below the sweep low (sweep_buffer_atr x ATR; stop_at leg_low puts it below the
+  low the leg started from instead), target target_r times the risk
   (3 by default; 0 uses the nearest opposing zone or swing), and the trade is dropped
   when the reward to risk is under min_rr.
 
@@ -119,6 +120,7 @@ DEFAULTS = {
     "choch_needs_trend": False,
     "leg_from_swing": True,   # the leg starts at the last swing low before price breaks up, not the sweep wick
     "gap_at_turn": True,      # a gap left by the turn out of the band counts without a second return to it
+    "stop_at": "sweep",       # "sweep": stop beyond the sweep wick; "leg_low": stop beyond the low the leg started from
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -734,7 +736,8 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
             best = max(best, 5)
             when = t3[k] + 180
             entry = m3[k]["c"]
-            stop = sw["l"] - cfg["sweep_buffer_atr"] * a5[touch]
+            base = origin if cfg["stop_at"] == "leg_low" else sw["l"]
+            stop = base - cfg["sweep_buffer_atr"] * a5[touch]
             risk = entry - stop
             if risk <= 0 or not in_session(when, cfg):
                 continue
@@ -811,6 +814,8 @@ def read_config(path):
                 cfg[k] = v
     if cfg["session_tz"] not in ("dublin", "ny"):
         raise ZoneError('session_tz must be "dublin" or "ny"')
+    if cfg["stop_at"] not in ("sweep", "leg_low"):
+        raise ZoneError('stop_at must be "sweep" or "leg_low"')
     return cfg
 
 
