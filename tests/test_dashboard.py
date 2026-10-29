@@ -201,6 +201,14 @@ class Server(Patched):
             self.assertEqual(code, 400, bad)
             self.assertIn("per_day must be", json.loads(text)["error"])
 
+    def test_the_page_filters_entries_by_age_and_folds_the_repeats_away(self):
+        _, _, body = self.get("/")
+        self.assertIn('id="window"', body)
+        self.assertIn("last 24 hours", body)
+        self.assertIn("d.now_t-r.entry_t<=hrs*3600", body)
+        self.assertIn('el("details"', body)
+        self.assertIn("Same trade also seen from", body)
+
     def test_the_page_lists_entries_newest_first_with_their_age(self):
         _, _, body = self.get("/")
         self.assertIn("d.signals.slice().reverse()", body)

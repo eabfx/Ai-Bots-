@@ -213,6 +213,8 @@ th{color:var(--mute);font-weight:500;font-size:12px;text-transform:uppercase;let
 .stage .ln{color:var(--mute);font-size:13px;margin-left:12px}
 svg text{fill:var(--mute);font-size:11px}
 .empty{color:var(--mute)}
+details summary{cursor:pointer;margin-top:4px}
+details div{margin-left:16px;font-size:13px}
 @media (max-width:560px){.price{font-size:24px}}
 </style>
 </head>
@@ -226,6 +228,7 @@ svg text{fill:var(--mute);font-size:11px}
 <div class="bar">
 <label id="spotLabel">Your chart price now <input type="number" step="any" id="spot" placeholder="e.g. 4021.5"></label>
 <label>Days <select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></label>
+<label>Entries <select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></label>
 <label>Zones per day <select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></label>
 <button class="go" id="refresh">Refresh</button>
 <label><input type="checkbox" id="auto" style="padding:0"> Refresh every 5 minutes</label>
@@ -300,7 +303,9 @@ function ladder(d){
     add("text",{x:W-2,y:y(d.price)-4,"text-anchor":"end"},"price "+fmt(d.price,d.digits))}
   return s;
 }
+var lastData=null;
 function render(d){
+  lastData=d;
   var out=$("out");out.textContent="";
   var c=el("div","card");
   var top=el("div");top.style.cssText="display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline";
@@ -310,13 +315,20 @@ function render(d){
   d.notes.forEach(function(n){c.appendChild(el("div","note",n))});
   out.appendChild(c);
 
-  var sc=el("div","card");sc.appendChild(el("h2",null,"Entries found ("+d.signals.length+")"));
+  var hrs=parseInt($("window").value,10)||0;
+  var shown=d.signals.slice().reverse().filter(function(r){return hrs===0||d.now_t-r.entry_t<=hrs*3600});
+  var sc=el("div","card");sc.appendChild(el("h2",null,"Entries found ("+shown.length+
+    (shown.length<d.signals.length?" of "+d.signals.length+", change Entries above to see older ones":"")+")"));
   if(!d.signals.length){
     sc.appendChild(el("div","empty","No entry. Furthest any zone got: "+d.furthest+"."));
     d.stages.forEach(function(s){var b=el("div","stage");b.appendChild(el("div","head",s.head));
       s.lines.forEach(function(l){b.appendChild(el("div","ln",l))});sc.appendChild(b)});
   }
-  d.signals.slice().reverse().forEach(function(r){
+  if(d.signals.length&&!shown.length){
+    sc.appendChild(el("div","empty","No entry in this window. The most recent was "+
+      d.signals[d.signals.length-1].entry_when+" ("+age(d.now_t-d.signals[d.signals.length-1].entry_t)+")."));
+  }
+  shown.forEach(function(r){
     var b=el("div","sig"),h=el("div");h.appendChild(tag(r.side));
     h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
       ", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE"));
@@ -326,8 +338,12 @@ function render(d){
      ["Target",r.target===null?"none":fmt(r.target,d.digits)],["Reward to risk",r.rr===null?"-":r.rr.toFixed(1)]].forEach(function(p){
       var x=el("div");x.appendChild(el("span",null,p[0]));x.appendChild(el("b",null,p[1]));row.appendChild(x)});
     b.appendChild(row);
-    r.also.forEach(function(o){b.appendChild(el("div","mute","Same trade also seen from the "+o.tf+" "+o.kind+" zone "+
-      fmt(o.low,d.digits)+" to "+fmt(o.high,d.digits)))});
+    if(r.also.length){
+      var dt=el("details","mute"),sm=el("summary",null,"Same trade also seen from "+r.also.length+" other zone"+(r.also.length>1?"s":""));
+      dt.appendChild(sm);
+      r.also.forEach(function(o){dt.appendChild(el("div",null,"The "+o.tf+" "+o.kind+" zone "+
+        fmt(o.low,d.digits)+" to "+fmt(o.high,d.digits)))});
+      b.appendChild(dt)}
     sc.appendChild(b)});
   out.appendChild(sc);
 
@@ -362,9 +378,11 @@ function load(){
 }
 function auto(){clearInterval(timer);if($("auto").checked)timer=setInterval(load,300000)}
 $("refresh").onclick=load;$("auto").onchange=auto;
+$("window").onchange=function(){store("zd.window",$("window").value);if(lastData)render(lastData)};
 $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
 var p0=store("zd.perday");if(p0)$("perday").value=p0;
+var w0=store("zd.window");if(w0)$("window").value=w0;
 fetch("/api/markets").then(function(r){return r.json()}).then(function(j){
   markets=j.markets;var saved=store("zd.market");
   current=markets.some(function(m){return m.symbol===saved})?saved:markets[0].symbol;
