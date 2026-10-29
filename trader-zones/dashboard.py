@@ -89,7 +89,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
             "digits": market["digits"], "shifted": shifted, "shift_value": used,
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
-            "days": cfg["days"], "notes": notes,
+            "days": cfg["days"], "per_day": cfg["max_per_day"], "notes": notes,
             "zones": [zone_row(zn) for zn in found["zones"]],
             "signals": [signal_row(r) for r in found["results"]],
             "stages": stages, "furthest": z.STAGES[found["best"]]}
@@ -145,6 +145,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not days.isdigit() or not 1 <= int(days) <= 14:
                     raise z.ZoneError("days must be a whole number from 1 to 14")
                 cfg["days"] = int(days)
+            per_day = (q.get("per_day") or [""])[0]
+            if per_day:
+                if not per_day.isdigit() or not 1 <= int(per_day) <= 20:
+                    raise z.ZoneError("per_day must be a whole number from 1 to 20")
+                cfg["max_per_day"] = int(per_day)
             now = z.parse_now((q.get("now") or [""])[0] or None)
             self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift))
         except z.ZoneError as e:
@@ -221,6 +226,7 @@ svg text{fill:var(--mute);font-size:11px}
 <div class="bar">
 <label id="spotLabel">Your chart price now <input type="number" step="any" id="spot" placeholder="e.g. 4021.5"></label>
 <label>Days <select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></label>
+<label>Zones per day <select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></label>
 <button class="go" id="refresh">Refresh</button>
 <label><input type="checkbox" id="auto" style="padding:0"> Refresh every 5 minutes</label>
 </div>
@@ -325,7 +331,7 @@ function render(d){
     sc.appendChild(b)});
   out.appendChild(sc);
 
-  var zc=el("div","card");zc.appendChild(el("h2",null,"Zones (last "+d.days+" day"+(d.days>1?"s":"")+")"));
+  var zc=el("div","card");zc.appendChild(el("h2",null,"Zones (last "+d.days+" day"+(d.days>1?"s":"")+", up to "+d.per_day+" a day)"));
   var lad=ladder(d);if(lad)zc.appendChild(lad);
   if(!d.zones.length){zc.appendChild(el("div","empty","No zones. The rules are strict: a small-bodied, long-wicked candle, then a strong move away."))}
   else{zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Status"],d.zones.slice().reverse().map(function(x){
@@ -339,12 +345,13 @@ function load(){
   var m=markets.filter(function(x){return x.symbol===current})[0];
   var typed=(!m||m.spot)?"":$("spot").value.trim(), sym=current, query="";
   if(m&&!m.spot)store("zd.spot."+sym,typed);
-  store("zd.days",$("days").value);
+  store("zd.days",$("days").value);store("zd.perday",$("perday").value);
   var kept=null;try{kept=JSON.parse(store("zd.gap."+sym)||"null")}catch(e){kept=null}
   if(typed&&kept&&kept.text===typed){query="&shift="+encodeURIComponent(kept.v)}     // same price as before: reuse its gap
   else if(typed){query="&spot="+encodeURIComponent(typed)}                           // a new price: measure the gap now
   else{store("zd.gap."+sym,"")}
-  var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+query;
+  var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+
+    "&per_day="+encodeURIComponent($("perday").value)+query;
   fetch(url).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){
     if(x.ok){
       if(typed&&query.indexOf("&spot=")===0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value}));
@@ -357,6 +364,7 @@ function auto(){clearInterval(timer);if($("auto").checked)timer=setInterval(load
 $("refresh").onclick=load;$("auto").onchange=auto;
 $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
+var p0=store("zd.perday");if(p0)$("perday").value=p0;
 fetch("/api/markets").then(function(r){return r.json()}).then(function(j){
   markets=j.markets;var saved=store("zd.market");
   current=markets.some(function(m){return m.symbol===saved})?saved:markets[0].symbol;

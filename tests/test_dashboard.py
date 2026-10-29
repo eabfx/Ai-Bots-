@@ -188,6 +188,19 @@ class Server(Patched):
         self.assertEqual(code, 400)
         self.assertIn("shift must be a number", json.loads(body)["error"])
 
+    def test_zones_per_day_is_a_setting_the_page_sends(self):
+        _, _, body = self.get("/")
+        self.assertIn('id="perday"', body)
+        self.assertIn('"&per_day="', body)
+        code, _, text = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&per_day=6")
+        self.assertEqual(code, 200)
+        self.assertEqual(json.loads(text)["per_day"], 6)
+        self.assertEqual(self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")[0], 200)
+        for bad in ("0", "21", "x"):
+            code, _, text = self.get("/api/snapshot?symbol=MGC&per_day=" + bad)
+            self.assertEqual(code, 400, bad)
+            self.assertIn("per_day must be", json.loads(text)["error"])
+
     def test_the_page_lists_entries_newest_first_with_their_age(self):
         _, _, body = self.get("/")
         self.assertIn("d.signals.slice().reverse()", body)
