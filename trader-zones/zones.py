@@ -78,6 +78,7 @@ import bisect
 import csv
 import datetime
 import json
+import math
 import os
 import sys
 import time
@@ -1107,20 +1108,24 @@ def parse_dublin(text, flag):
     raise ZoneError('%s wants Dublin time like "2026-10-28 02:00"' % flag)
 
 
-def manual_zone(spec, m5, candle_secs=1800):
+def manual_zone(spec, m5, candle_secs=1800, flag="--zone"):
     """A zone the user drew by hand: (kind, low, high, Dublin time of the candle). It counts as touched
     from the first 5-minute bar after that candle closes that trades back into it."""
     kind, low, high, when = spec
+    if not isinstance(kind, str) or kind.lower() not in ("demand", "supply"):
+        raise ZoneError('%s kind must be "demand" or "supply", not %r' % (flag, kind))
     kind = kind.lower()
-    if kind not in ("demand", "supply"):
-        raise ZoneError('--zone kind must be "demand" or "supply", not %r' % kind)
     try:
         low, high = float(low), float(high)
-    except ValueError:
-        raise ZoneError("--zone wants two prices, low then high")
+    except (TypeError, ValueError):
+        raise ZoneError("%s wants two prices, low then high" % flag)
+    if not (math.isfinite(low) and math.isfinite(high)):
+        raise ZoneError("%s wants two prices, low then high" % flag)
     if low >= high:
-        raise ZoneError("--zone wants the low price first and it must be under the high price")
-    t = parse_dublin(when, "--zone")
+        raise ZoneError("%s wants the low price first and it must be under the high price" % flag)
+    if not isinstance(when, str):
+        raise ZoneError('%s wants Dublin time like "2026-10-28 02:00"' % flag)
+    t = parse_dublin(when, flag)
     z = {"kind": kind, "tf": "mine", "t": t, "high": high, "low": low, "di": None, "touched_t": None,
          "status": "fresh"}
     for b in m5:
@@ -1132,13 +1137,15 @@ def manual_zone(spec, m5, candle_secs=1800):
     return z
 
 
-def analyse(sym, cfg, now, offline, zone_specs=None):
-    """Zones for a market and every entry found in them, as a dict the command line and the dashboard share."""
+def analyse(sym, cfg, now, offline, zone_specs=None, extra_specs=None):
+    """Zones for a market and every entry found in them, as a dict the command line and the dashboard share.
+    `zone_specs` replaces the tool's own zones with the user's; `extra_specs` adds the user's to them."""
     m5 = closed_only(get_bars(sym, "5m", cfg["days"], offline), 300, now)
     if zone_specs:
         zones = [manual_zone(spec, m5) for spec in zone_specs]
     else:
         zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, offline)
+        zones = zones + [manual_zone(spec, m5) for spec in (extra_specs or [])]
     m1 = closed_only(get_bars(sym, "1m", cfg["days"], offline), 60, now)
     m3 = closed_only(resample(m1, 180), 180, now)
     fresh = [z for z in zones if z["status"] == "fresh"]

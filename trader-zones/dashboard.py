@@ -45,11 +45,75 @@ def signal_row(r):
             "also": [dict(o, when=dublin_text(o["t"])) for o in r.get("also", [])]}
 
 
-def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
+def mine_path(config_path):
+    """The user's own zones live next to the config file, in my_zones.json."""
+    return os.path.join(os.path.dirname(os.path.abspath(config_path)), "my_zones.json")
+
+
+def load_mine(path):
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except ValueError as e:
+        raise z.ZoneError("%s is not valid JSON: %s" % (path, e))
+    if not isinstance(doc, dict):
+        raise z.ZoneError("%s must hold an object with one list of zones per market" % path)
+    return doc
+
+
+def mine_list(doc, sym):
+    """The saved zones for one market; an entry that is not an object stays in place (as {}) so numbering holds."""
+    items = doc.get(sym)
+    return [m if isinstance(m, dict) else {} for m in items] if isinstance(items, list) else []
+
+
+def save_mine(path, doc):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, indent=2)
+        fh.write("\n")
+    os.replace(tmp, path)
+
+
+MAX_MINE = 100
+
+
+def add_mine(path, sym, kind, low, high, when, note=""):
+    sym = z.resolve(sym)
+    z.manual_zone((kind, low, high, when), [], flag="the zone")            # raises a plain error when it is wrong
+    doc = load_mine(path)
+    items = mine_list(doc, sym)
+    entry = {"kind": kind.lower(), "low": float(low), "high": float(high), "when": when.strip(),
+             "note": str(note or "")[:80]}
+    if any(all(m.get(k) == entry[k] for k in ("kind", "low", "high", "when")) for m in items):
+        raise z.ZoneError("that zone is already in your list")
+    if len(items) >= MAX_MINE:
+        raise z.ZoneError("you have %d zones saved for %s already: remove some first" % (MAX_MINE, sym))
+    doc[sym] = items + [entry]
+    save_mine(path, doc)
+    return doc[sym]
+
+
+def remove_mine(path, sym, index):
+    sym = z.resolve(sym)
+    doc = load_mine(path)
+    items = mine_list(doc, sym)
+    if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(items):
+        raise z.ZoneError("there is no saved zone number %s for %s" % (index, sym))
+    doc[sym] = items[:index] + items[index + 1:]
+    save_mine(path, doc)
+    return doc[sym]
+
+
+def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None):
     """Everything the page shows for one market, as plain JSON-ready data. Errors raise z.ZoneError.
     `spot` is the price on the user's chart right now: the gap to the data is measured and applied.
     `shift` is a gap measured earlier, reused as it is (a price typed an hour ago would give a wrong gap now).
-    Spot wins when both are given. Spot forex pairs take neither."""
+    Spot wins when both are given. Spot forex pairs take neither.
+    `mine` is the user's own saved zones for this market: they are checked for entries next to the tool's own."""
     sym = z.resolve(sym)
     notes = []
     shifted = False
@@ -70,7 +134,15 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
             notes.append("Prices shifted by %s, the gap measured when you entered your price. It drifts through the "
                          "day: type a fresh price to measure it again." % z.px(sym, shift))
         used = z.SHIFT
-        found = z.analyse(sym, cfg, now, offline)
+        specs = []
+        for i, m in enumerate(mine or []):
+            spec = (m.get("kind"), m.get("low"), m.get("high"), m.get("when"))
+            try:
+                z.manual_zone(spec, [], flag="the zone")
+                specs.append(spec)
+            except z.ZoneError as e:
+                notes.append("Your saved zone number %d was skipped: %s" % (i + 1, e))
+        found = z.analyse(sym, cfg, now, offline, extra_specs=specs)
     finally:
         z.SHIFT = saved
     m1 = found["m1"]
@@ -90,6 +162,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "per_day": cfg["max_per_day"], "notes": notes,
+            "mine": [dict(m, index=i) for i, m in enumerate(mine or [])],
             "zones": [zone_row(zn) for zn in found["zones"]],
             "signals": [signal_row(r) for r in found["results"]],
             "stages": stages, "furthest": z.STAGES[found["best"]]}
@@ -98,6 +171,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None):
 class Handler(BaseHTTPRequestHandler):
     config_path = "trader/config.json"
     offline = None
+    mine_file = "trader/my_zones.json"
 
     def log_message(self, fmt, *args):        # keep the console quiet
         pass
@@ -114,7 +188,44 @@ class Handler(BaseHTTPRequestHandler):
     def send_json(self, code, doc):
         self.send(code, json.dumps(doc), "application/json; charset=utf-8")
 
+    def host_ok(self):
+        """Only answer requests addressed to this computer by name or number, which blocks other websites
+        from reaching the dashboard through the browser (DNS rebinding)."""
+        port = self.server.server_address[1]
+        return self.headers.get("Host", "") in ("127.0.0.1:%d" % port, "localhost:%d" % port)
+
+    def do_POST(self):
+        if not self.host_ok():
+            return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
+        if self.headers.get("X-Requested-With") != "zones-dashboard":
+            return self.send_json(403, {"error": "missing X-Requested-With header"})
+        try:
+            size = int(self.headers.get("Content-Length") or 0)
+            if not 0 < size <= 20000:
+                raise z.ZoneError("the request body is empty or too large")
+            try:
+                body = json.loads(self.rfile.read(size).decode("utf-8"))
+            except ValueError:
+                raise z.ZoneError("the request body is not valid JSON")
+            if not isinstance(body, dict):
+                raise z.ZoneError("the request body must be a JSON object")
+            path = urlparse(self.path).path
+            if path == "/api/mine/add":
+                items = add_mine(self.mine_file, str(body.get("symbol", "")), body.get("kind"), body.get("low"),
+                                 body.get("high"), body.get("when"), body.get("note", ""))
+            elif path == "/api/mine/remove":
+                items = remove_mine(self.mine_file, str(body.get("symbol", "")), body.get("index"))
+            else:
+                return self.send_json(404, {"error": "not found"})
+            self.send_json(200, {"mine": [dict(m, index=i) for i, m in enumerate(items)]})
+        except z.ZoneError as e:
+            self.send_json(400, {"error": str(e)})
+        except Exception as e:
+            self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
+
     def do_GET(self):
+        if not self.host_ok():
+            return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
         url = urlparse(self.path)
         if url.path == "/":
             self.send(200, PAGE, "text/html; charset=utf-8")
@@ -151,7 +262,8 @@ class Handler(BaseHTTPRequestHandler):
                     raise z.ZoneError("per_day must be a whole number from 1 to 20")
                 cfg["max_per_day"] = int(per_day)
             now = z.parse_now((q.get("now") or [""])[0] or None)
-            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift))
+            mine = mine_list(load_mine(self.mine_file), z.resolve(sym))
+            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift, mine))
         except z.ZoneError as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:                      # a network or data problem: say so, keep serving
@@ -159,7 +271,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def make_server(port=PORT, config_path="trader/config.json", offline=None):
-    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline})
+    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
+                                         "mine_file": mine_path(config_path)})
     return HTTPServer(("127.0.0.1", port), handler)
 
 
@@ -213,6 +326,10 @@ th{color:var(--mute);font-weight:500;font-size:12px;text-transform:uppercase;let
 .stage .ln{color:var(--mute);font-size:13px;margin-left:12px}
 svg text{fill:var(--mute);font-size:11px}
 .empty{color:var(--mute)}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:10px}
+.form label{display:flex;flex-direction:column;gap:3px;color:var(--mute);font-size:12px}
+.form input[type=text]{width:170px}
+button.small{padding:3px 10px;font-size:13px;cursor:pointer}
 details summary{cursor:pointer;margin-top:4px}
 details div{margin-left:16px;font-size:13px}
 @media (max-width:560px){.price{font-size:24px}}
@@ -275,6 +392,7 @@ function table(head,rows){
 function ladder(d){
   var zs=d.zones;if(!zs.length)return null;
   var lanes=["60m","30m","15m"],W=720,H=300,L=64,top=14,bot=14;
+  if(zs.some(function(x){return x.tf==="mine"}))lanes.push("mine");
   var lo=Math.min.apply(null,zs.map(function(x){return x.low})),hi=Math.max.apply(null,zs.map(function(x){return x.high}));
   if(d.price!==null){lo=Math.min(lo,d.price);hi=Math.max(hi,d.price)}
   var pad=(hi-lo)*0.05||1;lo-=pad;hi+=pad;
@@ -287,7 +405,7 @@ function ladder(d){
   for(var i=0;i<=4;i++){var p=lo+(hi-lo)*i/4;
     add("line",{x1:L,x2:W,y1:y(p),y2:y(p),stroke:"var(--line)","stroke-width":1});
     add("text",{x:L-6,y:y(p)+4,"text-anchor":"end"},fmt(p,d.digits>3?4:2))}
-  var lw=(W-L)/3;
+  var lw=(W-L)/lanes.length;
   lanes.forEach(function(name,i){add("text",{x:L+lw*i+lw/2,y:11,"text-anchor":"middle"},name);
     var inl=zs.filter(function(x){return x.tf===name});
     inl.forEach(function(x,j){
@@ -353,6 +471,41 @@ function render(d){
   else{zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Status"],d.zones.slice().reverse().map(function(x){
     return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),x.status+(x.touched?", back in "+x.touched:"")]})))}
   out.appendChild(zc);
+  out.appendChild(mineCard(d));
+}
+function post(url,body){
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
+    body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})});
+}
+function mineCard(d){
+  var c=el("div","card");c.appendChild(el("h2",null,"My zones ("+d.mine.length+")"));
+  c.appendChild(el("div","mute","Boxes you drew yourself. They are saved on this computer and checked for entries on every "+
+    "refresh, next to the tool's own zones. Type prices as your chart shows them"+
+    (d.symbol==="XAUUSD"?" (enter your chart price at the top first, so gold lines up)":"")+"."));
+  if(d.mine.length){
+    c.appendChild(table(["Side","Low","High","Candle opened (Dublin)","Note",""],d.mine.map(function(m){
+      var rm=el("button","small","Remove");
+      rm.onclick=function(){post("/api/mine/remove",{symbol:d.symbol,index:m.index}).then(function(x){
+        if(x.ok){load()}else{msg.textContent=x.j.error||"Could not remove it"}})};
+      return [m.kind?tag(m.kind):"?",m.low===undefined?"-":fmt(m.low,d.digits),m.high===undefined?"-":fmt(m.high,d.digits),
+        m.when||"-",m.note||"",rm]})));
+  }
+  var f=el("div","form"),side=el("select"),low=el("input"),high=el("input"),when=el("input"),note=el("input"),
+      add=el("button","go","Add zone"),msg=el("div","err");
+  msg.style.display="none";
+  ["demand","supply"].forEach(function(k){var o=el("option",null,k);o.value=k;side.appendChild(o)});
+  low.type=high.type="number";low.step=high.step="any";when.type=note.type="text";
+  when.placeholder="2026-10-28 02:00";note.placeholder="optional";note.maxLength=80;
+  function lab(text,input){var l=el("label",null,text);l.appendChild(input);f.appendChild(l)}
+  lab("Side",side);lab("Low",low);lab("High",high);lab("Candle opened (Dublin time)",when);lab("Note",note);
+  f.appendChild(add);c.appendChild(f);c.appendChild(msg);
+  add.onclick=function(){
+    msg.style.display="none";
+    post("/api/mine/add",{symbol:d.symbol,kind:side.value,low:low.value,high:high.value,when:when.value.trim(),note:note.value})
+      .then(function(x){if(x.ok){load()}else{msg.textContent=x.j.error||"Could not add it";msg.style.display=""}})
+      .catch(function(e){msg.textContent="Could not reach the dashboard server: "+e;msg.style.display=""});
+  };
+  return c;
 }
 function showError(msg){var out=$("out");out.textContent="";out.appendChild(el("div","err",msg))}
 function load(){

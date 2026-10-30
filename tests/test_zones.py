@@ -1062,6 +1062,21 @@ class Command(unittest.TestCase):
         _, again, _ = self.run_cli(argv)
         self.assertEqual(again, plain)
 
+    def test_a_hand_drawn_zone_rejects_prices_that_are_not_numbers_and_other_odd_input(self):
+        for spec in (("demand", "nan", "5", "2026-10-26 08:00"), ("demand", "1", "inf", "2026-10-26 08:00"),
+                     ("demand", None, "5", "2026-10-26 08:00"), (7, "1", "5", "2026-10-26 08:00"),
+                     ("demand", "1", "5", None)):
+            with self.assertRaises(z.ZoneError, msg=repr(spec)):
+                z.manual_zone(spec, [])
+
+    def test_a_hand_drawn_zone_names_the_flag_it_was_given_in_its_errors(self):
+        with self.assertRaises(z.ZoneError) as cm:
+            z.manual_zone(("middle", "1", "5", "2026-10-26 08:00"), [], flag="the zone")
+        self.assertIn("the zone kind must be", str(cm.exception))
+        with self.assertRaises(z.ZoneError) as cm:
+            z.manual_zone(("demand", "1", "5", "soon"), [])
+        self.assertIn('--zone wants Dublin time', str(cm.exception))
+
     def test_spot_is_not_applied_to_a_spot_forex_pair(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

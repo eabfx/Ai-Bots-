@@ -1,6 +1,9 @@
 import contextlib
+import http.client
 import io
 import json
+import os
+import tempfile
 import threading
 import unittest
 import urllib.error
@@ -128,6 +131,17 @@ class Snapshot(Patched):
     def test_snapshot_carries_the_time_it_was_taken_for_working_out_ages(self):
         self.assertEqual(self.snap()["now_t"], dz.parse_now(NOW))
 
+    def test_my_zones_are_added_to_the_tools_own_and_always_shown(self):
+        when = dz.to_dublin(self.zone["t"]).strftime("%Y-%m-%d %H:%M")
+        mine = [{"kind": "demand", "low": 99.0, "high": 99.8, "when": when}]
+        cfg = dz.read_config("none.json")
+        s = dash.snapshot("MGC", cfg, dz.parse_now(NOW), mine=mine)
+        self.assertEqual(sorted(r["tf"] for r in s["zones"]), ["30m", "mine"])
+        self.assertEqual(s["mine"][0]["index"], 0)
+        plain = self.snap()
+        self.assertEqual(len(plain["signals"]), len(s["signals"]))           # the same trade, merged not doubled
+        self.assertEqual([r["tf"] for r in plain["zones"]], ["30m"])
+
     def test_an_unknown_market_is_a_plain_error(self):
         with self.assertRaises(dz.ZoneError):
             self.snap("DOGE")
@@ -142,7 +156,11 @@ class Snapshot(Patched):
 class Server(Patched):
     def setUp(self):
         Patched.setUp(self)
-        self.server = dash.make_server(0, "none.json")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.config = os.path.join(self.tmp.name, "config.json")
+        self.mine_file = os.path.join(self.tmp.name, "my_zones.json")
+        self.server = dash.make_server(0, self.config)
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -159,6 +177,22 @@ class Server(Patched):
                 return r.status, r.headers.get("Content-Type"), r.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             return e.code, e.headers.get("Content-Type"), e.read().decode("utf-8")
+
+    def post(self, path, body, headers=None, raw=None):
+        data = raw if raw is not None else json.dumps(body).encode("utf-8")
+        h = {"Content-Type": "application/json", "X-Requested-With": "zones-dashboard"}
+        h.update(headers or {})
+        req = urllib.request.Request("http://127.0.0.1:%d%s" % (self.port, path), data=data, headers=h, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status, json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    def mine(self, **kw):
+        body = {"symbol": "MGC", "kind": "demand", "low": "99.0", "high": "99.8", "when": "2026-10-26 11:50"}
+        body.update(kw)
+        return body
 
     def test_it_only_listens_on_this_computer(self):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
@@ -266,6 +300,168 @@ class Server(Patched):
     def test_nothing_is_cached(self):
         with urllib.request.urlopen("http://127.0.0.1:%d/api/markets" % self.port, timeout=10) as r:
             self.assertEqual(r.headers.get("Cache-Control"), "no-store")
+
+
+class Mine(Server):
+    def test_adding_a_zone_saves_it_and_the_next_snapshot_checks_it(self):
+        code, doc = self.post("/api/mine/add", self.mine(note="my box"))
+        self.assertEqual(code, 200)
+        self.assertEqual(doc["mine"][0]["low"], 99.0)
+        self.assertEqual(doc["mine"][0]["index"], 0)
+        with open(self.mine_file, encoding="utf-8") as fh:
+            saved = json.load(fh)
+        self.assertEqual(saved["MGC"][0], {"kind": "demand", "low": 99.0, "high": 99.8, "when": "2026-10-26 11:50",
+                                           "note": "my box"})
+        _, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        snap = json.loads(body)
+        self.assertEqual(len(snap["mine"]), 1)
+        mine_rows = [r for r in snap["zones"] if r["tf"] == "mine"]
+        self.assertEqual(len(mine_rows), 1)
+        self.assertEqual((mine_rows[0]["kind"], mine_rows[0]["low"], mine_rows[0]["high"]), ("demand", 99.0, 99.8))
+        self.assertEqual(mine_rows[0]["status"], "touched")
+        # the user's zone is run through the same entry logic: it sees the trade the tool's own zone sees
+        seen = [sig["zone"]["tf"] for sig in snap["signals"]] + [o["tf"] for sig in snap["signals"] for o in sig["also"]]
+        self.assertIn("mine", seen)
+
+    def test_saved_zones_belong_to_their_market_and_survive_a_restart(self):
+        self.post("/api/mine/add", self.mine())
+        _, _, other = self.get("/api/snapshot?symbol=NQ&now=2026-10-26+20:00")
+        self.assertEqual(json.loads(other)["mine"], [])
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(5)
+        self.server = dash.make_server(0, self.config)                      # a new server, the same folder
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        _, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(len(json.loads(body)["mine"]), 1)
+
+    def test_removing_a_zone_takes_it_out_of_the_file(self):
+        self.post("/api/mine/add", self.mine())
+        self.post("/api/mine/add", self.mine(kind="supply", low="104", high="106"))
+        code, doc = self.post("/api/mine/remove", {"symbol": "MGC", "index": 0})
+        self.assertEqual(code, 200)
+        self.assertEqual([m["kind"] for m in doc["mine"]], ["supply"])
+        self.assertEqual(doc["mine"][0]["index"], 0)
+        with open(self.mine_file, encoding="utf-8") as fh:
+            self.assertEqual(len(json.load(fh)["MGC"]), 1)
+        self.assertFalse(os.path.exists(self.mine_file + ".tmp"))           # the temporary copy is not left behind
+
+    def test_bad_zones_and_bad_removals_get_a_plain_error(self):
+        cases = [(self.mine(kind="middle"), 'kind must be "demand" or "supply"'),
+                 (self.mine(kind=5), 'kind must be "demand" or "supply"'),
+                 (self.mine(low="abc"), "wants two prices"),
+                 (self.mine(low="nan"), "wants two prices"),
+                 (self.mine(high="inf"), "wants two prices"),
+                 (self.mine(low=None), "wants two prices"),
+                 (self.mine(low="100", high="99"), "low price first"),
+                 (self.mine(when="yesterday"), "wants Dublin time"),
+                 (self.mine(when=None), "wants Dublin time"),
+                 (self.mine(symbol="DOGE"), "unknown market")]
+        for body, words in cases:
+            code, doc = self.post("/api/mine/add", body)
+            self.assertEqual(code, 400, body)
+            self.assertIn(words, doc["error"], body)
+            self.assertNotIn("--zone", doc["error"], body)                   # these words belong to the command line
+        self.assertFalse(os.path.exists(self.mine_file))                     # nothing was saved
+        self.post("/api/mine/add", self.mine())
+        for index in (1, -1, "0", True, None):
+            code, doc = self.post("/api/mine/remove", {"symbol": "MGC", "index": index})
+            self.assertEqual(code, 400, index)
+            self.assertIn("no saved zone", doc["error"])
+
+    def test_the_same_zone_cannot_be_added_twice(self):
+        self.assertEqual(self.post("/api/mine/add", self.mine())[0], 200)
+        code, doc = self.post("/api/mine/add", self.mine())
+        self.assertEqual(code, 400)
+        self.assertIn("already in your list", doc["error"])
+
+    def test_there_is_a_cap_on_how_many_zones_one_market_can_hold(self):
+        with open(self.mine_file, "w", encoding="utf-8") as fh:
+            json.dump({"MGC": [dict(self.mine(), low=float(i), high=i + 0.5) for i in range(dash.MAX_MINE)]}, fh)
+        code, doc = self.post("/api/mine/add", self.mine(low="1000", high="1001"))
+        self.assertEqual(code, 400)
+        self.assertIn("remove some first", doc["error"])
+
+    def test_a_broken_saved_zone_is_skipped_with_a_note_and_the_rest_still_work(self):
+        with open(self.mine_file, "w", encoding="utf-8") as fh:
+            json.dump({"MGC": [{"kind": "demand", "low": "x", "high": 99.8, "when": "2026-10-26 11:50"}, "junk",
+                               dict(self.mine(), low=99.0)]}, fh)
+        code, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(code, 200)
+        snap = json.loads(body)
+        self.assertEqual(len(snap["mine"]), 3)
+        self.assertEqual(len([r for r in snap["zones"] if r["tf"] == "mine"]), 1)
+        self.assertTrue(any("saved zone number 1 was skipped" in n for n in snap["notes"]))
+        self.assertTrue(any("saved zone number 2 was skipped" in n for n in snap["notes"]))
+
+    def test_a_corrupt_file_is_a_plain_error_not_a_crash(self):
+        with open(self.mine_file, "w", encoding="utf-8") as fh:
+            fh.write("{not json")
+        code, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(code, 400)
+        self.assertIn("is not valid JSON", json.loads(body)["error"])
+        code, doc = self.post("/api/mine/add", self.mine())
+        self.assertEqual(code, 400)
+        with open(self.mine_file, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "{not json")                         # not overwritten
+
+    def test_a_file_that_is_not_an_object_is_a_plain_error(self):
+        with open(self.mine_file, "w", encoding="utf-8") as fh:
+            fh.write("[1, 2]")
+        code, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(code, 400)
+        self.assertIn("must hold an object", json.loads(body)["error"])
+
+    def test_posts_need_the_dashboard_header_so_other_websites_cannot_write(self):
+        req = urllib.request.Request("http://127.0.0.1:%d/api/mine/add" % self.port,
+                                     data=json.dumps(self.mine()).encode("utf-8"), method="POST",
+                                     headers={"Content-Type": "application/json"})
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            urllib.request.urlopen(req, timeout=10)
+        self.assertEqual(cm.exception.code, 403)
+        self.assertFalse(os.path.exists(self.mine_file))
+        code, _ = self.post("/api/mine/add", self.mine(), headers={"X-Requested-With": "something-else"})
+        self.assertEqual(code, 403)
+
+    def test_requests_addressed_to_another_host_name_are_refused(self):
+        for method, path, body in (("GET", "/", None), ("GET", "/api/markets", None),
+                                   ("POST", "/api/mine/add", json.dumps(self.mine()))):
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+            conn.putrequest(method, path, skip_host=True)
+            conn.putheader("Host", "evil.example:%d" % self.port)
+            conn.putheader("X-Requested-With", "zones-dashboard")
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("Content-Length", str(len(body or "")))
+            conn.endheaders(body.encode("utf-8") if body else None)
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 403, (method, path))
+            conn.close()
+        self.assertFalse(os.path.exists(self.mine_file))
+        code, _, _ = self.get("/api/markets")                               # the real name still works
+        self.assertEqual(code, 200)
+        conn = http.client.HTTPConnection("localhost", self.port, timeout=10)
+        conn.request("GET", "/api/markets")
+        self.assertEqual(conn.getresponse().status, 200)
+        conn.close()
+
+    def test_bad_post_bodies_are_plain_errors(self):
+        self.assertEqual(self.post("/api/mine/add", None, raw=b"not json")[0], 400)
+        self.assertEqual(self.post("/api/mine/add", None, raw=b"[1]")[0], 400)
+        self.assertEqual(self.post("/api/mine/add", None, raw=b"")[0], 400)
+        self.assertEqual(self.post("/api/mine/add", None, raw=b"x" * 20001)[0], 400)
+        self.assertEqual(self.post("/api/mine/nope", {})[0], 404)
+        self.assertEqual(self.get("/api/markets")[0], 200)                  # still serving
+
+    def test_the_page_has_the_my_zones_form_and_its_own_lane_on_the_ladder(self):
+        _, _, body = self.get("/")
+        self.assertIn("My zones (", body)
+        self.assertIn('"/api/mine/add"', body)
+        self.assertIn('"/api/mine/remove"', body)
+        self.assertIn('"X-Requested-With":"zones-dashboard"', body)
+        self.assertIn('lanes.push("mine")', body)
+        self.assertNotIn("innerHTML", body)
 
 
 class Command(unittest.TestCase):

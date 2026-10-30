@@ -72,6 +72,17 @@ EURUSD. Refresh re-runs the tool; it can also refresh every 5 minutes. `--port` 
 `--no-browser` does not open the browser, `--offline DIR` runs from saved charts. It shows signals only
 and never places an order.
 
+**My zones.** TradingView does not let a program read the boxes a user draws (and exporting chart data needs
+a paid plan), so the dashboard keeps its own list. The My zones card at the bottom of each market takes a
+side, a low and high price as the user's chart shows them, and the Dublin time the candle opened. The zone is
+saved in `trader/my_zones.json` and from then on every refresh checks it for entries, next to the tool's own
+zones (it shows in its own `mine` column on the ladder). When the user sends a screenshot of their boxes,
+read each box's prices off the price axis and its start off the time axis, and add it for them (a second copy
+of the file is fine to edit by hand: `{"EURUSD": [{"kind": "demand", "low": 1.11325, "high": 1.11404,
+"when": "2026-10-14 18:30", "note": ""}]}`). For gold, the user's chart price has to be entered at the top first
+so the data lines up with their spot prices. A saved zone with a typo is skipped with a note and the rest
+still run.
+
 Exit code 0 when something was found, 1 when nothing was, 2 on an error (the
 reason is one plain line).
 
