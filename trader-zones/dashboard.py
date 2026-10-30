@@ -270,10 +270,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
 
 
+class DashboardServer(HTTPServer):
+    # On Windows, address reuse lets a second dashboard bind a port that is already in use and run beside the
+    # first without any error, so it is turned off there. Elsewhere it only helps a quick restart.
+    allow_reuse_address = os.name != "nt"
+
+
 def make_server(port=PORT, config_path="trader/config.json", offline=None):
     handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
                                          "mine_file": mine_path(config_path)})
-    return HTTPServer(("127.0.0.1", port), handler)
+    return DashboardServer(("127.0.0.1", port), handler)
 
 
 PAGE = r"""<!doctype html>

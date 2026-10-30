@@ -469,11 +469,19 @@ class Command(unittest.TestCase):
         server = dash.make_server(0, "none.json")
         self.addCleanup(server.server_close)
         port = server.server_address[1]
-        err = io.StringIO()
+        err, result = io.StringIO(), []
+        # run it in a thread: a second dashboard that started anyway would serve forever and hang the tests
+        runner = threading.Thread(target=lambda: result.append(dash.main(["--port", str(port), "--no-browser"])),
+                                  daemon=True)
         with contextlib.redirect_stderr(err):
-            code = dash.main(["--port", str(port), "--no-browser"])
-        self.assertEqual(code, 2)
+            runner.start()
+            runner.join(10)
+        self.assertFalse(runner.is_alive(), "a second dashboard started on a port that was already in use")
+        self.assertEqual(result, [2])
         self.assertIn("Try --port", err.getvalue())
+
+    def test_address_reuse_is_off_on_windows_where_it_lets_two_servers_share_a_port(self):
+        self.assertEqual(dash.DashboardServer.allow_reuse_address, os.name != "nt")
 
 
 if __name__ == "__main__":
