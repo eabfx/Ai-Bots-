@@ -68,7 +68,14 @@ the user's own box).
 only from that computer). One tab per market shows the last price, the entries found with entry, stop,
 target and reward to risk, a ladder of the zones by timeframe against price, and a table of the zones. All
 times are Dublin. The "your chart price now" box does what `--spot` does and is hidden for GBPUSD and
-EURUSD. Refresh re-runs the tool; it can also refresh every 5 minutes. `--port` changes the port,
+EURUSD. Refresh re-runs the tool; it can also refresh every 5 minutes.
+The page is `trader-zones/dashboard.html`, laid out like the user's RiskDesk site: black and white, a dark or
+light theme (button top right), and three sections. **Zones** has a Frames filter (1 hour, 30 min, 15 min), the
+Show zones setting and a Visits column that lists every time price came back to a zone (the session it opened
+in, how deep, and whether it held). **Trades** has RiskDesk's position size and risk/reward calculators (the
+"Size this trade" button on an entry fills them in) and **Journal** keeps trades in the browser in RiskDesk's
+own format, so a RiskDesk backup restores there. Nothing is sent anywhere. `zones --touches` prints the same
+visit list on the command line. `--port` changes the port,
 `--no-browser` does not open the browser, `--offline DIR` runs from saved charts. It shows signals only
 and never places an order.
 

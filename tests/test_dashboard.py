@@ -66,6 +66,22 @@ class Snapshot(Patched):
         zr = self.snap()["zones"][0]
         self.assertEqual((zr["respect"], zr["respect_when"]), ("testing", None))
 
+    def test_each_zone_carries_its_visits_in_dublin_time(self):
+        t0 = self.zone["t"]
+        self.zone = dict(self.zone, touches=[
+            {"t": t0 + 3600, "end_t": t0 + 5400, "session": "ny", "depth": 0.5, "result": "held", "result_t": t0 + 7200},
+            {"t": t0 + 90000, "end_t": t0 + 90000, "session": None, "depth": 1.4, "result": "open", "result_t": None}])
+        zr = self.snap()["zones"][0]
+        self.assertEqual(len(zr["touches"]), 2)
+        one, two = zr["touches"]
+        self.assertEqual((one["when"], one["session"], one["depth"], one["result"], one["result_when"]),
+                         (dash.dublin_text(t0 + 3600), "ny", 0.5, "held", dash.dublin_text(t0 + 7200)))
+        self.assertEqual((two["session"], two["result"], two["result_when"]), (None, "open", None))
+        json.dumps(zr)
+
+    def test_a_zone_with_no_visits_has_an_empty_list(self):
+        self.assertEqual(dash.zone_row({k: v for k, v in self.zone.items() if k != "touches"})["touches"], [])
+
     def test_a_zone_with_no_verdict_still_makes_a_row(self):
         zr = dash.zone_row({k: v for k, v in self.zone.items() if k not in ("respect", "respect_t")})
         self.assertEqual((zr["respect"], zr["respect_when"]), (None, None))
@@ -261,12 +277,52 @@ class Server(Patched):
         _, _, body = self.get("/")
         self.assertIn('id="respect"', body)
         self.assertIn('<option value="hide" selected>not failed</option>', body)    # failed zones hidden unless asked
-        self.assertIn('x.tf==="mine"||!x.respect)return true', body)                 # your own boxes are never hidden
+        self.assertIn('if(x.tf==="mine")return true', body)                          # your own boxes are never hidden
         self.assertIn('if(mode==="hide")return x.respect!=="failed"', body)
         self.assertIn('if(mode==="held")return x.respect==="respected"', body)
         self.assertIn("Respected?", body)
         self.assertIn('store("zd.respect"', body)
         self.assertIn("var zs=visibleZones(d)", body)                               # the picture follows the same filter
+
+    def test_the_page_has_a_frame_filter_that_the_picture_and_table_both_follow(self):
+        _, _, body = self.get("/")
+        for f in ("60m", "30m", "15m"):
+            self.assertIn('data-frame="%s"' % f, body)
+        self.assertIn('if(frames[x.tf]===false)return false', body)
+        self.assertIn('store("zd.frames"', body)
+        self.assertIn("var zs=visibleZones(d)", body)
+        self.assertIn("var vz=visibleZones(d)", body)
+
+    def test_the_page_lists_every_visit_to_a_zone_with_its_session(self):
+        _, _, body = self.get("/")
+        self.assertIn("Visits", body)
+        self.assertIn('var SESSION_TEXT={asia:"Asia",london:"London",ny:"NY"}', body)
+        self.assertIn("touchCell(x,d)", body)
+
+    def test_the_page_has_zones_trades_and_journal_sections_and_a_dark_and_light_theme(self):
+        _, _, body = self.get("/")
+        for t in ("zones", "trades", "journal"):
+            self.assertIn('data-tab="%s"' % t, body)
+            self.assertIn('id="tab-%s"' % t, body)
+        self.assertIn('id="theme"', body)
+        self.assertIn('store("zd.theme"', body)
+        self.assertIn(':root[data-theme="light"]', body)
+        self.assertIn("RiskDesk", body)                                            # credited where the calculators came from
+
+    def test_the_trades_tab_has_position_size_and_risk_reward_and_the_micro_gold_preset(self):
+        _, _, body = self.get("/")
+        for words in ('id="ps-inst"', 'id="ps-out"', 'id="rr-out"', "Position size", "Risk / reward",
+                      'id:"MGC"', 'id:"NQ"', 'id:"XAUUSD"', "Breakeven win rate", "Size this trade"):
+            self.assertIn(words, body)
+        self.assertIn("Math.floor(raw/step+1e-9)*step", body)                       # size rounds down, never up
+
+    def test_the_journal_keeps_riskdesks_format_and_guards_the_csv_and_the_restore(self):
+        _, _, body = self.get("/")
+        self.assertIn('var JKEY="riskdesk_journal_v1"', body)                       # a RiskDesk backup restores here
+        self.assertIn("Log in journal", body)
+        self.assertIn(r"/^[=+\-@\t\r]/.test(s)", body)                              # no spreadsheet formulas from notes
+        self.assertIn("data.length>5000", body)
+        self.assertIn("cleanTrade", body)
 
     def test_the_page_lists_entries_newest_first_with_their_age(self):
         _, _, body = self.get("/")

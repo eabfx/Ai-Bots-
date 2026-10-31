@@ -267,6 +267,142 @@ class Respect(unittest.TestCase):
         self.assertEqual(z.read_config(None)["respect_atr"], 1.0)
 
 
+class Touches(unittest.TestCase):
+    """zone_touches: every separate visit to a zone. Demand zone 100 to 102, ATR 2 so a bounce needs a high of 104."""
+    SESS = {"asia": [0, 1], "london": [1, 2], "ny": [2, 3]}
+    CFG = dict(z.read_config(None), respect_atr=1.0, session_tz="dublin", sessions=SESS)
+    START = et(2026, 10, 27, 20, 0)             # 00:00 Dublin on Wed 28 Oct (New York is 4 hours behind)
+    ROWS = [(110, 111, 109, 110),               # 0  00:00 outside
+            (110, 110.5, 101.5, 102.5),         # 1  00:30 first visit, wick 0.5 into a zone 2 high
+            (102.5, 105, 102.2, 104.5),         # 2  01:00 left the zone and went past 104: held
+            (104.5, 106, 103, 105),             # 3  01:30 outside
+            (105, 105.2, 100.5, 101),           # 4  02:00 second visit
+            (101, 101.5, 100.2, 100.4),         # 5  02:30 still in it
+            (100.4, 101, 99.0, 99.2)]           # 6  03:00 closes under 100: closed through
+
+    def touches(self, rows=None, kind="demand", low=100.0, high=102.0, first=1, atr=2.0, cfg=None, atr_list=None):
+        bars = mk(self.START, 1800, rows or self.ROWS)
+        a = atr_list if atr_list is not None else [atr] * len(bars)
+        zn = {"kind": kind, "low": low, "high": high}
+        return z.zone_touches(bars, a, zn, cfg or self.CFG, first), bars
+
+    def test_each_separate_visit_is_listed_with_its_session_depth_and_what_happened(self):
+        got, bars = self.touches()
+        self.assertEqual(len(got), 2)
+        one, two = got
+        self.assertEqual((one["t"], one["end_t"], one["session"], one["depth"], one["result"], one["result_t"]),
+                         (bars[1]["t"], bars[1]["t"], "asia", 0.25, "held", bars[2]["t"]))
+        self.assertEqual((two["t"], two["end_t"], two["session"], two["depth"], two["result"], two["result_t"]),
+                         (bars[4]["t"], bars[6]["t"], "ny", 1.5, "closed through", bars[6]["t"]))
+
+    def test_bars_before_the_first_index_are_not_visits(self):
+        got, bars = self.touches(first=3)
+        self.assertEqual([g["t"] for g in got], [bars[4]["t"]])
+        got, _ = self.touches(first=len(self.ROWS))
+        self.assertEqual(got, [])
+
+    def test_a_zone_price_never_came_back_to_has_no_visits(self):
+        got, _ = self.touches([(110, 111, 109, 110)] * 5)
+        self.assertEqual(got, [])
+
+    def test_a_visit_followed_by_another_with_no_bounce_has_no_clear_reaction_and_the_last_is_open(self):
+        rows = [(110, 111, 109, 110), (110, 110.5, 101.5, 102.5), (103, 103.5, 102.5, 103.2),
+                (103, 103.2, 101.8, 102.5), (102.5, 103.0, 102.4, 102.8)]
+        got, _ = self.touches(rows)
+        self.assertEqual([g["result"] for g in got], ["no clear reaction", "open"])
+        self.assertEqual([g["result_t"] for g in got], [None, None])
+
+    def test_a_bounce_one_tick_short_is_not_held_and_the_distance_is_two_atr_from_the_far_edge(self):
+        rows = [(110, 111, 109, 110), (110, 110.5, 101.5, 102.5), (102.5, 103.99, 102.2, 103.5)]
+        self.assertEqual(self.touches(rows)[0][0]["result"], "open")
+        rows[2] = (102.5, 104.0, 102.2, 103.5)
+        self.assertEqual(self.touches(rows)[0][0]["result"], "held")
+
+    def test_the_bar_that_starts_a_visit_cannot_be_its_own_bounce(self):
+        rows = [(110, 111, 109, 110), (110, 111, 101.5, 102.5)]            # high 111, but that is where it came from
+        self.assertEqual(self.touches(rows)[0][0]["result"], "open")
+
+    def test_a_close_through_the_far_edge_ends_the_visit_as_closed_through_even_on_its_first_bar(self):
+        rows = [(110, 111, 109, 110), (110, 110.5, 98, 99)]
+        got, bars = self.touches(rows)
+        self.assertEqual((got[0]["result"], got[0]["result_t"], got[0]["depth"]), ("closed through", bars[1]["t"], 2.0))
+
+    def test_depth_one_means_the_wick_reached_the_far_edge(self):
+        rows = [(110, 111, 109, 110), (110, 110.5, 100.0, 101), (101, 101.5, 100.5, 101.2)]
+        self.assertEqual(self.touches(rows)[0][0]["depth"], 1.0)
+
+    def test_a_bar_outside_the_session_windows_has_no_session(self):
+        got, _ = self.touches(cfg=dict(self.CFG, sessions={"ny": [2, 3]}))
+        self.assertEqual([g["session"] for g in got], [None, "ny"])
+
+    def test_with_no_atr_where_it_came_back_a_visit_can_close_through_but_never_hold(self):
+        got, _ = self.touches(atr_list=[2.0, None, 2.0, 2.0, 2.0, 2.0, 2.0])
+        self.assertEqual(got[0]["result"], "no clear reaction")
+
+    def test_a_supply_zone_is_the_mirror_image(self):
+        flipped = z.flip_bars(mk(self.START, 1800, self.ROWS))
+        zn = {"kind": "supply", "low": -102.0, "high": -100.0}
+        got = z.zone_touches(flipped, [2.0] * len(flipped), zn, self.CFG, 1)
+        want, _ = self.touches()
+        self.assertEqual([(g["t"], g["session"], g["depth"], g["result"]) for g in got],
+                         [(g["t"], g["session"], g["depth"], g["result"]) for g in want])
+
+    def test_only_the_latest_visits_are_kept(self):
+        rows = [(110, 111, 109, 110)]
+        for i in range(30):
+            rows += [(110, 110.5, 101.5, 102.5), (102.5, 103, 102.5, 103)]
+        got, bars = self.touches(rows)
+        self.assertEqual(len(got), z.MAX_TOUCHES)
+        self.assertEqual(got[-1]["t"], bars[-2]["t"])
+
+    def test_find_zones_gives_every_zone_its_visits_and_the_first_is_when_it_was_touched(self):
+        bars = mk(ZSTART, 1800, zone_rows(extra=[(105.7, 105.8, 100.5, 101.0)]))
+        found = z.find_zones(bars, z.read_config(None))
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["touches"][0]["t"], found[0]["touched_t"])
+        for zn in z.find_zones(mk(ZSTART, 1800, zone_rows()), z.read_config(None)):
+            self.assertEqual(zn["touches"], [])
+
+    def test_a_hand_drawn_zone_gets_visits_when_it_is_given_the_settings(self):
+        m5 = mk(self.START, 300, [(110, 111, 109, 110)] * 30 + [(110, 110.5, 101.5, 102.5)] + [(104.5, 106, 103, 105)] * 3)
+        spec = ("demand", 100, 102, "2026-10-28 00:00")
+        zn = z.manual_zone(spec, m5, cfg=dict(self.CFG, atr_len=3))
+        self.assertEqual([t["t"] for t in zn["touches"]], [m5[30]["t"]])
+        self.assertNotIn("touches", z.manual_zone(spec, m5))
+
+    def test_the_visit_lines_say_when_where_how_deep_and_what_came_next(self):
+        got, _ = self.touches()
+        lines = z.touch_lines({"touches": got})
+        self.assertEqual(len(lines), 2)
+        self.assertIn("touch 1:", lines[0])
+        self.assertIn("(asia)", lines[0])
+        self.assertIn("25% in", lines[0])
+        self.assertIn("held", lines[0])
+        self.assertIn("(ny)", lines[1])
+        self.assertIn("through it", lines[1])
+        self.assertIn("closed through", lines[1])
+        self.assertEqual(z.touch_lines({}), [])
+        self.assertIn("no session", z.touch_lines({"touches": [dict(got[0], session=None)]})[0])
+
+    def test_the_zones_command_lists_the_visits_only_when_asked(self):
+        zones = [{"kind": "demand", "tf": "30m", "t": T0, "low": 99.0, "high": 100.0, "status": "touched",
+                  "touched_t": T0, "respect": "respected", "touches": self.touches()[0]}]
+        saved = z.collect_zones
+        z.collect_zones = lambda *a, **k: list(zones)
+        try:
+            outs = []
+            for extra in ([], ["--touches"]):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                    z.main(["zones", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json"] + extra)
+                outs.append(out.getvalue())
+        finally:
+            z.collect_zones = saved
+        self.assertNotIn("touch 1:", outs[0])
+        self.assertIn("touch 1:", outs[1])
+        self.assertIn("touch 2:", outs[1])
+
+
 class Markets(unittest.TestCase):
     def test_the_five_markets_include_mgc(self):
         self.assertEqual(sorted(z.MARKETS), ["EURUSD", "GBPUSD", "MGC", "NQ", "XAUUSD"])

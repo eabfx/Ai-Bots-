@@ -552,6 +552,55 @@ def respect_state(bars, a, zn, cfg):
     return "testing", None
 
 
+MAX_TOUCHES = 20
+
+
+def zone_touches(bars, a, zn, cfg, first):
+    """Every separate visit price made to a zone, from bar index `first` on (the bar after the move that made it).
+    A visit starts when a bar trades into the zone after one that did not, and lasts while bars keep trading
+    in or through it. Each visit says when it began, the session that bar opened in (None outside the
+    configured windows), how far in the wick went (1.0 is the far edge), and what happened next:
+    "held" (price moved `respect_atr` x ATR away before any close through the far edge),
+    "closed through", "no clear reaction" (the next visit came first) or "open" (the data ends first).
+    The latest MAX_TOUCHES visits are kept."""
+    demand = zn["kind"] == "demand"
+    height = zn["high"] - zn["low"]
+    n = len(bars)
+
+    def inside(b):
+        return b["l"] <= zn["high"] if demand else b["h"] >= zn["low"]
+
+    spans, m = [], max(first, 0)
+    while m < n:
+        if not inside(bars[m]):
+            m += 1
+            continue
+        s = m
+        while m < n and inside(bars[m]):
+            m += 1
+        spans.append((s, m - 1))
+    out = []
+    for i, (s, e) in enumerate(spans):
+        stop = spans[i + 1][0] if i + 1 < len(spans) else n
+        need = cfg["respect_atr"] * a[s] if a[s] else None
+        result, result_t = ("no clear reaction" if i + 1 < len(spans) else "open"), None
+        for k in range(s, stop):
+            b = bars[k]
+            if (b["c"] < zn["low"]) if demand else (b["c"] > zn["high"]):
+                result, result_t = "closed through", b["t"]
+                break
+            if need is not None and k > s and ((b["h"] >= zn["high"] + need) if demand else (b["l"] <= zn["low"] - need)):
+                result, result_t = "held", b["t"]
+                break
+        if demand:
+            reach = zn["high"] - min(x["l"] for x in bars[s:e + 1])
+        else:
+            reach = max(x["h"] for x in bars[s:e + 1]) - zn["low"]
+        out.append({"t": bars[s]["t"], "end_t": bars[e]["t"], "session": session_of(bars[s]["t"], cfg),
+                    "depth": round(reach / height, 2) if height > 0 else 0.0, "result": result, "result_t": result_t})
+    return out[-MAX_TOUCHES:]
+
+
 def find_zones(bars, cfg):
     """Supply and demand zones in one chart's bars, with whether price has come back."""
     n = len(bars)
@@ -597,6 +646,7 @@ def find_zones(bars, cfg):
                 z["touched_t"], z["status"] = bars[m]["t"], "touched"
                 break
         z["respect"], z["respect_t"] = respect_state(bars, a, z, cfg)
+        z["touches"] = zone_touches(bars, a, z, cfg, z["di"] + 1)
     return zones
 
 
@@ -871,6 +921,19 @@ def zone_line(sym, tf, z):
         z["status"] + (", " + note if note else ""))
 
 
+def touch_lines(z):
+    """One indented line per visit to a zone, in Dublin time."""
+    out = []
+    for i, tc in enumerate(z.get("touches") or [], 1):
+        res = tc["result"]
+        if tc.get("result_t"):
+            res += " " + fmt_dublin(tc["result_t"], tc["result_t"])
+        depth = "through it" if tc["depth"] >= 1.0 else "%d%% in" % round(tc["depth"] * 100)
+        out.append("    touch %d: %s Dublin (%s), %s, %s" % (i, fmt_dublin(tc["t"], tc["t"]), tc["session"] or "no session",
+                                                          depth, res))
+    return out
+
+
 def stage_line(sym, z, best):
     """One touched zone and the furthest step of the entry it reached."""
     text = STAGES[best]
@@ -1103,6 +1166,9 @@ def cmd_zones(args, cfg, now):
               % (sym, MARKETS[sym]["yahoo"], cfg["days"], cfg["max_per_day"], fmt_et(now)))
         for z in found:
             print(zone_line(sym, z["tf"], z))
+            if args.touches:
+                for line in touch_lines(z):
+                    print(line)
         if not found:
             print("No zones. The rules are strict: a small-bodied, long-wicked candle, then a strong move away.")
     if args.write:
@@ -1151,7 +1217,7 @@ def parse_dublin(text, flag):
     raise ZoneError('%s wants Dublin time like "2026-10-28 02:00"' % flag)
 
 
-def manual_zone(spec, m5, candle_secs=1800, flag="--zone"):
+def manual_zone(spec, m5, candle_secs=1800, flag="--zone", cfg=None):
     """A zone the user drew by hand: (kind, low, high, Dublin time of the candle). It counts as touched
     from the first 5-minute bar after that candle closes that trades back into it."""
     kind, low, high, when = spec
@@ -1177,6 +1243,9 @@ def manual_zone(spec, m5, candle_secs=1800, flag="--zone"):
         if (b["l"] <= high) if kind == "demand" else (b["h"] >= low):
             z["touched_t"], z["status"] = b["t"], "touched"
             break
+    if cfg is not None:
+        first = next((i for i, b in enumerate(m5) if b["t"] >= t + candle_secs), len(m5))
+        z["touches"] = zone_touches(m5, atr_series(m5, cfg["atr_len"]), z, cfg, first)
     return z
 
 
@@ -1185,10 +1254,10 @@ def analyse(sym, cfg, now, offline, zone_specs=None, extra_specs=None):
     `zone_specs` replaces the tool's own zones with the user's; `extra_specs` adds the user's to them."""
     m5 = closed_only(get_bars(sym, "5m", cfg["days"], offline), 300, now)
     if zone_specs:
-        zones = [manual_zone(spec, m5) for spec in zone_specs]
+        zones = [manual_zone(spec, m5, cfg=cfg) for spec in zone_specs]
     else:
         zones = collect_zones(sym, ["60m", "30m", "15m"], now, cfg, offline)
-        zones = zones + [manual_zone(spec, m5) for spec in (extra_specs or [])]
+        zones = zones + [manual_zone(spec, m5, cfg=cfg) for spec in (extra_specs or [])]
     m1 = closed_only(get_bars(sym, "1m", cfg["days"], offline), 60, now)
     m3 = closed_only(resample(m1, 180), 180, now)
     fresh = [z for z in zones if z["status"] == "fresh"]
@@ -1294,6 +1363,7 @@ def build_parser():
         s.add_argument("--out", default="trader/zones.json")
         if name == "zones":
             s.add_argument("--tf", default="all", choices=["all", "60m", "30m", "15m"])
+            s.add_argument("--touches", action="store_true", help="list every visit price made to each zone")
             s.add_argument("--hide-failed", action="store_true",
                            help="leave out zones that price closed through before bouncing off them")
     e = sub.add_parser("explain", help="why one candle is or is not a zone")
