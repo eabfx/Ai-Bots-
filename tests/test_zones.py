@@ -575,6 +575,7 @@ class YoursEntry(unittest.TestCase):
         self.assertEqual((fib["start"], fib["end"]), (99.2, 110.0))
         self.assertAlmostEqual(fib["l705"], 110.0 - 0.705 * 10.8)
         self.assertAlmostEqual(fib["l79"], 110.0 - 0.79 * 10.8)
+        self.assertEqual((fib["t0"], fib["t1"]), (self.T0 + 300 * 30, self.T0 + 300 * 41))      # leg start and end bars
         self.assertEqual(first["entry_t"], self.T0 + 300 * 47 + 300)       # the close of the inverting candle
 
     def test_the_retest_of_the_inverted_gap_is_a_second_entry(self):
@@ -605,6 +606,7 @@ class YoursEntry(unittest.TestCase):
         self.assertAlmostEqual(res[0]["entry"], -105.3)
         self.assertEqual((res[0]["fib"]["start"], res[0]["fib"]["end"]), (-99.2, -110.0))
         self.assertGreater(res[0]["fib"]["l705"], res[0]["fib"]["end"])
+        self.assertEqual((res[0]["fib"]["t0"], res[0]["fib"]["t1"]), (self.T0 + 300 * 30, self.T0 + 300 * 41))
         self.assertGreater(res[0]["stop"], -102.2)
         self.assertLess(res[0]["target"], res[0]["entry"])
 

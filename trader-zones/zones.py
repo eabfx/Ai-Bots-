@@ -887,7 +887,7 @@ def yours_long(zone, m5, cfg):
     slack = cfg["leg_zone_slack"] * (zone["high"] - zone["low"])
     near = cfg["leg_zone_near"] * (zone["high"] - zone["low"])
 
-    def attempt(L, H, hidx, reach):
+    def attempt(L, H, lidx, hidx, reach):
         """Walk forward from the bar price reached the fib. Returns (entries, where the leg search carries on,
         whether the leg's start is kept for the next leg)."""
         nonlocal best
@@ -939,7 +939,8 @@ def yours_long(zone, m5, cfg):
                 found.append({"trigger": trigger, "style": "yours", "sweep_t": t5[reach], "sweep_low": low_since,
                               "gap": (g["lo"], g["hi"]), "ote": (f_deep, f_reach), "entry_t": when, "entry": entry,
                               "stop": stop, "target": target, "rr": rr,
-                              "fib": {"start": L, "end": H, "l705": f_reach, "l79": f_deep}})
+                              "fib": {"start": L, "end": H, "l705": f_reach, "l79": f_deep,
+                                      "t0": t5[lidx], "t1": t5[hidx]}})
             if focus is not None and focus["done"]:
                 return found, j + 1, True                  # this gap has had its inversion and its retest
         return found, n, True
@@ -980,7 +981,7 @@ def yours_long(zone, m5, cfg):
             i += 1
             continue
         best = max(best, 3)
-        found, i, keep = attempt(L, H, Hidx, i)
+        found, i, keep = attempt(L, H, Lidx, Hidx, i)
         out.extend(f for f in found if not any(o["entry_t"] == f["entry_t"] for o in out))
         if keep:
             H, Hidx = None, None                           # the leg's start stays: a new leg can grow from it
@@ -1024,7 +1025,7 @@ def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
             r["ote"] = (-r["ote"][1], -r["ote"][0])
             r["entry"], r["stop"] = -r["entry"], -r["stop"]
             r["target"] = -r["target"]
-            r["fib"] = {k: -v for k, v in r["fib"].items()}
+            r["fib"] = {k: (v if k in ("t0", "t1") else -v) for k, v in r["fib"].items()}      # prices flip, times do not
         return res, best
     targets = [-z["high"] for z in fresh_other if z["kind"] == "demand"] + [-p[2] for p in pl5]
     mirror_trace = [] if trace is not None else None
@@ -1447,7 +1448,7 @@ def analyse(sym, cfg, now, offline, zone_specs=None, extra_specs=None):
             results.append(r)
     results.sort(key=lambda r: r["entry_t"])
     results = merge_same_trade(results)
-    return {"zones": zones, "fresh": fresh, "results": results, "staged": staged, "best": best_all, "m1": m1,
+    return {"zones": zones, "fresh": fresh, "results": results, "staged": staged, "best": best_all, "m1": m1, "m5": m5,
             "stage_names": STAGES_YOURS if cfg["entry_style"] == "yours" else STAGES}
 
 

@@ -76,6 +76,8 @@ leg's start cancels it), a gap in the 0.79 to 0.5 band inverts (an IFVG), and th
 inverts it, with a second entry on the retest of the inverted gap. The stop is just beyond the extreme since the
 fib was reached, where it was respected, and the target is `target_r` (3 means 1:3). Supply zones are the mirror image.
 "Tool" is the older sweep + FVG in the OTE + 3-minute CHoCH. The page starts on "yours"; the command line on "tool".
+**Indicator Stats** sits under the entries. It replays each shown entry on the 5-minute bars after it and counts targets hit, stops hit and trades still open, with the win rate and the net result in R (one trade per card, the earliest entry; a bar that touches both stop and target counts as the stop). Past results only.
+
 **My levels** holds the user's daily and 4h support and resistance zones (saved in `my_levels.json` next to the
 config, like My zones). The tool does not find them. A zone inside one is marked "at daily" or "at 4h" in the
 table, an entry says which level its zone or its entry price is in (the user enters on the 5 or 3 minute chart, so

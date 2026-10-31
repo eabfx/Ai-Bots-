@@ -80,7 +80,22 @@ def zone_row(zn, levels=()):
                         for tc in zn.get("touches") or []]}
 
 
-def signal_row(r, levels=()):
+def outcome(r, m5):
+    """What the entry did afterwards, replayed on the closed 5-minute bars that follow it: "target", "stop" or
+    "open". A bar that touches both counts as the stop (the bar does not say which came first). `r_mult` is the
+    result in units of the risk: the reward to risk on a target, -1 on a stop."""
+    long = r["side"] == "long"
+    for b in m5:
+        if b["t"] < r["entry_t"]:
+            continue
+        if (b["l"] <= r["stop"]) if long else (b["h"] >= r["stop"]):
+            return {"result": "stop", "r_mult": -1.0, "exit_t": b["t"] + 300}
+        if r["target"] is not None and ((b["h"] >= r["target"]) if long else (b["l"] <= r["target"])):
+            return {"result": "target", "r_mult": r["rr"], "exit_t": b["t"] + 300}
+    return {"result": "open", "r_mult": None, "exit_t": None}
+
+
+def signal_row(r, levels=(), m5=()):
     """An entry's levels: the saved ones its zone sits in, or its entry price sits in (the user enters on the
     5 or 3 minute chart, so the entry is often some way from the zone)."""
     by_zone = levels_at(r["zone"]["low"], r["zone"]["high"], levels)
@@ -89,7 +104,7 @@ def signal_row(r, levels=()):
     return {"fib": r.get("fib"), "style": r.get("style", "tool"), "levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
             "swept": dublin_text(r["sweep_t"]), "gap": list(r["gap"]), "entry_t": r["entry_t"],
             "entry_when": dublin_text(r["entry_t"]), "entry": r["entry"], "stop": r["stop"], "target": r["target"],
-            "rr": r["rr"],
+            "rr": r["rr"], "outcome": outcome(r, m5),
             "also": [dict(o, when=dublin_text(o["t"])) for o in r.get("also", [])]}
 
 
@@ -284,7 +299,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None, leve
             "mine": [dict(m, index=i) for i, m in enumerate(mine or [])],
             "levels": level_list,
             "zones": [zone_row(zn, level_list) for zn in found["zones"]],
-            "signals": [signal_row(r, level_list) for r in found["results"]],
+            "signals": [signal_row(r, level_list, found.get("m5") or []) for r in found["results"]],
             "stages": stages, "furthest": found["stage_names"][found["best"]],
             "style": cfg["entry_style"]}
 

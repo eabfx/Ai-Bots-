@@ -747,7 +747,46 @@ class Levels(Server):
             self.assertIn(needle, body)
 
 
+class Outcome(unittest.TestCase):
+    def bars(self, *hl):
+        return [{"t": 1000 + 300 * i, "h": h, "l": l} for i, (h, l) in enumerate(hl)]
+
+    def trade(self, side="long", stop=99.0, target=103.0):
+        return {"side": side, "entry_t": 1300, "entry": 100.0, "stop": stop, "target": target, "rr": 3.0}
+
+    def test_a_long_that_reaches_the_target_is_a_win_of_its_reward_to_risk(self):
+        out = dash.outcome(self.trade(), self.bars((101, 99.5), (100.5, 99.5), (101, 99.5), (103.2, 100)))
+        self.assertEqual((out["result"], out["r_mult"]), ("target", 3.0))
+
+    def test_a_long_that_hits_the_stop_first_is_minus_one(self):
+        out = dash.outcome(self.trade(), self.bars((101, 99.5), (100.5, 99.5), (100, 98.9), (104, 100)))
+        self.assertEqual((out["result"], out["r_mult"]), ("stop", -1.0))
+
+    def test_one_bar_touching_both_counts_as_the_stop(self):
+        out = dash.outcome(self.trade(), self.bars((101, 99.5), (100.5, 99.5), (104, 98.5)))
+        self.assertEqual(out["result"], "stop")
+
+    def test_bars_before_the_entry_are_ignored_and_nothing_hit_is_open(self):
+        out = dash.outcome(self.trade(), self.bars((110, 90), (101, 99.5), (101, 99.5)))
+        self.assertEqual((out["result"], out["r_mult"], out["exit_t"]), ("open", None, None))
+
+    def test_a_short_mirrors_it(self):
+        short = self.trade("short", stop=101.0, target=97.0)
+        self.assertEqual(dash.outcome(short, self.bars((100.5, 99), (100.5, 99), (100, 96.8)))["result"], "target")
+        self.assertEqual(dash.outcome(short, self.bars((100.5, 99), (100.5, 99), (101.1, 99)))["result"], "stop")
+
+
 class EntryStyle(Server):
+    def test_the_page_names_the_results_card_indicator_stats(self):
+        _, _, body = self.get("/")
+        self.assertIn('"Indicator Stats"', body)
+        self.assertIn("indicatorStats(groups,d)", body)
+
+    def test_every_entry_row_carries_what_it_did_next(self):
+        _, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&entry=yours")
+        for s in json.loads(js)["signals"]:
+            self.assertIn(s["outcome"]["result"], ("target", "stop", "open"))
+
     def test_the_page_has_an_entry_style_choice_that_starts_on_the_users_own(self):
         _, _, body = self.get("/")
         self.assertIn('id="entry"', body)

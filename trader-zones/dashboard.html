@@ -496,6 +496,7 @@ function render(d){
       b.appendChild(part)});
     sc.appendChild(b)});
   out.appendChild(sc);
+  if(groups.length)out.appendChild(indicatorStats(groups,d));
 
   var vz=visibleZones(d);
   var zc=el("div","card");zc.appendChild(el("h2",null,"Zones (last "+d.days+" day"+(d.days>1?"s":"")+", up to "+d.per_day+" a day)"));
@@ -511,6 +512,19 @@ function render(d){
   out.appendChild(mineCard(d));
   ticket(d,shown.length,vz.length);
 }
+function indicatorStats(groups,d){                      /* what the shown entries did next: one trade per card, the earliest entry */
+  var c=el("div","card");c.appendChild(el("h2",null,"Indicator Stats"));
+  var w=0,l=0,o=0,net=0;
+  groups.forEach(function(g){var x=g.items[0].outcome;
+    if(x.result==="target"){w++;net+=x.r_mult}else if(x.result==="stop"){l++;net-=1}else o++});
+  var done=w+l,box=el("div","stats");
+  [["Entries",String(groups.length)],["Hit target",String(w)],["Hit stop",String(l)],["Still open",String(o)],
+   ["Win rate",done?fmt(w/done*100,1)+"%":"-"],["Net result",(net>=0?"+":"")+fmt(net,1)+" R",net>=0?"var(--up)":"var(--down)"]].forEach(function(s){
+    var x=el("div","stat");x.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[2])v.style.color=s[2];x.appendChild(v);box.appendChild(x)});
+  c.appendChild(box);
+  c.appendChild(el("div","mute","Counts the entries shown above, one trade per card (the earliest entry), replayed on the 5-minute bars after it. "+
+    "A bar that touches both the stop and the target counts as the stop. Past results only. Win rate and R leave out trades still open."));
+  return c}
 function post(url,body){
   return fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
     body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})});
