@@ -34,7 +34,9 @@ def dublin_text(ts):
 def zone_row(zn):
     return {"tf": zn["tf"], "kind": zn["kind"], "low": zn["low"], "high": zn["high"], "status": zn["status"],
             "t": zn["t"], "when": dublin_text(zn["t"]),
-            "touched": dublin_text(zn["touched_t"]) if zn.get("touched_t") else None}
+            "touched": dublin_text(zn["touched_t"]) if zn.get("touched_t") else None,
+            "respect": zn.get("respect"),
+            "respect_when": dublin_text(zn["respect_t"]) if zn.get("respect_t") else None}
 
 
 def signal_row(r):
@@ -352,6 +354,7 @@ details div{margin-left:16px;font-size:13px}
 <label id="spotLabel">Your chart price now <input type="number" step="any" id="spot" placeholder="e.g. 4021.5"></label>
 <label>Days <select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></label>
 <label>Entries <select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></label>
+<label>Show zones <select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></label>
 <label>Zones per day <select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></label>
 <button class="go" id="refresh">Refresh</button>
 <label><input type="checkbox" id="auto" style="padding:0"> Refresh every 5 minutes</label>
@@ -396,7 +399,7 @@ function table(head,rows){
   wrap.appendChild(t);return wrap;
 }
 function ladder(d){
-  var zs=d.zones;if(!zs.length)return null;
+  var zs=visibleZones(d);if(!zs.length)return null;
   var lanes=["60m","30m","15m"],W=720,H=300,L=64,top=14,bot=14;
   if(zs.some(function(x){return x.tf==="mine"}))lanes.push("mine");
   var lo=Math.min.apply(null,zs.map(function(x){return x.low})),hi=Math.max.apply(null,zs.map(function(x){return x.high}));
@@ -428,6 +431,14 @@ function ladder(d){
   return s;
 }
 var lastData=null;
+var RESPECT_TEXT={respected:"respected",failed:"failed, closed through it",testing:"being tested"};
+function visibleZones(d){
+  var mode=$("respect").value;
+  return d.zones.filter(function(x){
+    if(x.tf==="mine"||!x.respect)return true;
+    if(mode==="hide")return x.respect!=="failed";
+    if(mode==="held")return x.respect==="respected";
+    return true})}
 function render(d){
   lastData=d;
   var out=$("out");out.textContent="";
@@ -473,9 +484,14 @@ function render(d){
 
   var zc=el("div","card");zc.appendChild(el("h2",null,"Zones (last "+d.days+" day"+(d.days>1?"s":"")+", up to "+d.per_day+" a day)"));
   var lad=ladder(d);if(lad)zc.appendChild(lad);
+  var vz=visibleZones(d);
   if(!d.zones.length){zc.appendChild(el("div","empty","No zones. The rules are strict: a small-bodied, long-wicked candle, then a strong move away."))}
-  else{zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Status"],d.zones.slice().reverse().map(function(x){
-    return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),x.status+(x.touched?", back in "+x.touched:"")]})))}
+  else if(!vz.length){zc.appendChild(el("div","empty","All "+d.zones.length+" zones are hidden by the Show zones setting above."))}
+  else{
+    if(vz.length<d.zones.length)zc.appendChild(el("div","mute","Showing "+vz.length+" of "+d.zones.length+" zones. Change Show zones above to see the rest."));
+    zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Status","Respected?"],vz.slice().reverse().map(function(x){
+    return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),x.status+(x.touched?", back in "+x.touched:""),
+      x.respect&&RESPECT_TEXT[x.respect]?RESPECT_TEXT[x.respect]+(x.respect_when&&x.respect!=="testing"?" "+x.respect_when:""):"-"]})))}
   out.appendChild(zc);
   out.appendChild(mineCard(d));
 }
@@ -538,10 +554,12 @@ function load(){
 function auto(){clearInterval(timer);if($("auto").checked)timer=setInterval(load,300000)}
 $("refresh").onclick=load;$("auto").onchange=auto;
 $("window").onchange=function(){store("zd.window",$("window").value);if(lastData)render(lastData)};
+$("respect").onchange=function(){store("zd.respect",$("respect").value);if(lastData)render(lastData)};
 $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
 var p0=store("zd.perday");if(p0)$("perday").value=p0;
 var w0=store("zd.window");if(w0)$("window").value=w0;
+var r0=store("zd.respect");if(r0&&["hide","all","held"].indexOf(r0)>=0)$("respect").value=r0;
 fetch("/api/markets").then(function(r){return r.json()}).then(function(j){
   markets=j.markets;var saved=store("zd.market");
   current=markets.some(function(m){return m.symbol===saved})?saved:markets[0].symbol;

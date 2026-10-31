@@ -56,6 +56,20 @@ class Snapshot(Patched):
         self.assertEqual(s["stages"], [])                     # stages only explain a day with no entry
         json.dumps(s)                                         # plain data, ready to send
 
+    def test_each_zone_carries_whether_it_was_respected_and_when(self):
+        base = dict(self.zone, respect="respected", respect_t=self.zone["t"] + 7200)
+        self.zone = base
+        zr = self.snap()["zones"][0]
+        self.assertEqual(zr["respect"], "respected")
+        self.assertEqual(zr["respect_when"], dash.dublin_text(base["respect_t"]))
+        self.zone = dict(self.zone, respect="testing", respect_t=None)
+        zr = self.snap()["zones"][0]
+        self.assertEqual((zr["respect"], zr["respect_when"]), ("testing", None))
+
+    def test_a_zone_with_no_verdict_still_makes_a_row(self):
+        zr = dash.zone_row({k: v for k, v in self.zone.items() if k not in ("respect", "respect_t")})
+        self.assertEqual((zr["respect"], zr["respect_when"]), (None, None))
+
     def test_the_last_price_is_the_last_one_minute_close(self):
         s = self.snap()
         self.assertEqual(s["price"], self.m3[-1]["c"])
@@ -242,6 +256,17 @@ class Server(Patched):
         self.assertIn("d.now_t-r.entry_t<=hrs*3600", body)
         self.assertIn('el("details"', body)
         self.assertIn("Same trade also seen from", body)
+
+    def test_the_page_can_hide_failed_zones_and_remembers_the_choice(self):
+        _, _, body = self.get("/")
+        self.assertIn('id="respect"', body)
+        self.assertIn('<option value="hide" selected>not failed</option>', body)    # failed zones hidden unless asked
+        self.assertIn('x.tf==="mine"||!x.respect)return true', body)                 # your own boxes are never hidden
+        self.assertIn('if(mode==="hide")return x.respect!=="failed"', body)
+        self.assertIn('if(mode==="held")return x.respect==="respected"', body)
+        self.assertIn("Respected?", body)
+        self.assertIn('store("zd.respect"', body)
+        self.assertIn("var zs=visibleZones(d)", body)                               # the picture follows the same filter
 
     def test_the_page_lists_entries_newest_first_with_their_age(self):
         _, _, body = self.get("/")

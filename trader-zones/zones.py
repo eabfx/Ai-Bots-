@@ -114,6 +114,7 @@ DEFAULTS = {
     "extreme_tol_atr": 0.1,
     "fvg_min_atr": 0.1,
     "sweep_buffer_atr": 0.2,
+    "respect_atr": 1.0,   # a zone is respected when price comes back to it and bounces this many ATR away
     "min_rr": 2.0,
     "target_r": 3.0,      # take profit at this many times the risk; 0 uses the nearest opposing zone or swing
     "days": 2,
@@ -518,6 +519,37 @@ def base_candidates(bars, a, i, up, cfg):
     return out
 
 
+def respect_state(bars, a, zn, cfg):
+    """Has price come back to this zone and held it? Returns (state, time of the verdict).
+    "respected": after coming back it bounced `respect_atr` x ATR away from the zone before any bar closed
+                 through the far edge. "failed": a bar closed through the far edge first.
+    "testing":   it came back and neither has happened yet. "untested": price never came back."""
+    demand = zn["kind"] == "demand"
+    start = None
+    for m in range(zn["di"] + 1, len(bars)):
+        if (bars[m]["l"] <= zn["high"]) if demand else (bars[m]["h"] >= zn["low"]):
+            start = m
+            break
+    if start is None:
+        return "untested", None
+    if not a[start]:
+        return "testing", None
+    need = cfg["respect_atr"] * a[start]
+    for m in range(start, len(bars)):
+        b = bars[m]
+        if demand:
+            if b["c"] < zn["low"]:
+                return "failed", b["t"]
+            if m > start and b["h"] >= zn["high"] + need:
+                return "respected", b["t"]
+        else:
+            if b["c"] > zn["high"]:
+                return "failed", b["t"]
+            if m > start and b["l"] <= zn["low"] - need:
+                return "respected", b["t"]
+    return "testing", None
+
+
 def find_zones(bars, cfg):
     """Supply and demand zones in one chart's bars, with whether price has come back."""
     n = len(bars)
@@ -562,6 +594,7 @@ def find_zones(bars, cfg):
             if hit:
                 z["touched_t"], z["status"] = bars[m]["t"], "touched"
                 break
+        z["respect"], z["respect_t"] = respect_state(bars, a, z, cfg)
     return zones
 
 
@@ -824,10 +857,14 @@ def px(sym, x):
     return "-" if x is None else "%.*f" % (MARKETS[sym]["digits"], x)
 
 
+RESPECT_WORDS = {"respected": "respected", "failed": "failed, closed through it", "testing": "being tested"}
+
+
 def zone_line(sym, tf, z):
+    note = RESPECT_WORDS.get(z.get("respect"))
     return "%-6s %-4s zone candle %s ET (%s Dublin)  %s to %s  %s" % (
         z["kind"].upper(), tf, fmt_et(z["t"]), fmt_dublin(z["t"], z["t"]), px(sym, z["low"]), px(sym, z["high"]),
-        z["status"])
+        z["status"] + (", " + note if note else ""))
 
 
 def stage_line(sym, z, best):
@@ -1053,6 +1090,8 @@ def cmd_zones(args, cfg, now):
     sym = resolve(args.symbol)
     tfs = ["60m", "30m", "15m"] if args.tf == "all" else [args.tf]
     found = collect_zones(sym, tfs, now, cfg, args.offline)
+    if args.hide_failed:
+        found = [z for z in found if z.get("respect") != "failed"]
     if args.json:
         print(json.dumps(found, indent=2))
     else:
@@ -1251,6 +1290,8 @@ def build_parser():
         s.add_argument("--out", default="trader/zones.json")
         if name == "zones":
             s.add_argument("--tf", default="all", choices=["all", "60m", "30m", "15m"])
+            s.add_argument("--hide-failed", action="store_true",
+                           help="leave out zones that price closed through before bouncing off them")
     e = sub.add_parser("explain", help="why one candle is or is not a zone")
     e.add_argument("symbol")
     e.add_argument("--at", required=True, help='New York time of the candle, e.g. "2026-10-27 02:00"')

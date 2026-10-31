@@ -123,6 +123,15 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    before the candle does not matter, so a pause inside a leg counts. One move
    gets one zone.
 3. Fresh until price trades back into it, then touched.
+   **Respected.** The user's rule is that a zone has to be respected at some point. Once price trades
+   back into a zone (from the bar after the move that made it), it is judged: *respected* when price then
+   moves away from it by `respect_atr` x ATR (default 1.0, measured with the ATR where price came back; the
+   bar that first comes back cannot count as its own bounce), *failed* when a bar closes through the far
+   edge before that happens (a wick through does not fail it), otherwise *being tested*. A zone that held
+   once stays respected. A fresh zone is untested, and a hand-drawn zone has no verdict. `zones` prints the
+   verdict on each line and `--hide-failed` leaves out the failed ones; the dashboard has a "Show zones"
+   setting (not failed, all, respected only) that never hides the user's own boxes. The verdict is shown and
+   filtered only: it does not change which entries are found.
 4. Only zones from the last 2 days, at most 3 per day, and only candles that
    opened in an Asia, London or New York window (Dublin time).
 

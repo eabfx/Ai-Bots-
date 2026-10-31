@@ -117,6 +117,156 @@ def chart_json(bars):
         "error": None}})
 
 
+class Respect(unittest.TestCase):
+    """respect_state: has price come back to a zone and held it? Bars are (open, high, low, close)."""
+    CFG = dict(z.read_config(None), respect_atr=1.0)
+
+    def run_case(self, rows, kind="demand", low=100.0, high=102.0, di=0, atr=2.0, cfg=None, atr_list=None):
+        bars = mk(T0, 1800, rows)
+        a = atr_list if atr_list is not None else [atr] * len(bars)
+        zn = {"kind": kind, "low": low, "high": high, "di": di}
+        return z.respect_state(bars, a, zn, cfg or self.CFG), bars
+
+    def test_a_zone_price_never_came_back_to_is_untested(self):
+        (state, when), _ = self.run_case([(110, 112, 109, 111)] * 3 + [(111, 113, 108, 112)] * 3)
+        self.assertEqual((state, when), ("untested", None))
+
+    def test_a_bounce_of_one_atr_after_coming_back_is_respected(self):
+        rows = [(110, 112, 109, 111), (103, 103.5, 101.5, 102.5), (102.5, 103.5, 102, 103), (103, 103.9, 102, 103.2),
+                (103.2, 103.8, 101.2, 101.5), (101.5, 104.1, 101, 104)]
+        (state, when), bars = self.run_case(rows, di=0)
+        self.assertEqual(state, "respected")
+        self.assertEqual(when, bars[5]["t"])                    # the first bar whose high reached 102 + 2.0 = 104
+
+    def test_a_bounce_one_tick_short_of_the_distance_is_not_enough(self):
+        rows = [(110, 112, 109, 111), (103, 103.5, 101.5, 102.5), (102.5, 103.99, 101.8, 103.5),
+                (103.5, 103.9, 102.5, 103.2)]
+        (state, _), _ = self.run_case(rows, di=0)
+        self.assertEqual(state, "testing")
+        rows[3] = (103.5, 104.0, 102.5, 103.2)                  # a high of exactly 102 + 2 counts
+        (state, _), _ = self.run_case(rows, di=0)
+        self.assertEqual(state, "respected")
+
+    def test_the_bar_that_first_comes_back_cannot_be_its_own_bounce(self):
+        # it opened far above the zone and fell into it: its high is far above, but that is where it came from
+        rows = [(110, 112, 109, 111), (111, 112, 101.5, 102.5), (102.5, 103, 102, 102.8)]
+        (state, _), _ = self.run_case(rows, di=0)
+        self.assertEqual(state, "testing")
+
+    def test_a_close_through_the_far_edge_before_any_bounce_is_a_fail(self):
+        rows = [(110, 112, 109, 111), (105, 105.5, 101.5, 104), (104, 104.5, 98, 99.5), (99.5, 106, 99, 105.5)]
+        (state, when), bars = self.run_case(rows, di=0)
+        self.assertEqual(state, "failed")
+        self.assertEqual(when, bars[2]["t"])                    # a later bounce does not undo it
+
+    def test_a_wick_through_the_far_edge_is_not_a_fail_only_a_close_is(self):
+        rows = [(110, 112, 109, 111), (105, 105.5, 101.5, 104), (104, 104.5, 97, 101.2), (101.2, 106.5, 101, 106)]
+        (state, _), _ = self.run_case(rows, di=0)
+        self.assertEqual(state, "respected")
+
+    def test_the_bar_that_first_comes_back_can_itself_close_through(self):
+        rows = [(110, 112, 109, 111), (105, 105.5, 97, 98), (98, 99, 97, 98.5)]
+        (state, when), bars = self.run_case(rows, di=0)
+        self.assertEqual((state, when), ("failed", bars[1]["t"]))
+
+    def test_a_zone_that_held_once_stays_respected_if_price_closes_through_it_later(self):
+        rows = [(110, 112, 109, 111), (105, 105.5, 101.5, 104), (104, 106.5, 103, 106), (106, 106, 96, 97)]
+        (state, when), bars = self.run_case(rows, di=0)
+        self.assertEqual((state, when), ("respected", bars[2]["t"]))
+
+    def test_only_bars_after_the_move_that_made_the_zone_count(self):
+        # bar 1 trades into the zone but belongs to the move itself (di = 1), so the zone is still untested
+        rows = [(110, 112, 109, 111), (105, 106, 101, 105.5), (105.5, 108, 104, 107)]
+        (state, _), _ = self.run_case(rows, di=1)
+        self.assertEqual(state, "untested")
+        (state, _), _ = self.run_case(rows, di=0)
+        self.assertEqual(state, "respected")
+
+    def test_a_supply_zone_is_the_mirror_image(self):
+        rows = [(90, 91, 88, 89), (97, 98.5, 96.5, 97.5), (97.5, 98, 96.2, 97), (97, 97.5, 95.9, 96)]
+        (state, when), bars = self.run_case(rows, kind="supply", low=98.0, high=100.0, di=0)
+        self.assertEqual((state, when), ("respected", bars[3]["t"]))    # a low of 95.9 is past 98 - 2 = 96
+        rows[3] = (97, 97.5, 96.1, 96.5)
+        (state, _), _ = self.run_case(rows, kind="supply", low=98.0, high=100.0, di=0)
+        self.assertEqual(state, "testing")                      # 96.1 is short of 96
+        rows = [(90, 91, 88, 89), (95, 98.5, 94, 96), (96, 102, 95, 101)]
+        (state, _), _ = self.run_case(rows, kind="supply", low=98.0, high=100.0, di=0)
+        self.assertEqual(state, "failed")                       # closed above the far edge
+
+    def test_respect_atr_sets_how_far_the_bounce_must_be(self):
+        rows = [(110, 112, 109, 111), (103, 103.5, 101.5, 102.5), (102.5, 103.5, 102, 103), (103, 105.5, 102.5, 105.4)]
+        for atr, want, bar in ((0.5, "respected", 2), (1.0, "respected", 3), (1.75, "respected", 3),
+                               (1.76, "testing", None), (2.0, "testing", None)):
+            (state, when), bars = self.run_case(rows, di=0, cfg=dict(self.CFG, respect_atr=atr))
+            self.assertEqual(state, want, atr)                  # the distance is 2.0 * respect_atr above 102
+            self.assertEqual(when, bars[bar]["t"] if bar else None, atr)
+
+    def test_the_distance_uses_the_atr_where_price_came_back(self):
+        rows = [(110, 112, 109, 111), (103, 103.5, 101.5, 102.5), (102.5, 105, 102, 104.5), (104.5, 108, 104, 107)]
+        (state, _), _ = self.run_case(rows, di=0, atr_list=[9.0, 1.0, 9.0, 9.0])    # 1.0 where it came back
+        self.assertEqual(state, "respected")
+        (state, _), _ = self.run_case(rows, di=0, atr_list=[1.0, 9.0, 1.0, 1.0])    # 9.0 where it came back
+        self.assertEqual(state, "testing")
+
+    def test_with_no_atr_where_it_came_back_the_zone_is_only_being_tested(self):
+        rows = [(110, 112, 109, 111), (103, 103.5, 101.5, 102.5), (102.5, 108, 102, 107)]
+        (state, _), _ = self.run_case(rows, di=0, atr_list=[2.0, None, 2.0])
+        self.assertEqual(state, "testing")
+        (state, _), _ = self.run_case(rows, di=0, atr_list=[2.0, 0.0, 2.0])
+        self.assertEqual(state, "testing")
+
+    def test_find_zones_marks_every_zone_with_the_same_verdict_respect_state_gives(self):
+        bars = mk(ZSTART, 1800, zone_rows())
+        cfg = z.read_config(None)
+        found = z.find_zones(bars, cfg)
+        self.assertTrue(found)
+        a = z.atr_series(bars, cfg["atr_len"])
+        for zn in found:
+            self.assertEqual((zn["respect"], zn["respect_t"]), z.respect_state(bars, a, zn, cfg))
+            if zn["status"] == "fresh":
+                self.assertEqual(zn["respect"], "untested")
+
+    def test_a_zone_line_says_the_verdict_and_stays_quiet_for_an_untested_zone(self):
+        base = {"kind": "demand", "t": T0, "low": 99.0, "high": 100.0, "status": "touched"}
+        self.assertTrue(z.zone_line("MGC", "30m", dict(base, respect="respected")).endswith("touched, respected"))
+        self.assertTrue(z.zone_line("MGC", "30m", dict(base, respect="failed")).endswith("touched, failed, closed through it"))
+        self.assertTrue(z.zone_line("MGC", "30m", dict(base, respect="testing")).endswith("touched, being tested"))
+        self.assertTrue(z.zone_line("MGC", "30m", dict(base, status="fresh", respect="untested")).endswith("fresh"))
+        self.assertTrue(z.zone_line("MGC", "30m", base).endswith("touched"))     # a hand-drawn zone has no verdict
+
+    def test_hide_failed_leaves_out_failed_zones_in_the_list_and_the_json(self):
+        zs = [{"kind": "demand", "tf": "30m", "t": T0 + 1800 * i, "low": 99.0 + i, "high": 100.0 + i,
+               "status": "touched", "touched_t": T0, "respect": r}
+              for i, r in enumerate(("respected", "failed", "testing", "untested"))]
+        saved = z.collect_zones
+        z.collect_zones = lambda *a, **k: list(zs)
+        try:
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                z.main(["zones", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json"])
+            all_text = out.getvalue()
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                z.main(["zones", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json", "--hide-failed"])
+            hidden = out.getvalue()
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                z.main(["zones", "MGC", "--now", "2026-10-26 20:00", "--config", "none.json", "--hide-failed",
+                        "--json"])
+            as_json = json.loads(out.getvalue())
+        finally:
+            z.collect_zones = saved
+        self.assertIn("failed, closed through it", all_text)
+        self.assertNotIn("failed", hidden)
+        self.assertEqual(len([ln for ln in hidden.splitlines() if ln.startswith("DEMAND")]), 3)
+        self.assertEqual([r["respect"] for r in as_json], ["respected", "testing", "untested"])
+
+    def test_a_hand_drawn_zone_has_no_verdict(self):
+        zn = z.manual_zone(("demand", "99", "100", "2026-10-26 08:00"), [])
+        self.assertIsNone(zn.get("respect"))
+        self.assertEqual(z.read_config(None)["respect_atr"], 1.0)
+
+
 class Markets(unittest.TestCase):
     def test_the_five_markets_include_mgc(self):
         self.assertEqual(sorted(z.MARKETS), ["EURUSD", "GBPUSD", "MGC", "NQ", "XAUUSD"])
