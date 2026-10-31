@@ -1015,6 +1015,18 @@ class TradesPage(Server):
         self.assertIn("Firms that trail on open profit", body)          # the page says what it does not model
 
 
+class JournalImport(Server):
+    def test_the_journal_has_a_time_field_session_and_hour_views_and_a_csv_importer(self):
+        _, _, body = self.get("/")
+        for needle in ('id="j-time"', 'data-by="session"', 'data-by="hour"', 'id="imp-file"', 'id="imp-go"', 'id="imp-pl"',
+                       "Import from a broker CSV", "nothing is uploaded", "already in your journal", "function csvParse(",
+                       "function parseWhen(", "function parseNum(", "Asia (00:00-07:00)"):
+            self.assertIn(needle, body)
+        journal = body.split("/* ---------------- journal")[1].split("/* ---------------- macro desk")[0]
+        self.assertNotIn("innerHTML", journal)                         # file contents are only ever set as text
+        self.assertNotIn("fetch(", journal.split("/* import from a broker CSV")[1].split("function jError(")[0])
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

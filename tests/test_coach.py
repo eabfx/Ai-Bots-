@@ -207,6 +207,24 @@ class Reflection(unittest.TestCase):
             self.assertNotIn(key, plain)
 
 
+class TimeOfDay(unittest.TestCase):
+    def test_sessions_follow_the_dublin_clock(self):
+        for clock, name in (("00:00", "Asia"), ("06:59", "Asia"), ("07:00", "London"), ("12:59", "London"), ("13:00", "New York"),
+                            ("20:59", "New York"), ("21:00", "Late"), ("23:59", "Late")):
+            self.assertTrue(coach.session(clock).startswith(name), clock)
+        for bad in ("", None, "ab:cd", "25:00"):
+            self.assertEqual(coach.session(bad), "", bad)
+
+    def test_times_are_kept_only_when_valid_and_grouped_when_present(self):
+        rows = coach.clean_trades([{"pl": 100, "time": "14:35"}, {"pl": -50, "time": "14:10"}, {"pl": 20, "time": "9:5"},
+                                   {"pl": 10, "time": "24:00"}, {"pl": 5}])
+        self.assertEqual([r.get("time") for r in rows], ["14:35", "14:10", None, None, None])
+        s = coach.summarise(rows)
+        self.assertEqual({r["name"]: r["trades"] for r in s["by_hour"]}, {"14:00": 2, "(no time)": 3})
+        self.assertEqual({r["name"]: r["net_pl"] for r in s["by_session"]}["New York (13:00-21:00)"], 50.0)
+        self.assertNotIn("by_session", coach.summarise(coach.clean_trades([{"pl": 5}])))
+
+
 class Gemini(unittest.TestCase):
     def reply(self, text="Gold is your edge."):
         return lambda url, headers, body: (200, json.dumps(

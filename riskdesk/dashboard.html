@@ -429,13 +429,14 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 
 <div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
-<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button></div></div>
+<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
 <div id="j-groups"></div></div>
 
 <div class="card" id="j-form">
 <h3 class="jh">Log a trade</h3>
-<div class="frow two">
+<div class="frow three">
 <div><label for="j-date">Date</label><input type="date" id="j-date"></div>
+<div><label for="j-time">Time (Dublin, optional)</label><input type="time" id="j-time"></div>
 <div><label for="j-inst">Instrument</label><input type="text" id="j-inst" placeholder="EURUSD, NQ, XAUUSD" maxlength="20"></div>
 </div>
 <div class="frow two">
@@ -459,6 +460,29 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Restore JSON<input type="file" id="j-restore" accept=".json" style="display:none"></label>
 </div>
 <div class="err" id="j-err" style="display:none"></div>
+</div>
+
+<div class="card" id="imp-card">
+<h3 class="jh">Import from a broker CSV</h3>
+<p class="sub" style="margin-bottom:10px">Choose the trade history file your broker or TradingView exports. It is read in this browser and nothing is uploaded. You check the columns and a preview before anything is added, and trades already in the journal are skipped.</p>
+<label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Choose CSV file<input type="file" id="imp-file" accept=".csv,.txt,text/csv" style="display:none"></label>
+<div class="err" id="imp-err" style="display:none"></div>
+<div id="imp-map" hidden>
+<div class="frow three" style="margin-top:14px">
+<div><label for="imp-when">Date and time</label><select id="imp-when"></select></div>
+<div><label for="imp-inst">Instrument</label><select id="imp-inst"></select></div>
+<div><label for="imp-dir">Direction (optional)</label><select id="imp-dir"></select></div>
+</div>
+<div class="frow three">
+<div><label for="imp-pl">Profit / loss</label><select id="imp-pl"></select></div>
+<div><label for="imp-fee">Fees to take off (optional)</label><select id="imp-fee"></select></div>
+<div><label for="imp-risk">Risk per trade, to work out R (optional)</label><input type="number" id="imp-risk" min="0" step="any" placeholder="e.g. 100"></div>
+</div>
+<div class="jsub" id="imp-sum"></div>
+<div class="scroll"><table><thead><tr><th>Date</th><th>Time</th><th>Instrument</th><th>Dir</th><th>P/L</th></tr></thead><tbody id="imp-prev"></tbody></table></div>
+<div class="btnrow"><button class="btn" id="imp-go" type="button">Import trades</button><button class="btn ghost" id="imp-cancel" type="button">Cancel</button></div>
+<div class="hint">Times are used exactly as they appear in the file, so they only count as Dublin time if your broker exports Dublin time. Many brokers put the opening side on a closing row, so check the direction column in the preview. If your profit column is already net of fees, leave fees empty.</div>
+</div>
 </div>
 
 <div class="card"><h3 class="jh">Trades</h3><div class="scroll"><table>
@@ -1014,6 +1038,7 @@ function cleanTrade(t){
   if(!isFinite(pl))return null;
   return{date:String(t.date||"").slice(0,10),inst:String(t.inst||"-").slice(0,20),dir:t.dir==="short"?"short":"long",
     tag:String(t.tag||"").slice(0,30),risk:isFinite(risk)&&risk>0?risk:0,pl:pl,notes:String(t.notes||"").slice(0,300),
+    time:/^([01]\d|2[0-3]):[0-5]\d$/.test(String(t.time||""))?String(t.time):"",
     grade:g&&"ABCD".indexOf(g)>=0?g:"",plan:t.plan==="followed"||t.plan==="deviated"?t.plan:"",
     emotion:String(t.emotion||"").trim().toLowerCase().slice(0,20)}
 }
@@ -1031,7 +1056,8 @@ function sinceDays(n){var c=dparse(today())-(n-1)*DAY;return trades.filter(funct
 function jView(){return jRange==="all"?trades.slice():sinceDays(+jRange)}
 function jChron(list){
   return list.map(function(t,i){return{t:t,i:i}}).sort(function(a,b){
-    var da=dparse(a.t.date)||0,db=dparse(b.t.date)||0;return da!==db?da-db:b.i-a.i}).map(function(x){return x.t})}
+    var da=dparse(a.t.date)||0,db=dparse(b.t.date)||0;if(da!==db)return da-db;
+    var ta=a.t.time||"",tb=b.t.time||"";return ta!==tb?(ta<tb?-1:1):b.i-a.i}).map(function(x){return x.t})}
 function jStats(list){
   var s={n:list.length,w:0,l:0,net:0,gw:0,gl:0,rs:[],wr:[],planned:0,followed:0};
   list.forEach(function(t){
@@ -1117,17 +1143,25 @@ function jWeek(list){
 function jGroups(list){
   var box=$("j-groups");box.textContent="";
   var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},
-    plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""}}[jBy],
+    plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""},
+    session:function(t){return t.time?jSession(t.time):""},hour:function(t){return t.time?t.time.slice(0,2)+":00":""}}[jBy],
     hint={tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
-      plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are."}[jBy],
+      plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are.",
+      session:"Add the time to your trades, or import them with times, to see which session pays.",hour:"Add the time to your trades, or import them with times, to see which hours pay."}[jBy],
     g={},unset=0;
   list.forEach(function(t){var k=key(t);if(!k){unset++;return}(g[k]=g[k]||[]).push(t)});
-  var names=Object.keys(g).sort(function(a,b){return g[b].length-g[a].length||(a<b?-1:1)}).slice(0,10);
+  var order=jBy==="session"?SESSION_NAMES:null,
+    names=Object.keys(g).sort(function(a,b){
+      if(order)return order.indexOf(a)-order.indexOf(b);
+      if(jBy==="hour")return a<b?-1:1;
+      return g[b].length-g[a].length||(a<b?-1:1)}).slice(0,jBy==="hour"?24:10);
   if(!names.length){box.appendChild(el("div","empty",list.length?(hint||"Nothing to group yet."):"No trades in this period."));return}
   var mx=Math.max.apply(null,names.map(function(k){return Math.abs(jStats(g[k]).net)}))||1;
   bars(box,names.map(function(k){var s=jStats(g[k]);
     return{name:k,sub:s.n+" trade"+(s.n===1?"":"s")+", "+Math.round(s.w/s.n*100)+"% won"+(s.avgR===null?"":", "+fmt(s.avgR,2)+"R avg"),v:s.net,text:signed(s.net)}}),mx);
   if(unset)box.appendChild(el("div","jsub",unset+" trade"+(unset===1?"":"s")+" without this set are left out."))}
+var SESSION_NAMES=["Asia (00:00-07:00)","London (07:00-13:00)","New York (13:00-21:00)","Late (21:00-24:00)"];
+function jSession(time){var h=parseInt(time.slice(0,2),10);return h<7?SESSION_NAMES[0]:h<13?SESSION_NAMES[1]:h<21?SESSION_NAMES[2]:SESSION_NAMES[3]}
 function jRender(){
   var list=jView(),st=jStats(list);
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
@@ -1153,7 +1187,7 @@ function jRender(){
   list.slice(0,jShown).forEach(function(t){
     var r=t.risk>0?t.pl/t.risk:null,tr=el("tr");
     function td(text,c){var n=el("td",c||null,text);tr.appendChild(n);return n}
-    td(t.date);td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
+    td(t.date+(t.time?" "+t.time:""));td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
     td(t.emotion||"");td(t.risk?money(t.risk):"-");
     td(signed(t.pl),t.pl>=0?"pos":"neg");
     td(r===null?"-":fmt(r,2)+"R",r===null?null:(r>=0?"pos":"neg"));
@@ -1169,6 +1203,108 @@ $("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}
 $("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
 $("j-more").onclick=function(){jShown+=50;jRender()};
 $("j-log-go").onclick=function(){$("j-form").scrollIntoView({behavior:"smooth",block:"start"});$("j-pl").focus({preventScroll:true})};
+/* import from a broker CSV: the columns are guessed, you check them, then it adds only what is new */
+function csvParse(text){
+  text=text.replace(/^\uFEFF/,"");
+  var first=text.split(/\r?\n/,1)[0]||"",delim=[",",";","\t"].map(function(d){return[d,first.split(d).length]}).sort(function(a,b){return b[1]-a[1]})[0][0];
+  var rows=[],row=[],cell="",q=false;
+  function end(){row.push(cell);cell="";if(row.some(function(x){return x.trim()!==""}))rows.push(row);row=[]}
+  for(var i=0;i<text.length;i++){var c=text.charAt(i);
+    if(q){if(c==='"'){if(text.charAt(i+1)==='"'){cell+='"';i++}else q=false}else cell+=c}
+    else if(c==='"')q=true;
+    else if(c===delim){row.push(cell);cell=""}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&text.charAt(i+1)==="\n")i++;end()}
+    else cell+=c}
+  if(cell!==""||row.length)end();
+  return rows}
+function parseNum(s){
+  s=String(s===undefined||s===null?"":s).trim();if(!s)return null;
+  var neg=/^\(.*\)$/.test(s)||/^[-\u2212]/.test(s)||/-$/.test(s);
+  s=s.replace(/[^0-9.,]/g,"");if(!/\d/.test(s))return null;
+  var lc=s.lastIndexOf(","),ld=s.lastIndexOf(".");
+  if(lc>=0&&ld>=0){s=lc>ld?s.replace(/\./g,"").replace(",","."):s.replace(/,/g,"")}
+  else if(lc>=0){s=/,\d{1,2}$/.test(s)&&s.split(",").length===2?s.replace(",","."):s.replace(/,/g,"")}
+  var v=parseFloat(s);return isFinite(v)?(neg?-v:v):null}
+function parseWhen(s){
+  s=String(s||"").trim();if(!s)return null;
+  var y,mo,d,h=null,mi=null,m=/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[T,\s]+(\d{1,2}):(\d{2}))?/.exec(s);
+  if(m){y=+m[1];mo=+m[2];d=+m[3];if(m[4]!==undefined){h=+m[4];mi=+m[5]}}
+  else if((m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:[T,\s]+(\d{1,2}):(\d{2}))?/.exec(s))){
+    var a=+m[1],b=+m[2];y=+m[3];if(y<100)y+=2000;
+    if(a>12){d=a;mo=b}else if(b>12){mo=a;d=b}else{d=a;mo=b}                    // 30/10/2026 and 10/30/2026 both work. Ambiguous ones are read day first, as in Dublin
+    if(m[4]!==undefined){h=+m[4];mi=+m[5]}}
+  else{var t=Date.parse(s);if(!isFinite(t))return null;var n=new Date(t);y=n.getFullYear();mo=n.getMonth()+1;d=n.getDate();
+    if(/\d:\d\d/.test(s)){h=n.getHours();mi=n.getMinutes()}}
+  var ap=/\b(am|pm)\b/i.exec(s);if(ap&&h!==null&&m){if(/pm/i.test(ap[1])&&h<12)h+=12;if(/am/i.test(ap[1])&&h===12)h=0}
+  if(!(y>=2000&&y<=2100&&mo>=1&&mo<=12&&d>=1&&d<=31))return null;
+  if(h!==null&&!(h<24&&mi<60))h=mi=null;
+  function p(n){return("0"+n).slice(-2)}
+  return{date:y+"-"+p(mo)+"-"+p(d),time:h===null?"":p(h)+":"+p(mi)}}
+var impRows=null,impHead=[];
+function impGuess(head){
+  function find(list){for(var k=0;k<list.length;k++)for(var i=0;i<head.length;i++)if(list[k].test(head[i]))return i;return -1}
+  return{when:find([/(clos|exit|sold).*(time|date)|(time|date).*(clos|exit)/i,/date.*time|time.*date/i,/date/i,/time/i]),
+    inst:find([/symbol|instrument|contract|product|market|ticker|asset/i]),
+    dir:find([/^(side|type|direction|action|buy.?sell|b\/s|long.?short)$/i,/side|direction/i]),
+    pl:find([/net.*(p.?l|profit)/i,/realized|realised/i,/profit|p.?&.?l|pnl|p\/l|gain/i]),
+    fee:-1}}
+function impFill(sel,head,idx,optional){
+  sel.textContent="";var o=el("option",null,optional?"(none)":"(choose a column)");o.value="-1";sel.appendChild(o)
+  head.forEach(function(h,i){var o=el("option",null,h||"(column "+(i+1)+")");o.value=String(i);sel.appendChild(o)});
+  sel.value=String(idx)}
+function impTrades(){
+  var c={when:+$("imp-when").value,inst:+$("imp-inst").value,dir:+$("imp-dir").value,pl:+$("imp-pl").value,fee:+$("imp-fee").value},
+    risk=num("imp-risk"),out=[],skipped=0;
+  if(c.when<0||c.pl<0||c.inst<0)return{rows:[],skipped:0,need:true};
+  impRows.forEach(function(r){
+    var w=parseWhen(r[c.when]),pl=parseNum(r[c.pl]);
+    if(!w||pl===null){skipped++;return}
+    if(c.fee>=0){var fee=parseNum(r[c.fee]);if(fee!==null)pl-=Math.abs(fee)}
+    var side=c.dir>=0?String(r[c.dir]||"").trim().toLowerCase():"",short=/^(s|sell|short|sld)/.test(side);
+    out.push(cleanTrade({date:w.date,time:w.time,inst:String(r[c.inst]||"-").trim().toUpperCase()||"-",dir:short?"short":"long",
+      risk:risk>0?risk:0,pl:Math.round(pl*100)/100,tag:"",notes:"imported"}))});
+  return{rows:out.filter(function(t){return t}),skipped:skipped}}
+function impKey(t){return[t.date,t.time,t.inst,t.dir,t.pl.toFixed(2)].join("|")}
+function impPreview(){
+  var res=impTrades(),have={};
+  if(res.need){impRows.fresh=[];$("imp-sum").textContent="Choose which columns hold the date and time, the instrument and the profit or loss. The guess for one of them did not find a match.";
+    $("imp-prev").textContent="";$("imp-go").disabled=true;return}trades.forEach(function(t){have[impKey(t)]=(have[impKey(t)]||0)+1});
+  var fresh=[];res.rows.forEach(function(t){var k=impKey(t);if(have[k]>0)have[k]--;else fresh.push(t)});
+  impRows.fresh=fresh;
+  $("imp-sum").textContent=pl(res.rows.length,"trade")+" read from the file, "+res.skipped+" row"+(res.skipped===1?"":"s")+" skipped (no usable date or profit), "+
+    (res.rows.length-fresh.length)+" already in your journal. "+pl(fresh.length,"new trade")+" will be added.";
+  var tb=$("imp-prev");tb.textContent="";
+  fresh.slice(0,6).forEach(function(t){var tr=el("tr");[t.date,t.time||"-",t.inst,t.dir==="long"?"L":"S",signed(t.pl)].forEach(function(x,i){tr.appendChild(el("td",i===4?(t.pl>=0?"pos":"neg"):null,x))});tb.appendChild(tr)});
+  $("imp-go").disabled=!fresh.length}
+function impError(m){var e=$("imp-err");e.textContent=m||"";e.style.display=m?"":"none"}
+$("imp-file").onchange=function(ev){
+  var f=ev.target.files[0];if(!f)return;impError("");$("imp-map").hidden=true;
+  if(f.size>5000000){impError("That file is over 5 MB. Export a shorter date range.");ev.target.value="";return}
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var rows=csvParse(String(rd.result)),hi=0;
+      for(var i=0;i<Math.min(rows.length,20);i++){var hit=rows[i].filter(function(c){return /symbol|instrument|contract|profit|p.?&.?l|pnl|date|time|side|type|price|qty|quantity/i.test(c)}).length;if(hit>=3){hi=i;break}}
+      if(rows.length<2)throw new Error("empty");
+      impHead=rows[hi].map(function(h){return h.trim()});impRows=rows.slice(hi+1).slice(0,5000);
+      var g=impGuess(impHead);
+      impFill($("imp-when"),impHead,g.when,false);impFill($("imp-inst"),impHead,g.inst,false);impFill($("imp-dir"),impHead,g.dir,true);
+      impFill($("imp-pl"),impHead,g.pl,false);impFill($("imp-fee"),impHead,g.fee,true);
+      $("imp-map").hidden=false;impPreview()
+    }catch(e){impError("That does not look like a CSV trade history. Export the closed trades or history as CSV from your broker and try again.")}
+    ev.target.value="";
+  };
+  rd.readAsText(f)};
+["imp-when","imp-inst","imp-dir","imp-pl","imp-fee"].forEach(function(id){$(id).onchange=impPreview});
+$("imp-risk").oninput=impPreview;
+$("imp-cancel").onclick=function(){impRows=null;$("imp-map").hidden=true;impError("")};
+$("imp-go").onclick=function(){
+  var add=(impRows&&impRows.fresh)||[];if(!add.length)return;
+  if(trades.length+add.length>5000){impError("The journal holds up to 5,000 trades. Import a shorter range.");return}
+  function key(t){return(t.date||"0000")+" "+(t.time||"")}
+  trades=add.concat(trades).sort(function(a,b){var x=key(a),z=key(b);return x<z?1:x>z?-1:0});
+  jSave();jRender();$("imp-map").hidden=true;impRows=null;impError("");
+  $("imp-sum").textContent="";$("j-err").style.display="none"};
 function jError(msg){var e=$("j-err");e.textContent=msg||"";e.style.display=msg?"":"none"}
 $("j-add").onclick=function(){
   jError("");
@@ -1176,8 +1312,8 @@ $("j-add").onclick=function(){
   if(pl===""||!isFinite(parseFloat(pl))){jError("Enter the result (P/L) first. Use a negative number for a loss.");return}
   var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
     tag:$("j-tag").value.trim(),risk:num("j-risk"),pl:parseFloat(pl),notes:$("j-notes").value.trim(),
-    grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value});
-  trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";$("j-grade").value="";$("j-plan").value="";$("j-emo").value="";
+    time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value});
+  trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";$("j-grade").value="";$("j-plan").value="";$("j-emo").value="";$("j-time").value="";
 };
 function coachStatus(){
   var box=$("coach-setup");
@@ -1211,8 +1347,8 @@ function journalFrom(d,r){
 function dl(blob,name){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},4000)}
 function csvCell(v,text){var s=String(v===undefined||v===null?"":v);if(text&&/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
 $("j-export").onclick=function(){
-  var head="date,instrument,direction,tag,risk,pl,r,notes\n";
-  var body=trades.map(function(t){return[csvCell(t.date,true),csvCell(t.inst,true),csvCell(t.dir,true),csvCell(t.tag,true),csvCell(t.risk),csvCell(t.pl),
+  var head="date,time,instrument,direction,tag,risk,pl,r,notes\n";
+  var body=trades.map(function(t){return[csvCell(t.date,true),csvCell(t.time||"",true),csvCell(t.inst,true),csvCell(t.dir,true),csvCell(t.tag,true),csvCell(t.risk),csvCell(t.pl),
     csvCell(t.risk>0?(t.pl/t.risk).toFixed(2):""),csvCell(t.notes,true)].join(",")}).join("\n");
   dl(new Blob([head+body],{type:"text/csv"}),"zones-journal.csv");
 };
