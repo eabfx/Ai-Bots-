@@ -427,6 +427,43 @@ class FindZones(unittest.TestCase):
         got = self.find(noise(PRE - 3) + [ZONE_CANDLE, SOLID, SOLID, DISPLACEMENT] + AFTER_UP)
         self.assertEqual([(g["low"], g["high"]) for g in got], [(99.2, 100.8)])
 
+    LOWER = (100.0, 100.8, 99.0, 100.05)       # a zone-shaped candle with a lower low than ZONE_CANDLE
+
+    def test_by_default_the_most_extreme_candle_of_the_pause_is_the_zone(self):
+        got = self.find(noise(PRE - 1) + [self.LOWER, ZONE_CANDLE, DISPLACEMENT] + AFTER_UP)
+        self.assertEqual([(g["t"], g["low"], g["high"]) for g in got], [(ZSTART + 1800 * (PRE - 1), 99.0, 100.8)])
+        self.assertEqual(z.read_config(None)["zone_candle"], "extreme")
+
+    def test_zone_candle_last_takes_the_candle_right_before_the_move_instead(self):
+        got = self.find(noise(PRE - 1) + [self.LOWER, ZONE_CANDLE, DISPLACEMENT] + AFTER_UP, zone_candle="last")
+        self.assertEqual([(g["t"], g["low"], g["high"]) for g in got], [(ZSTART + 1800 * PRE, 99.2, 100.8)])
+
+    def test_zone_candle_last_still_needs_the_zone_shape_so_a_big_bodied_candle_is_skipped(self):
+        rows = noise(PRE - 1) + [self.LOWER, SOLID, DISPLACEMENT] + AFTER_UP
+        got = self.find(rows, zone_candle="last")
+        self.assertEqual([(g["t"], g["low"]) for g in got], [(ZSTART + 1800 * (PRE - 1), 99.0)])
+
+    def test_zone_candle_last_is_the_same_for_supply(self):
+        flipped = z.flip_bars(mk(ZSTART, 1800, noise(PRE - 1) + [self.LOWER, ZONE_CANDLE, DISPLACEMENT] + AFTER_UP))
+        got = z.find_zones(flipped, dict(CFG, zone_candle="last"))
+        self.assertEqual([(g["kind"], g["t"], g["low"], g["high"]) for g in got],
+                         [("supply", ZSTART + 1800 * PRE, -100.8, -99.2)])
+
+    def test_zone_candle_changes_nothing_when_there_is_one_candidate(self):
+        rows = zone_rows()
+        a = self.find(rows)
+        b = self.find(rows, zone_candle="last")
+        self.assertEqual([(g["t"], g["low"], g["high"]) for g in a], [(g["t"], g["low"], g["high"]) for g in b])
+
+    def test_a_bad_zone_candle_setting_is_a_plain_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"zones": {"zone_candle": "first"}}, fh)
+            with self.assertRaises(z.ZoneError) as cm:
+                z.read_config(path)
+        self.assertIn('zone_candle must be "extreme" or "last"', str(cm.exception))
+
     def test_a_candidate_six_bars_back_is_outside_the_lookback(self):
         self.assertEqual(len(self.find(noise(PRE - 6) + [ZONE_CANDLE] + [SOLID] * 5 + [DISPLACEMENT] + AFTER_UP)), 0)
 

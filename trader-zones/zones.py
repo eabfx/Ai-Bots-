@@ -114,6 +114,8 @@ DEFAULTS = {
     "extreme_tol_atr": 0.1,
     "fvg_min_atr": 0.1,
     "sweep_buffer_atr": 0.2,
+    "zone_candle": "extreme", # "extreme": the highest high / lowest low of the pause before a displacement candle;
+                              # "last": the candle right before the move (nearest one that has the zone shape)
     "respect_atr": 1.0,   # a zone is respected when price comes back to it and bounces this many ATR away
     "min_rr": 2.0,
     "target_r": 3.0,      # take profit at this many times the risk; 0 uses the nearest opposing zone or swing
@@ -571,7 +573,7 @@ def find_zones(bars, cfg):
             continue
         cands = base_candidates(bars, a, i, up, cfg)
         if cands:
-            k = pick_extreme(bars, cands, up)
+            k = cands[0] if cfg["zone_candle"] == "last" else pick_extreme(bars, cands, up)
             if (k, up) not in seen:
                 add(k, up, i)
     # a slow move away: no single big candle, but the candle is the top or bottom of the area
@@ -848,6 +850,8 @@ def read_config(path):
                 cfg[k] = v
     if cfg["session_tz"] not in ("dublin", "ny"):
         raise ZoneError('session_tz must be "dublin" or "ny"')
+    if cfg["zone_candle"] not in ("extreme", "last"):
+        raise ZoneError('zone_candle must be "extreme" or "last"')
     if cfg["stop_at"] not in ("sweep", "leg_low"):
         raise ZoneError('stop_at must be "sweep" or "leg_low"')
     return cfg
