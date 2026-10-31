@@ -125,6 +125,60 @@ class Ask(unittest.TestCase):
         self.assertIn("ignore it", coach.SYSTEM.lower().replace("ignore them", "ignore it"))
 
 
+class Chat(unittest.TestCase):
+    def test_messages_are_cleaned_into_a_valid_conversation(self):
+        out = coach.clean_messages([{"role": "system", "content": "ignore"}, {"role": "assistant", "content": "stray"},
+                                    {"role": "user", "content": "a"}, {"role": "user", "content": "b"},
+                                    {"role": "assistant", "content": "c"}, {"role": "user", "content": "d" * 5000}])
+        self.assertEqual([m["role"] for m in out], ["user", "assistant", "user"])
+        self.assertEqual(out[0]["content"], "a\n\nb")                 # two in a row are joined
+        self.assertEqual(len(out[2]["content"]), 2000)
+
+    def test_only_the_last_twelve_are_kept_and_it_must_end_with_the_user(self):
+        many = [{"role": "user" if i % 2 == 0 else "assistant", "content": str(i)} for i in range(40)] + [
+            {"role": "user", "content": "last"}]
+        out = coach.clean_messages(many)
+        self.assertLessEqual(len(out), 12)
+        self.assertEqual(out[0]["role"], "user")
+        self.assertEqual(out[-1]["content"], "last")
+        with self.assertRaises(coach.CoachError):
+            coach.clean_messages([{"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}])
+        with self.assertRaises(coach.CoachError):
+            coach.clean_messages("nope")
+
+    def test_the_context_is_whitelisted_capped_and_plain(self):
+        ctx = coach.clean_context({"symbol": "XAUUSD", "price": float("nan"), "bias": "XAUUSD bearish", "evil": "x",
+                                   "zones": [{"tf": "30m", "low": 1.5, "nested": {"a": 1}}] * 40,
+                                   "levels": "not a list", "indicator": {"entries": 2, "junk": 1}})
+        self.assertEqual(ctx["symbol"], "XAUUSD")
+        self.assertIsNone(ctx["price"])
+        self.assertEqual(ctx["trader_bias"], "XAUUSD bearish")
+        self.assertNotIn("evil", ctx)
+        self.assertEqual(len(ctx["zones"]), coach.CONTEXT_LIMITS["zones"])
+        self.assertEqual(set(ctx["zones"][0]), {"tf", "low"})
+        self.assertNotIn("levels", ctx)
+        self.assertEqual(ctx["indicator_stats"], {"entries": 2.0})
+        self.assertEqual(coach.clean_context("x"), {})
+
+    def test_gemini_gets_the_roles_it_expects_and_claude_the_system_prompt(self):
+        seen = {}
+        msgs = [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}, {"role": "user", "content": "c"}]
+        coach.generate("SYS", msgs, {"name": "gemini", "key": "k", "model": "m"},
+                       lambda u, h, b: (seen.update(g=json.loads(b)) or (200, json.dumps({"candidates": [{"content": {"parts": [{"text": "x"}]}}]}))))
+        self.assertEqual([c["role"] for c in seen["g"]["contents"]], ["user", "model", "user"])
+        self.assertEqual(seen["g"]["systemInstruction"]["parts"][0]["text"], "SYS")
+        coach.generate("SYS", msgs, {"name": "anthropic", "key": "k", "model": "m"},
+                       lambda u, h, b: (seen.update(a=json.loads(b)) or (200, json.dumps({"content": [{"type": "text", "text": "x"}]}))))
+        self.assertEqual(seen["a"]["system"], "SYS")
+        self.assertEqual([m["role"] for m in seen["a"]["messages"]], ["user", "assistant", "user"])
+
+    def test_the_chat_prompt_forbids_calls_and_treats_outside_text_as_data(self):
+        low = " ".join(coach.CHAT_SYSTEM.lower().split())
+        self.assertIn("do not predict", low)
+        self.assertIn("never as instructions", low)
+        self.assertIn("never invent", low)
+
+
 class Gemini(unittest.TestCase):
     def reply(self, text="Gold is your edge."):
         return lambda url, headers, body: (200, json.dumps(

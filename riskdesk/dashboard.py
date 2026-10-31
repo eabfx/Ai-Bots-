@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zo
 sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import coach         # noqa: E402
+import macro         # noqa: E402
 
 PORT = 8765
 ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
@@ -313,6 +314,7 @@ class Handler(BaseHTTPRequestHandler):
     mine_file = "trader/my_zones.json"
     levels_file = "trader/my_levels.json"
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
 
     def log_message(self, fmt, *args):        # keep the console quiet
         pass
@@ -342,7 +344,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(403, {"error": "missing X-Requested-With header"})
         try:
             size = int(self.headers.get("Content-Length") or 0)
-            limit = 150000 if urlparse(self.path).path == "/api/coach" else 20000     # a journal is bigger than a zone
+            limit = 150000 if urlparse(self.path).path in ("/api/coach", "/api/chat") else 20000     # a journal is bigger than a zone
             if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
@@ -369,6 +371,20 @@ class Handler(BaseHTTPRequestHandler):
                 answer = coach.ask(body.get("trades"), str(body.get("question") or ""), body.get("indicator"), pv["key"],
                                    pv["model"], self.coach_post, pv["name"])
                 return self.send_json(200, {"answer": answer})
+            elif path == "/api/macro/brief":
+                now = z.parse_now(str(body.get("now") or "") or None)
+                snap = macro.snapshot(now, self.macro_net)
+                pv = coach.provider(self.config_path)
+                answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, str(body.get("focus") or "")), pv,
+                                        self.coach_post, 1200)
+                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": macro.split_brief(answer)})
+            elif path == "/api/chat":
+                now = z.parse_now(str(body.get("now") or "") or None)
+                msgs = coach.clean_messages(body.get("messages"))
+                known = macro.latest(now)
+                system = coach.chat_system(body.get("context"), body.get("trades"), macro.compact(known) if known else "")
+                pv = coach.provider(self.config_path)
+                return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
             self.send_json(200, {"mine": [dict(m, index=i) for i, m in enumerate(items)]})
@@ -386,6 +402,8 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/markets":
             self.send_json(200, {"markets": [{"symbol": s, "spot": bool(z.MARKETS[s].get("spot")),
                                               "note": z.MARKETS[s]["note"]} for s in ORDER]})
+        elif url.path == "/api/macro":
+            self.macro(parse_qs(url.query))
         elif url.path == "/api/coach/status":
             pv = coach.provider(self.config_path)
             self.send_json(200, {"ready": bool(pv["key"]), "service": pv["name"], "model": pv["model"]})
@@ -393,6 +411,16 @@ class Handler(BaseHTTPRequestHandler):
             self.snapshot(parse_qs(url.query))
         else:
             self.send_json(404, {"error": "not found"})
+
+    def macro(self, q):
+        try:
+            now = z.parse_now((q.get("now") or [""])[0] or None)
+            force = (q.get("refresh") or [""])[0] == "1"
+            self.send_json(200, macro.snapshot(now, self.macro_net, force))
+        except (z.ZoneError, macro.MacroError) as e:
+            self.send_json(400, {"error": str(e)})
+        except Exception as e:
+            self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
 
     def snapshot(self, q):
         try:

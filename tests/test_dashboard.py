@@ -873,6 +873,110 @@ class CoachRoutes(Server):
             self.assertIn(needle, body)
 
 
+class MacroRoutes(Server):
+    """The macro desk and the chat box, with fake feeds and a fake AI so nothing goes out."""
+
+    def setUp(self):
+        Server.setUp(self)
+        env = mock.patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GEMINI_API_KEY", None)
+        import test_macro
+        self.tm = test_macro
+        dash.macro.clear_cache()                       # the dashboard's own copy of macro.py, not test_macro's
+        self.addCleanup(dash.macro.clear_cache)
+        self.sent = []
+        handler = self.server.RequestHandlerClass
+        handler.macro_net = self.tm.FakeNet(errors=dash.macro)
+        handler.coach_post = staticmethod(lambda u, h, b: (self.sent.append((u, h, json.loads(b))) or (
+            200, json.dumps({"content": [{"type": "text", "text": "Tone: Calm.\n\nGold and MGC: Quiet.\n\nNasdaq (NQ): Quiet."}]}))))
+        with open(os.path.join(self.tmp.name, "anthropic_key.txt"), "w") as fh:
+            fh.write("sk-test")
+
+    NOW = "2026-10-30 08:00"        # New York time: 12:00 UTC, the moment the macro fixtures are built around
+
+    def test_the_macro_route_returns_prices_calendar_headlines_sessions_and_mood(self):
+        code, _, js = self.get("/api/macro?now=" + self.NOW.replace(" ", "+"))
+        doc = json.loads(js)
+        self.assertEqual(code, 200)
+        for key in ("quotes", "events", "headlines", "sessions", "mood", "notes", "as_of"):
+            self.assertIn(key, doc)
+        self.assertEqual(doc["as_of"], "Fri 30 Oct 12:00")
+        self.assertEqual(len(doc["events"]), 3)
+
+    def test_a_dead_feed_is_a_note_not_an_error(self):
+        self.server.RequestHandlerClass.macro_net = self.tm.FakeNet(fail=["calendar"], errors=dash.macro)
+        code, _, js = self.get("/api/macro?now=" + self.NOW.replace(" ", "+"))
+        doc = json.loads(js)
+        self.assertEqual(code, 200)
+        self.assertEqual(doc["events"], [])
+        self.assertTrue(any("Calendar" in n for n in doc["notes"]))
+
+    def test_the_brief_is_written_from_the_feeds_and_split_into_parts(self):
+        code, doc = self.post("/api/macro/brief", {"now": self.NOW, "focus": "gold into the PCE"})
+        self.assertEqual(code, 200)
+        self.assertEqual(doc["parts"]["Tone"], "Calm.")
+        sent = self.sent[0][2]
+        text = sent["messages"][0]["content"]
+        self.assertIn("Core PCE Price Index m/m", text)
+        self.assertIn("focus on: gold into the PCE", text)
+        self.assertIn("macro brief", sent["system"])
+
+    def test_the_brief_without_a_key_is_a_plain_400(self):
+        os.remove(os.path.join(self.tmp.name, "anthropic_key.txt"))
+        code, doc = self.post("/api/macro/brief", {"now": self.NOW})
+        self.assertEqual(code, 400)
+        self.assertIn("No API key", doc["error"])
+        self.assertEqual(self.sent, [])
+
+    def test_chat_sends_the_conversation_and_what_is_on_screen_and_nothing_else(self):
+        msgs = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"},
+                {"role": "user", "content": "explain my entry"}]
+        ctx = {"tab": "zones", "symbol": "XAUUSD", "price": 4000.5, "secret": "do not send",
+               "zones": [{"tf": "30m", "kind": "demand", "low": 1, "high": 2, "evil": "x"}],
+               "entries": [{"side": "long", "entry": 3, "result": "target"}] * 40,
+               "indicator": {"entries": 3, "hit_target": 1, "junk": 9}}
+        trades = [{"date": "2026-10-26", "inst": "XAUUSD", "dir": "long", "risk": 100, "pl": 300, "notes": "n"}]
+        code, doc = self.post("/api/chat", {"messages": msgs, "context": ctx, "trades": trades, "now": self.NOW})
+        self.assertEqual(code, 200)
+        self.assertIn("answer", doc)
+        body = self.sent[0][2]
+        self.assertEqual([m["role"] for m in body["messages"]], ["user", "assistant", "user"])
+        system = body["system"]
+        self.assertIn('"symbol": "XAUUSD"', system)
+        self.assertNotIn("do not send", system)
+        self.assertNotIn("evil", system)
+        self.assertNotIn("junk", system)
+        self.assertEqual(system.count('"side": "long"'), 10)               # capped at ten entries
+        self.assertIn("JOURNAL TOTALS", system)
+        self.assertIn("not loaded yet", system)                            # the Macro tab has not been opened
+
+    def test_chat_knows_the_macro_numbers_once_the_tab_has_been_opened(self):
+        self.get("/api/macro?now=" + self.NOW.replace(" ", "+"))
+        self.post("/api/chat", {"messages": [{"role": "user", "content": "hi"}], "now": self.NOW})
+        self.assertIn("Core PCE Price Index m/m", self.sent[0][2]["system"])
+
+    def test_chat_needs_a_question_and_a_key_and_is_guarded(self):
+        code, doc = self.post("/api/chat", {"messages": [{"role": "assistant", "content": "x"}]})
+        self.assertEqual(code, 400)
+        self.assertIn("question", doc["error"])
+        code, _ = self.post("/api/chat", {"messages": [{"role": "user", "content": "hi"}]}, headers={"X-Requested-With": "x"})
+        self.assertEqual(code, 403)
+        os.remove(os.path.join(self.tmp.name, "anthropic_key.txt"))
+        code, doc = self.post("/api/chat", {"messages": [{"role": "user", "content": "hi"}]})
+        self.assertEqual(code, 400)
+        self.assertIn("No API key", doc["error"])
+
+    def test_the_page_has_the_macro_tab_and_the_chat_box(self):
+        _, _, body = self.get("/")
+        for needle in ('data-tab="macro"', 'id="tab-macro"', "Capital flow", "Economic calendar", "AI macro brief",
+                       'id="chat-btn"', "/api/chat", "/api/macro/brief", "noopener noreferrer", "Your bias"):
+            self.assertIn(needle, body)
+        self.assertNotIn("innerHTML", body.split("/* ---------------- macro desk")[1])    # outside text is only ever set as text
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")
