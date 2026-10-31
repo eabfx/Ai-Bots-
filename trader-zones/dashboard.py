@@ -86,7 +86,7 @@ def signal_row(r, levels=()):
     by_zone = levels_at(r["zone"]["low"], r["zone"]["high"], levels)
     by_entry = [dict(lv, via="entry") for lv in levels_at(r["entry"], r["entry"], levels)
                 if lv["index"] not in {q["index"] for q in by_zone}]
-    return {"levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
+    return {"style": r.get("style", "tool"), "levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
             "swept": dublin_text(r["sweep_t"]), "gap": list(r["gap"]), "entry_t": r["entry_t"],
             "entry_when": dublin_text(r["entry_t"]), "entry": r["entry"], "stop": r["stop"], "target": r["target"],
             "rr": r["rr"],
@@ -272,7 +272,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None, leve
     stages = []
     if not found["results"]:
         for zn, best, trace in found["staged"]:
-            stages.append({"head": z.stage_line(sym, zn, best).strip(),
+            stages.append({"head": z.stage_line(sym, zn, best, found["stage_names"]).strip(),
                            "lines": [ln.strip() for ln in z.trace_lines(sym, zn, trace)]})
     market = z.MARKETS[sym]
     level_list = level_dicts(levels or [], m1[-1]["c"] if m1 else None)
@@ -285,7 +285,8 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None, leve
             "levels": level_list,
             "zones": [zone_row(zn, level_list) for zn in found["zones"]],
             "signals": [signal_row(r, level_list) for r in found["results"]],
-            "stages": stages, "furthest": z.STAGES[found["best"]]}
+            "stages": stages, "furthest": found["stage_names"][found["best"]],
+            "style": cfg["entry_style"]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -379,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 raise z.ZoneError("shift must be a number")
             cfg = apply_rule(z.read_config(self.config_path), (q.get("rule") or ["standard"])[0] or "standard")
+            style = (q.get("entry") or [""])[0]
+            if style:
+                if style not in ("tool", "yours"):
+                    raise z.ZoneError('entry must be "tool" or "yours"')
+                cfg["entry_style"] = style
             days = (q.get("days") or [""])[0]
             if days:
                 if not days.isdigit() or not 1 <= int(days) <= 14:

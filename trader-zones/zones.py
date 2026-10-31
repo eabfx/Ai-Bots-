@@ -125,6 +125,10 @@ DEFAULTS = {
     "leg_from_swing": True,   # the leg starts at the last swing low before price breaks up, not the sweep wick
     "gap_at_turn": True,      # a gap left by the turn out of the band counts without a second return to it
     "stop_at": "sweep",       # "sweep": stop beyond the sweep wick; "leg_low": stop beyond the low the leg started from
+    "entry_style": "tool",    # "tool": sweep + FVG in the OTE + 3-minute CHoCH. "yours": the user's own way, see yours_long
+    "fib_reach": 0.705,       # "yours": price has to retrace this far into the leg (the 0.705 line)
+    "fib_deep": 0.79,         # "yours": a close past this line means the fib was not respected
+    "leg_min_atr": 3.0,       # "yours": the leg has to be at least this many 5-minute ATRs long
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -680,6 +684,14 @@ STAGES = ["no zone touched yet",
           "triggered"]
 
 
+STAGES_YOURS = ["no zone touched yet",
+                "zone touched, no leg off it yet",
+                "leg drawn, price has not retraced to the fib yet",
+                "price reached the fib, no gap has inverted yet",
+                "a gap inverted but the entry was outside the sessions or the reward to risk was too small",
+                "triggered"]
+
+
 def ote_band(lo, hi):
     """The 62% to 79% retracement of a leg from lo up to hi, as (low edge, high edge)."""
     rng = hi - lo
@@ -845,6 +857,107 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
     return out, best
 
 
+def yours_long(zone, m5, cfg):
+    """The user's own entry for a demand zone: the leg off the zone, the fib, a gap that inverts, a tight stop.
+    1. After the zone is touched the lowest low is the start of a leg and the highest high since is its end
+       (both known as they happen, so nothing looks ahead). The leg must be `leg_min_atr` 5-minute ATRs long.
+    2. Price retraces down to the `fib_reach` line (0.705). A close beyond `fib_deep` (0.79), or a low under the
+       leg's start, means the fib was not respected and this leg is dropped.
+    3. A bearish FVG (a gap down) that sits in the 0.79 to 0.5 band. Once it has reached the fib, the first 5-minute
+       close back above it inverts it (an IFVG): that close is the entry, or the first later bar that comes back
+       into the gap and closes above it again (the retest) is a second entry.
+    4. The stop sits just under the lowest low since price reached the fib, which is where it was respected; the
+       target is `target_r` times the risk (3 means 1:3).
+    Supply zones run the same code on mirrored prices. Returns (entries, furthest stage in STAGES_YOURS)."""
+    out, best = [], 0
+    if zone["touched_t"] is None or len(m5) < 10:
+        return out, best
+    best = 1
+    a5 = atr_series(m5, cfg["atr_len"])
+    t5 = [b["t"] for b in m5]
+    n = len(m5)
+    rr_fixed = float(cfg["target_r"] or 3.0)
+
+    def attempt(L, H, hidx, reach):
+        """Walk forward from the bar price reached the fib. Returns (entries, best, where to carry on, keep the
+        leg's start for the next leg)."""
+        nonlocal best
+        R = H - L
+        f_reach, f_deep, f_half = H - cfg["fib_reach"] * R, H - cfg["fib_deep"] * R, H - 0.5 * R
+        gaps, found, low_since = [], [], None
+        for j in range(hidx + 1, n):
+            b = m5[j]
+            if j >= reach:
+                low_since = b["l"] if low_since is None else min(low_since, b["l"])
+                if b["l"] < L or b["c"] < f_deep:
+                    return found, j + (0 if b["l"] < L else 1), b["l"] >= L
+                if b["h"] > H and j > reach:
+                    return found, j, True
+            if j >= hidx + 2 and a5[j] is not None and m5[j - 2]["l"] - b["h"] >= cfg["fvg_min_atr"] * a5[j]:
+                lo, hi = b["h"], m5[j - 2]["l"]
+                if hi >= f_deep and lo <= f_half:
+                    gaps.append({"i": j, "lo": lo, "hi": hi, "inv": None, "done": False})
+            for g in gaps:
+                if g["i"] >= j or g["done"]:
+                    continue
+                trigger = None
+                if g["inv"] is None:
+                    if b["c"] > g["hi"]:
+                        if j >= reach:
+                            g["inv"], trigger = j, "IFVG inverted"
+                        else:
+                            g["done"] = True               # it inverted before price got to the fib: not this gap
+                elif b["c"] < g["lo"]:
+                    g["done"] = True                       # closed back through it: no retest to wait for
+                elif b["l"] <= g["hi"] and b["c"] > g["hi"] and j > g["inv"]:
+                    g["done"], trigger = True, "IFVG retest"
+                if trigger is None:
+                    continue
+                best = max(best, 4)
+                when = t5[j] + 300
+                entry = b["c"]
+                stop = low_since - cfg["sweep_buffer_atr"] * a5[j]
+                risk = entry - stop
+                if risk <= 0 or not in_session(when, cfg):
+                    continue
+                target, rr = entry + rr_fixed * risk, rr_fixed
+                if rr < cfg["min_rr"] or any(o["entry_t"] == when for o in found):
+                    continue
+                best = 5
+                found.append({"trigger": trigger, "style": "yours", "sweep_t": t5[reach], "sweep_low": low_since,
+                              "gap": (g["lo"], g["hi"]), "ote": (f_deep, f_reach), "entry_t": when, "entry": entry,
+                              "stop": stop, "target": target, "rr": rr})
+        return found, n, True
+
+    L = Lidx = H = Hidx = None
+    i = bisect.bisect_left(t5, zone["touched_t"])
+    while i < n:
+        b = m5[i]
+        if L is None or b["l"] < L:
+            L, Lidx, H, Hidx = b["l"], i, None, None
+            i += 1
+            continue
+        if H is None or b["h"] > H:
+            H, Hidx = b["h"], i
+            i += 1
+            continue
+        if a5[i] is None or H - L < cfg["leg_min_atr"] * a5[i]:
+            i += 1
+            continue
+        best = max(best, 2)                                # a leg is drawn
+        if b["l"] > H - cfg["fib_reach"] * (H - L):        # and price has not retraced to the fib yet
+            i += 1
+            continue
+        best = max(best, 3)
+        found, i, keep = attempt(L, H, Hidx, i)
+        out.extend(f for f in found if not any(o["entry_t"] == f["entry_t"] for o in out))
+        if keep:
+            H, Hidx = None, None                           # the leg's start stays: a new leg can grow from it
+        else:
+            L = None
+    return out, best
+
+
 def _unmirror_gap(g):
     out = dict(g, lo=-g["hi"], hi=-g["lo"], ote=(-g["ote"][1], -g["ote"][0]))
     if "choch" in g:
@@ -858,6 +971,11 @@ def _unmirror_gap(g):
 def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
     """Run the long logic for a demand zone, or for a supply zone on mirrored prices.
     `trace`, when given, receives the sweeps and gaps looked at, in real (not mirrored) prices."""
+    if zone["kind"] == "demand" and cfg["entry_style"] == "yours":
+        res, best = yours_long(zone, m5, cfg)
+        for r in res:
+            r["side"] = "long"
+        return res, best
     ph5, pl5 = pivots(m5, cfg["swing_n"])
     if zone["kind"] == "demand":
         targets = [z["low"] for z in fresh_other if z["kind"] == "supply"] + [p[2] for p in ph5]
@@ -866,6 +984,16 @@ def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
             r["side"] = "long"
         return res, best
     mirrored = dict(zone, high=-zone["low"], low=-zone["high"])
+    if cfg["entry_style"] == "yours":
+        res, best = yours_long(mirrored, flip_bars(m5), cfg)
+        for r in res:
+            r["side"] = "short"
+            r["sweep_low"] = -r["sweep_low"]
+            r["gap"] = (-r["gap"][1], -r["gap"][0])
+            r["ote"] = (-r["ote"][1], -r["ote"][0])
+            r["entry"], r["stop"] = -r["entry"], -r["stop"]
+            r["target"] = -r["target"]
+        return res, best
     targets = [-z["high"] for z in fresh_other if z["kind"] == "demand"] + [-p[2] for p in pl5]
     mirror_trace = [] if trace is not None else None
     res, best = long_setups(mirrored, flip_bars(m5), flip_bars(m3), targets, cfg, mirror_trace)
@@ -902,6 +1030,8 @@ def read_config(path):
         raise ZoneError('session_tz must be "dublin" or "ny"')
     if cfg["zone_candle"] not in ("extreme", "last"):
         raise ZoneError('zone_candle must be "extreme" or "last"')
+    if cfg["entry_style"] not in ("tool", "yours"):
+        raise ZoneError('entry_style must be "tool" or "yours"')
     if cfg["stop_at"] not in ("sweep", "leg_low"):
         raise ZoneError('stop_at must be "sweep" or "leg_low"')
     return cfg
@@ -934,9 +1064,9 @@ def touch_lines(z):
     return out
 
 
-def stage_line(sym, z, best):
+def stage_line(sym, z, best, names=None):
     """One touched zone and the furthest step of the entry it reached."""
-    text = STAGES[best]
+    text = (names or STAGES)[best]
     if z["kind"] == "supply":
         text = text.replace("swing low", "swing high")     # the supply side is the mirror image
     return "  %-6s %-4s %s ET (%s Dublin)  %s to %s: %s" % (
@@ -1285,7 +1415,8 @@ def analyse(sym, cfg, now, offline, zone_specs=None, extra_specs=None):
             results.append(r)
     results.sort(key=lambda r: r["entry_t"])
     results = merge_same_trade(results)
-    return {"zones": zones, "fresh": fresh, "results": results, "staged": staged, "best": best_all, "m1": m1}
+    return {"zones": zones, "fresh": fresh, "results": results, "staged": staged, "best": best_all, "m1": m1,
+            "stage_names": STAGES_YOURS if cfg["entry_style"] == "yours" else STAGES}
 
 
 def cmd_setup(args, cfg, now):
@@ -1302,15 +1433,15 @@ def cmd_setup(args, cfg, now):
             print(FLAT_NOTE % sym)
         if not results:
             for z, best, trace in staged:
-                print(stage_line(sym, z, best))
+                print(stage_line(sym, z, best, found["stage_names"]))
                 for line in trace_lines(sym, z, trace):
                     print(line)
         for r in results:
             z = r["zone"]
             rr = "no target found" if r["rr"] is None else "R:R %.1f" % r["rr"]
-            print("%s  %s %s zone %s-%s  swept %s, %s %s-%s in the OTE  ENTRY %s ET at %s  stop %s  target %s  %s"
+            print("%s  %s %s zone %s-%s  %s %s, %s %s-%s in the OTE  ENTRY %s ET at %s  stop %s  target %s  %s"
                   % (r["side"].upper(), z["tf"], z["kind"], px(sym, z["low"]), px(sym, z["high"]),
-                     fmt_et(r["sweep_t"]), r["trigger"], px(sym, r["gap"][0]), px(sym, r["gap"][1]),
+                     "price reached the fib" if r.get("style") == "yours" else "swept", fmt_et(r["sweep_t"]), r["trigger"], px(sym, r["gap"][0]), px(sym, r["gap"][1]),
                      fmt_et(r["entry_t"]), px(sym, r["entry"]), px(sym, r["stop"]), px(sym, r["target"]), rr))
             for o in r.get("also", []):
                 print("        same trade also seen from the %s %s zone %s-%s"
@@ -1318,7 +1449,7 @@ def cmd_setup(args, cfg, now):
         if results:
             print("These are signals from past and current bars. Nothing was placed. Set the stop and size BEFORE any order.")
         else:
-            print("No entry. Furthest any zone got: %s." % STAGES[best_all])
+            print("No entry. Furthest any zone got: %s." % found["stage_names"][best_all])
     if args.write:
         write_doc(args.out, {"symbol": sym, "as_of": now, "setups": results})
     return 0 if results else 1

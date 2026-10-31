@@ -526,6 +526,91 @@ class Bars(unittest.TestCase):
         self.assertEqual((f["o"], f["h"], f["l"], f["c"]), (-10, -9, -12, -11))
 
 
+class YoursEntry(unittest.TestCase):
+    """The user's own entry: leg off the zone, fib at 0.705, a gap that inverts, a stop under where the fib held,
+    a fixed 1:3 target. Hand-built 5-minute bars, demand zone 99 to 100."""
+    T0 = 1793000400            # 2026-10-26 07:00 UTC; the whole run stays in the Asia window used for sessions
+
+    def bars(self, reach=(103.6, 102.2, 102.5)):
+        rows = [(105.0, 105.25, 104.75, 105.0)] * 30                       # 0..29 quiet, ATR about 0.5
+        rows += [(105.0, 105.0, 99.2, 99.5)]                               # 30 touches the zone: the leg starts here
+        c = 99.5
+        for _ in range(10):                                                # 31..40 up the leg
+            rows.append((c, c + 1.2, c - 0.1, c + 1.0))
+            c += 1.0
+        rows += [(109.5, 110.0, 109.3, 109.6)]                             # 41 the high of the leg
+        rows += [(109.6, 109.7, 107.0, 107.2),                             # 42
+                 (107.2, 107.3, 105.0, 105.1),                             # 43 first candle of the gap
+                 (105.1, 105.1, 102.9, 103.0),                             # 44
+                 (103.0, 104.0, 102.6, 103.5),                             # 45 gap between 104.0 and 105.0
+                 (103.5, reach[0], reach[1], reach[2]),                    # 46 reaches the 0.705 line (102.39)
+                 (102.5, 105.4, 102.4, 105.3),                             # 47 closes back above the gap: inverted
+                 (105.3, 105.8, 104.9, 105.6),                             # 48 comes back into the gap, holds: retest
+                 (105.6, 106.0, 105.4, 105.9)] * 1
+        rows += [(105.9, 106.1, 105.7, 106.0)] * 4
+        return [{"t": self.T0 + 300 * i, "o": o, "h": h, "l": l, "c": cc} for i, (o, h, l, cc) in enumerate(rows)]
+
+    def zone(self, bars, kind="demand", sign=1):
+        t = bars[30]["t"]
+        return {"kind": kind, "low": 99.0 * sign if sign > 0 else -100.0, "high": 100.0 if sign > 0 else -99.0,
+                "t": t - 1800, "tf": "30m", "touched_t": t, "status": "touched"}
+
+    def go(self, bars, kind="demand", sign=1):
+        cfg = z.read_config(None)
+        cfg["entry_style"] = "yours"
+        return z.setups_for(self.zone(bars, kind, sign), bars, [], [], cfg)
+
+    def test_a_gap_that_inverts_after_the_fib_gives_an_entry_just_under_where_the_fib_held(self):
+        res, best = self.go(self.bars())
+        self.assertEqual(best, 5)
+        first = res[0]
+        self.assertEqual((first["side"], first["trigger"], first["style"]), ("long", "IFVG inverted", "yours"))
+        self.assertAlmostEqual(first["entry"], 105.3)
+        self.assertLess(first["stop"], 102.2)                              # under the lowest low since the fib was reached
+        self.assertGreater(first["stop"], 101.0)                           # but only just
+        self.assertAlmostEqual(first["rr"], 3.0)
+        self.assertAlmostEqual(first["target"] - first["entry"], 3 * (first["entry"] - first["stop"]))
+        self.assertEqual(first["gap"], (104.0, 105.0))
+        self.assertEqual(first["entry_t"], self.T0 + 300 * 47 + 300)       # the close of the inverting candle
+
+    def test_the_retest_of_the_inverted_gap_is_a_second_entry(self):
+        res, _ = self.go(self.bars())
+        self.assertEqual([r["trigger"] for r in res], ["IFVG inverted", "IFVG retest"])
+        self.assertAlmostEqual(res[1]["entry"], 105.6)
+        self.assertGreater(res[1]["entry_t"], res[0]["entry_t"])
+
+    def test_a_close_past_the_deep_fib_line_means_no_entry(self):
+        res, best = self.go(self.bars(reach=(103.6, 100.8, 101.0)))      # closes under the 0.79 line (101.47)
+        self.assertEqual(res, [])
+        self.assertEqual(best, 3)
+
+    def test_taking_out_the_start_of_the_leg_means_no_entry(self):
+        res, _ = self.go(self.bars(reach=(103.6, 98.5, 102.5)))
+        self.assertEqual(res, [])
+
+    def test_no_retrace_to_the_fib_yet_is_reported_as_a_leg_without_a_retrace(self):
+        bars = self.bars()[:44]                                           # stops before price comes back down
+        res, best = self.go(bars)
+        self.assertEqual((res, best), ([], 2))
+
+    def test_a_supply_zone_is_the_mirror_image(self):
+        bars = z.flip_bars(self.bars())
+        res, best = self.go(bars, kind="supply", sign=-1)
+        self.assertEqual(best, 5)
+        self.assertEqual((res[0]["side"], res[0]["trigger"]), ("short", "IFVG inverted"))
+        self.assertAlmostEqual(res[0]["entry"], -105.3)
+        self.assertGreater(res[0]["stop"], -102.2)
+        self.assertLess(res[0]["target"], res[0]["entry"])
+
+    def test_the_tool_style_is_untouched_and_a_bad_style_is_refused(self):
+        self.assertEqual(z.read_config(None)["entry_style"], "tool")
+        with self.assertRaises(z.ZoneError):
+            cfg_path = os.path.join(tempfile.mkdtemp(), "c.json")
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                fh.write('{"zones": {"entry_style": "x"}}')
+            z.read_config(cfg_path)
+
+
 class CollectUnion(unittest.TestCase):
     """collect_zones with cfg["union_with"] lists the zones both sets of settings find, a shared zone once."""
 

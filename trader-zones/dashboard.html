@@ -187,6 +187,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="days">Days back</label><select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></div>
 <div><label for="window">Entries</label><select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></div>
 <div><label for="respect">Show zones</label><select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></div>
+<div><label for="entry">Entry style</label><select id="entry"><option value="yours" selected>mine: fib + IFVG</option><option value="tool">tool: sweep + CHoCH</option></select></div>
 <div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before">candle before the move</option><option value="both" selected>both</option></select></div>
 <div><label for="perday">Zones per day</label><select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></div>
 </div>
@@ -460,7 +461,8 @@ function render(d){
   shown.forEach(function(r){
     var b=el("div","sig"),h=el("div");h.appendChild(tag(r.side));
     h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
-      ", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE"));
+      (r.style==="yours"?", price reached the fib "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)
+        :", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE")));
     b.appendChild(h);
     if(r.levels.length)b.appendChild(el("div","mute","At your "+r.levels.map(function(l){
       return levelText(l,d)+(l.via==="entry"?" (the entry price is in it)":" (the zone is in it)")}).join("; ")+"."));
@@ -582,9 +584,9 @@ function load(){
   }
   else if(typed){query="&spot="+encodeURIComponent(typed)}                           /* a new price: measure the gap now */
   else{store("zd.gap."+sym,"")}
-  store("zd.rule",$("rule").value);
+  store("zd.rule",$("rule").value);store("zd.entry",$("entry").value);
   var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+
-    "&per_day="+encodeURIComponent($("perday").value)+"&rule="+encodeURIComponent($("rule").value)+query;
+    "&per_day="+encodeURIComponent($("perday").value)+"&rule="+encodeURIComponent($("rule").value)+"&entry="+encodeURIComponent($("entry").value)+query;
   fetch(url).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){
     if(x.ok){
       if(typed&&query.indexOf("&spot=")>=0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value,at:Date.now()}));
@@ -598,7 +600,7 @@ function redraw(){if(lastData)render(lastData)}
 $("refresh").onclick=load;$("auto").onchange=auto;
 $("window").onchange=function(){store("zd.window",$("window").value);redraw()};
 $("respect").onchange=function(){store("zd.respect",$("respect").value);redraw()};
-$("rule").onchange=load;
+$("rule").onchange=load;$("entry").onchange=load;
 $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 (function(){var bs=$("frames").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){
@@ -607,6 +609,7 @@ $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
 var p0=store("zd.perday");if(p0)$("perday").value=p0;
 var w0=store("zd.window");if(w0)$("window").value=w0;
+var en0=store("zd.entry");if(en0==="yours"||en0==="tool")$("entry").value=en0;
 var ru0=store("zd.rule");if(ru0==="before"||ru0==="standard"||ru0==="both")$("rule").value=ru0;
 var r0=store("zd.respect");if(r0&&["hide","all","held"].indexOf(r0)>=0)$("respect").value=r0;
 var f0=store("zd.frames");

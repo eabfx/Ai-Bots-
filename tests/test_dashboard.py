@@ -747,6 +747,25 @@ class Levels(Server):
             self.assertIn(needle, body)
 
 
+class EntryStyle(Server):
+    def test_the_page_has_an_entry_style_choice_that_starts_on_the_users_own(self):
+        _, _, body = self.get("/")
+        self.assertIn('id="entry"', body)
+        self.assertIn('<option value="yours" selected>', body)
+        self.assertIn('"zd.entry"', body)
+        self.assertIn('"&entry="', body)
+        self.assertIn("price reached the fib", body)
+
+    def test_the_server_takes_the_entry_style_and_says_which_it_used(self):
+        _, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&entry=yours")
+        self.assertEqual(json.loads(js)["style"], "yours")
+        _, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(json.loads(js)["style"], "tool")
+        code, _, js = self.get("/api/snapshot?symbol=MGC&entry=other")
+        self.assertEqual(code, 400)
+        self.assertIn('entry must be "tool" or "yours"', json.loads(js)["error"])
+
+
 class Command(unittest.TestCase):
     def test_a_busy_port_is_a_plain_error(self):
         server = dash.make_server(0, "none.json")
