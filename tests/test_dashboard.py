@@ -776,6 +776,31 @@ class Outcome(unittest.TestCase):
         self.assertEqual(dash.outcome(short, self.bars((100.5, 99), (100.5, 99), (101.1, 99)))["result"], "stop")
 
 
+class PineIndicator(unittest.TestCase):
+    path = os.path.join(os.path.dirname(__file__), "..", "trader-zones", "RiskDesk_Indicator.pine")
+
+    def setUp(self):
+        with open(self.path, encoding="utf-8") as fh:
+            self.src = fh.read()
+
+    def test_it_is_a_pine_v6_indicator_that_never_places_an_order(self):
+        self.assertTrue(self.src.startswith("//@version=6"))
+        self.assertIn("\nindicator(", self.src)
+        self.assertNotIn("strategy", self.src)             # a strategy could send orders to a broker
+        self.assertNotIn("\t", self.src)
+
+    def test_it_draws_what_the_dashboard_draws_and_names_the_stats_the_same(self):
+        for needle in ('"60"', '"30"', '"15"', "0.705", "0.79", "Indicator Stats", "Hit target", "Hit stop", "Still open",
+                       "Win rate", "Net result", "Europe/Dublin", "alertcondition"):
+            self.assertIn(needle, self.src)
+
+    def test_brackets_balance_and_indents_are_four_spaces(self):
+        self.assertEqual(self.src.count("("), self.src.count(")"))
+        self.assertEqual(self.src.count("["), self.src.count("]"))
+        for n, line in enumerate(self.src.split("\n"), 1):
+            self.assertEqual((len(line) - len(line.lstrip(" "))) % 4, 0, "line %d" % n)
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

@@ -76,6 +76,8 @@ leg's start cancels it), a gap in the 0.79 to 0.5 band inverts (an IFVG), and th
 inverts it, with a second entry on the retest of the inverted gap. The stop is just beyond the extreme since the
 fib was reached, where it was respected, and the target is `target_r` (3 means 1:3). Supply zones are the mirror image.
 "Tool" is the older sweep + FVG in the OTE + 3-minute CHoCH. The page starts on "yours"; the command line on "tool".
+**TradingView indicator** (`RiskDesk_Indicator.pine`, Pine v6). Open the Pine Editor in TradingView, paste the file, press Add to chart, on a 5 minute chart. It draws the 1h, 30m and 15m zones (the candle before the move) from the chart's own candles, so there is no futures-to-spot gap, then the leg, the 0.705 and 0.79 fib, the inverted gap, the entry, the stop and the 3R target, with an Indicator Stats table (the same numbers as the dashboard card) and alerts. Signals only: it is an indicator, not a strategy, and places no order. It follows the dashboard's rules but is a port, so small differences are possible (it has no slow-move zones); compare the two when you first use it.
+
 **Indicator Stats** sits under the entries. It replays each shown entry on the 5-minute bars after it and counts targets hit, stops hit and trades still open, with the win rate and the net result in R (one trade per card, the earliest entry; a bar that touches both stop and target counts as the stop). Past results only.
 
 **My levels** holds the user's daily and 4h support and resistance zones (saved in `my_levels.json` next to the

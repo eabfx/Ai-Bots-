@@ -1,0 +1,393 @@
+//@version=6
+// RiskDesk.ai indicator. Signals only: it draws zones, the fib and the entry, stop and target. It never places an order.
+// Add it to a 5 minute chart. Zones come from the 1h, 30m and 15m candles of the same chart, so the prices
+// are the ones on your own feed (no gap between futures and spot).
+//
+// Your way, as the dashboard's "mine: fib + IFVG" entry style:
+//   1. a 1h / 30m / 15m zone: the candle right before the big move, wick to wick
+//   2. a leg starts at a swing low (swing high for a short) in the zone and runs at least 7 five-minute ATRs
+//   3. price retraces to the 0.705 fib of the leg (0.79 is the deepest it may close)
+//   4. a gap (FVG) against the leg inside the fib band, then the first 5m close back through it = inverted gap
+//   5. entry on the inversion close (the retest of the gap is marked too), stop just beyond where the fib held,
+//      target a fixed 3 times the risk
+indicator("RiskDesk Indicator", shorttitle = "RiskDesk", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500)
+
+// ------------------------------------------------------------------ inputs
+GZ = "Zones"
+GE = "Entry (fib + inverted gap)"
+GS = "Look"
+
+showH1   = input.bool(true,  "1h zones",  group = GZ)
+showM30  = input.bool(true,  "30m zones", group = GZ)
+showM15  = input.bool(true,  "15m zones", group = GZ)
+zoneDays = input.int(3, "Keep zones for this many days", minval = 1, maxval = 30, group = GZ)
+maxZones = input.int(16, "Most zones on the chart", minval = 1, maxval = 60, group = GZ)
+moveAtr  = input.float(1.3, "Move away from the candle (ATRs)", minval = 0.5, step = 0.1, group = GZ, tooltip = "How far price has to run from the zone candle. The dashboard rule 'candle before the move' uses 1.3.")
+baseBody = input.float(0.7, "Zone candle body at most (ATRs)", minval = 0.1, step = 0.1, group = GZ)
+baseWick = input.float(0.5, "Zone candle wicks at least (share of range)", minval = 0.0, maxval = 1.0, step = 0.05, group = GZ)
+dispAtr  = input.float(1.5, "Big candle body at least (ATRs)", minval = 0.5, step = 0.1, group = GZ)
+dispBody = input.float(0.6, "Big candle body share of its range", minval = 0.1, maxval = 1.0, step = 0.05, group = GZ)
+
+fibReach = input.float(0.705, "Fib level price must reach", minval = 0.3, maxval = 0.95, step = 0.005, group = GE)
+fibDeep  = input.float(0.79,  "Fib level a close must not pass", minval = 0.3, maxval = 0.99, step = 0.005, group = GE)
+legMin   = input.float(7.0, "Leg at least this many ATRs (5m)", minval = 1.0, step = 0.5, group = GE)
+legMax   = input.int(96, "Leg finishes within this many bars", minval = 10, group = GE)
+slackZ   = input.float(1.0, "Leg may start this many zone heights past the far side", minval = 0.0, step = 0.25, group = GE)
+nearZ    = input.float(1.0, "Leg may start this many zone heights short of the near side", minval = 0.0, step = 0.25, group = GE)
+bufAtr   = input.float(0.2, "Stop buffer beyond the held extreme (ATRs)", minval = 0.0, step = 0.05, group = GE)
+targetR  = input.float(3.0, "Target (times the risk)", minval = 1.0, step = 0.5, group = GE)
+sessOnly = input.bool(true, "Only enter inside this window", group = GE)
+sessStr  = input.session("0000-2100", "Window (Dublin time)", group = GE)
+useShort = input.bool(true, "Look for shorts in supply zones", group = GE)
+useLong  = input.bool(true, "Look for longs in demand zones", group = GE)
+
+lvl1Lo = input.float(0.0, "Level 1 low (daily / 4h support or resistance)", group = "Your daily / 4h levels", tooltip = "Leave both at 0 to hide.")
+lvl1Hi = input.float(0.0, "Level 1 high", group = "Your daily / 4h levels")
+lvl2Lo = input.float(0.0, "Level 2 low", group = "Your daily / 4h levels")
+lvl2Hi = input.float(0.0, "Level 2 high", group = "Your daily / 4h levels")
+
+demandCol = input.color(color.new(#26a69a, 80), "Demand", group = GS)
+supplyCol = input.color(color.new(#ef5350, 80), "Supply", group = GS)
+showStats = input.bool(true, "Show Indicator Stats table", group = GS)
+statsPos  = input.string("Top right", "Table position", options = ["Top right", "Top left", "Bottom right", "Bottom left"], group = GS)
+
+// ------------------------------------------------------------------ types
+type Zone
+    box    bx
+    float  lo
+    float  hi
+    int    kind        // 1 demand, -1 supply
+    string tf
+    int    t           // open time of the zone candle (ms)
+
+type Leg
+    int    s = 1       // 1 long (works on prices as they are), -1 short (works on mirrored prices)
+    int    stage = 0   // 0 none, 1 leg building, 2 price reached the fib, 3 entered, waiting for the retest
+    float  L = na
+    int    Lidx = na
+    float  H = na
+    int    Hidx = na
+    float  lowSince = na
+    float  gapTop = na
+    float  gapBot = na
+    int    gapBi = na
+    float  entry = na
+    float  stop = na
+    float  target = na
+    int    entryBi = na
+
+type Trade
+    int    s
+    float  entry
+    float  stop
+    float  target
+    float  rMult
+    int    bi
+    int    state = 0   // 0 open, 1 hit target, -1 hit stop
+
+// ------------------------------------------------------------------ zones from a higher timeframe
+// Runs on the higher timeframe's own candles. A big candle (body at least dispAtr ATRs, mostly body, closing
+// beyond the last swing) marks a move. The zone is the nearest candle before it (up to 5 back) that is small
+// bodied with long wicks and that price then ran away from by moveAtr ATRs.
+zoneScan(float dAtr, float dBody, float mAtr, float bBody, float bWick) =>
+    float a = ta.atr(14)
+    float ph = ta.pivothigh(high, 2, 2)
+    float pl = ta.pivotlow(low, 2, 2)
+    var float sh = na
+    var float sl = na
+    if not na(ph)
+        sh := ph
+    if not na(pl)
+        sl := pl
+    float body = math.abs(close - open)
+    float rng = high - low
+    bool up = close > open
+    bool disp = a > 0 and rng > 0 and body >= dAtr * a and body >= dBody * rng and (up ? (not na(sh[1]) and close > sh[1]) : (not na(sl[1]) and close < sl[1]))
+    float zh = na
+    float zl = na
+    float zt = na
+    float zk = na
+    if disp
+        for j = 1 to 5
+            if na(zk)
+                float kr = high[j] - low[j]
+                float kb = math.abs(close[j] - open[j])
+                float ka = a[j]
+                bool isBase = kr > 0 and not na(ka) and kb <= bBody * ka and (kr - kb) / kr >= bWick
+                if isBase
+                    float ext = up ? high[0] : low[0]
+                    for m = 0 to j - 1
+                        ext := up ? math.max(ext, high[m]) : math.min(ext, low[m])
+                    float mv = up ? ext - high[j] : low[j] - ext
+                    if mv >= mAtr * a
+                        zh := high[j]
+                        zl := low[j]
+                        zt := time[j]
+                        zk := up ? 1.0 : -1.0
+    [zh, zl, zt, zk]
+
+// The same, one higher-timeframe bar late, so a zone never appears and then vanishes while its candle is still forming.
+zoneOut(float dAtr, float dBody, float mAtr, float bBody, float bWick) =>
+    [h, l, t, k] = zoneScan(dAtr, dBody, mAtr, bBody, bWick)
+    [h[1], l[1], t[1], k[1]]
+
+[h1h, h1l, h1t, h1k]    = request.security(syminfo.tickerid, "60", zoneOut(dispAtr, dispBody, moveAtr, baseBody, baseWick), lookahead = barmerge.lookahead_on)
+[m30h, m30l, m30t, m30k] = request.security(syminfo.tickerid, "30", zoneOut(dispAtr, dispBody, moveAtr, baseBody, baseWick), lookahead = barmerge.lookahead_on)
+[m15h, m15l, m15t, m15k] = request.security(syminfo.tickerid, "15", zoneOut(dispAtr, dispBody, moveAtr, baseBody, baseWick), lookahead = barmerge.lookahead_on)
+
+var zones = array.new<Zone>()
+
+zoneKnown(string tf, int t, int kind) =>
+    bool known = false
+    for z in zones
+        if z.tf == tf and z.t == t and z.kind == kind
+            known := true
+    known
+
+addZone(string tf, float hi, float lo, float tt, float kk) =>
+    if not na(tt) and not na(kk)
+        int t = int(tt)
+        int kind = int(kk)
+        if not zoneKnown(tf, t, kind) and (time - t) <= zoneDays * 86400000
+            color c = kind == 1 ? demandCol : supplyCol
+            box bx = box.new(t, hi, time, lo, xloc = xloc.bar_time, extend = extend.right, bgcolor = c, border_color = color.new(c, 30), text = tf + (kind == 1 ? " demand" : " supply"), text_color = color.new(color.gray, 20), text_size = size.small, text_halign = text.align_left)
+            zones.push(Zone.new(bx, lo, hi, kind, tf, t))
+
+if showH1 and not na(h1t) and h1t != nz(h1t[1])
+    addZone("1h", h1h, h1l, h1t, h1k)
+if showM30 and not na(m30t) and m30t != nz(m30t[1])
+    addZone("30m", m30h, m30l, m30t, m30k)
+if showM15 and not na(m15t) and m15t != nz(m15t[1])
+    addZone("15m", m15h, m15l, m15t, m15k)
+
+// drop zones that are too old or over the limit
+if zones.size() > 0
+    for i = zones.size() - 1 to 0
+        Zone z = zones.get(i)
+        if (time - z.t) > zoneDays * 86400000
+            z.bx.delete()
+            zones.remove(i)
+while zones.size() > maxZones
+    Zone z0 = zones.shift()
+    z0.bx.delete()
+
+// ------------------------------------------------------------------ your levels
+var box lv1 = na
+var box lv2 = na
+if barstate.islast
+    box.delete(lv1)
+    box.delete(lv2)
+    lv1 := na
+    lv2 := na
+    if lvl1Hi > lvl1Lo and lvl1Lo > 0
+        lv1 := box.new(bar_index - math.min(bar_index, 300), lvl1Hi, bar_index, lvl1Lo, extend = extend.right, bgcolor = color.new(color.gray, 90), border_color = color.gray, border_style = line.style_dashed, text = "your level 1", text_color = color.gray, text_size = size.small, text_halign = text.align_right)
+    if lvl2Hi > lvl2Lo and lvl2Lo > 0
+        lv2 := box.new(bar_index - math.min(bar_index, 300), lvl2Hi, bar_index, lvl2Lo, extend = extend.right, bgcolor = color.new(color.gray, 90), border_color = color.gray, border_style = line.style_dashed, text = "your level 2", text_color = color.gray, text_size = size.small, text_halign = text.align_right)
+
+// ------------------------------------------------------------------ the fib and inverted gap entry (5m chart)
+float atr5 = ta.atr(14)
+float pvLow = ta.pivotlow(low, 2, 2)       // a swing low, known two bars later: the start of a long's leg
+float pvHigh = ta.pivothigh(high, 2, 2)    // a swing high: the start of a short's leg
+bool inWindow = not sessOnly or not na(time(timeframe.period, sessStr, "Europe/Dublin"))
+
+zoneHit(int kind, float p) =>
+    bool hit = false
+    if not na(p)
+        for z in zones
+            if z.kind == kind
+                float h = z.hi - z.lo
+                bool ok = kind == 1 ? (p >= z.lo - slackZ * h and p <= z.hi + nearZ * h) : (p <= z.hi + slackZ * h and p >= z.lo - nearZ * h)
+                if ok
+                    hit := true
+    hit
+
+method reset(Leg this) =>
+    this.stage := 0
+    this.L := na
+    this.Lidx := na
+    this.H := na
+    this.Hidx := na
+    this.lowSince := na
+    this.gapTop := na
+    this.gapBot := na
+    this.gapBi := na
+    this.entry := na
+    this.stop := na
+    this.target := na
+    this.entryBi := na
+
+// All prices come in mirrored for a short (high becomes minus low), so one routine does both sides.
+// Returns 0 for nothing, 1 for an entry on the inversion, 2 for an entry on the retest.
+method step(Leg this, float pM, bool hitZone, float hiM, float hiM1, float loM, float clM, float lo2M, float atr, int bi, bool canEnter) =>
+    int sig = 0
+    if this.stage == 4
+        this.reset()                 // the retest was marked on the last bar: start looking again
+    if this.stage == 0
+        if not na(pM) and hitZone
+            this.stage := 1
+            this.L := pM
+            this.Lidx := bi - 2
+            this.H := math.max(hiM, hiM1)
+            this.Hidx := bi
+    else if this.stage == 1
+        if loM < this.L or bi - this.Lidx > legMax * 2
+            this.reset()
+        else
+            if hiM > this.H
+                this.H := hiM
+                this.Hidx := bi
+                this.gapTop := na
+                this.gapBot := na
+            float R = this.H - this.L
+            if this.Hidx - this.Lidx > legMax
+                this.reset()
+            else
+                float fR = this.H - fibReach * R
+                float fD = this.H - fibDeep * R
+                float fH = this.H - 0.5 * R
+                // a gap against the leg, made after its high, that sits in the fib band
+                if na(this.gapTop) and lo2M > hiM and bi - 2 >= this.Hidx and lo2M >= fD and hiM <= fH
+                    this.gapTop := lo2M
+                    this.gapBot := hiM
+                    this.gapBi := bi
+                if R >= legMin * atr and this.Hidx != bi and loM <= fR
+                    this.stage := 2
+                    this.lowSince := loM
+    if this.stage == 2
+        float R = this.H - this.L
+        float fD = this.H - fibDeep * R
+        float fH = this.H - 0.5 * R
+        this.lowSince := math.min(nz(this.lowSince, loM), loM)
+        if loM < this.L or clM < fD or hiM > this.H
+            this.reset()
+        else
+            if na(this.gapTop) and lo2M > hiM and bi - 2 >= this.Hidx and lo2M >= fD and hiM <= fH
+                this.gapTop := lo2M
+                this.gapBot := hiM
+                this.gapBi := bi
+            else if not na(this.gapTop) and bi > this.gapBi and clM > this.gapTop and canEnter
+                float stopM = this.lowSince - bufAtr * atr
+                float risk = clM - stopM
+                if risk > 0
+                    this.entry := clM
+                    this.stop := stopM
+                    this.target := clM + targetR * risk
+                    this.entryBi := bi
+                    this.stage := 3
+                    sig := 1
+    else if this.stage == 3 and sig == 0
+        if loM < this.stop or bi - this.entryBi > 48
+            this.reset()
+        else if bi > this.entryBi and loM <= this.gapTop and clM > this.gapTop and canEnter
+            float risk = clM - this.stop
+            if risk > 0
+                this.entry := clM
+                this.target := clM + targetR * risk
+                sig := 2
+                this.stage := 4
+    sig
+
+var Leg longLeg = Leg.new(s = 1)
+var Leg shortLeg = Leg.new(s = -1)
+var trades = array.new<Trade>()
+
+float hiS = -low
+float loS = -high
+float clS = -close
+
+int sigL = 0
+int sigS = 0
+if barstate.isconfirmed
+    float pS = na(pvHigh) ? na : -pvHigh
+    bool hitL = useLong and zoneHit(1, pvLow)
+    bool hitS = useShort and zoneHit(-1, pvHigh)
+    if useLong
+        sigL := longLeg.step(pvLow, hitL, high, nz(high[1], high), low, close, nz(low[2], low), atr5, bar_index, inWindow)
+    if useShort
+        sigS := shortLeg.step(pS, hitS, hiS, nz(hiS[1], hiS), loS, clS, nz(loS[2], loS), atr5, bar_index, inWindow)
+
+// ------------------------------------------------------------------ drawing and stats
+drawTrade(Leg lg, int s, int sig) =>
+    color col = s == 1 ? color.new(#26a69a, 0) : color.new(#ef5350, 0)
+    float e = s * lg.entry
+    float st = s * lg.stop
+    float tg = s * lg.target
+    if sig == 1 and not na(lg.L)
+        float r705 = s * (lg.H - fibReach * (lg.H - lg.L))
+        float r79 = s * (lg.H - fibDeep * (lg.H - lg.L))
+        line.new(lg.Lidx, s * lg.L, lg.Hidx, s * lg.H, color = color.new(color.gray, 20), width = 1)
+        line.new(lg.Hidx, r705, bar_index + 12, r705, color = color.new(color.orange, 10), style = line.style_dashed)
+        line.new(lg.Hidx, r79, bar_index + 12, r79, color = color.new(color.orange, 40), style = line.style_dotted)
+        label.new(bar_index + 12, r705, "0.705", style = label.style_none, textcolor = color.orange, size = size.tiny)
+        label.new(bar_index + 12, r79, "0.79", style = label.style_none, textcolor = color.new(color.orange, 30), size = size.tiny)
+        if not na(lg.gapTop)
+            box.new(lg.gapBi - 2, s == 1 ? lg.gapTop : s * lg.gapBot, bar_index, s == 1 ? lg.gapBot : s * lg.gapTop, bgcolor = color.new(color.blue, 85), border_color = color.new(color.blue, 40))
+    string tag = (sig == 1 ? "Inverted gap " : "Gap retest ") + (s == 1 ? "long" : "short")
+    label.new(bar_index, s == 1 ? low : high, tag, style = s == 1 ? label.style_label_up : label.style_label_down, color = col, textcolor = color.white, size = size.small)
+    line.new(bar_index, e, bar_index + 20, e, color = color.gray, width = 1)
+    line.new(bar_index, st, bar_index + 20, st, color = color.new(#ef5350, 0), style = line.style_dashed)
+    line.new(bar_index, tg, bar_index + 20, tg, color = color.new(#26a69a, 0), style = line.style_dashed)
+
+if sigL == 1
+    drawTrade(longLeg, 1, 1)
+    trades.push(Trade.new(1, longLeg.entry, longLeg.stop, longLeg.target, targetR, bar_index))
+if sigL == 2
+    drawTrade(longLeg, 1, 2)
+if sigS == 1
+    drawTrade(shortLeg, -1, 1)
+    trades.push(Trade.new(-1, -shortLeg.entry, -shortLeg.stop, -shortLeg.target, targetR, bar_index))
+if sigS == 2
+    drawTrade(shortLeg, -1, 2)
+
+// replay open trades on each closed bar: a bar that touches both stop and target counts as the stop
+if barstate.isconfirmed and trades.size() > 0
+    for tr in trades
+        if tr.state == 0 and bar_index > tr.bi
+            if tr.s == 1
+                if low <= tr.stop
+                    tr.state := -1
+                else if high >= tr.target
+                    tr.state := 1
+            else
+                if high >= tr.stop
+                    tr.state := -1
+                else if low <= tr.target
+                    tr.state := 1
+
+var table tbl = table.new(position.top_right, 2, 7, border_width = 1, frame_color = color.gray, frame_width = 1, bgcolor = color.new(color.black, 20))
+if barstate.islast and showStats
+    int w = 0
+    int l = 0
+    int o = 0
+    float net = 0.0
+    for tr in trades
+        if tr.state == 1
+            w += 1
+            net += tr.rMult
+        else if tr.state == -1
+            l += 1
+            net -= 1.0
+        else
+            o += 1
+    int done = w + l
+    table.set_position(tbl, statsPos == "Top right" ? position.top_right : statsPos == "Top left" ? position.top_left : statsPos == "Bottom right" ? position.bottom_right : position.bottom_left)
+    table.cell(tbl, 0, 0, "Indicator Stats", text_color = color.white, text_size = size.small, bgcolor = color.new(color.gray, 40))
+    table.merge_cells(tbl, 0, 0, 1, 0)
+    table.cell(tbl, 0, 1, "Entries", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 1, str.tostring(trades.size()), text_color = color.white, text_size = size.small)
+    table.cell(tbl, 0, 2, "Hit target", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 2, str.tostring(w), text_color = color.white, text_size = size.small)
+    table.cell(tbl, 0, 3, "Hit stop", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 3, str.tostring(l), text_color = color.white, text_size = size.small)
+    table.cell(tbl, 0, 4, "Still open", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 4, str.tostring(o), text_color = color.white, text_size = size.small)
+    table.cell(tbl, 0, 5, "Win rate", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 5, done > 0 ? str.tostring(math.round(w / done * 1000) / 10.0) + "%" : "-", text_color = color.white, text_size = size.small)
+    table.cell(tbl, 0, 6, "Net result", text_color = color.gray, text_size = size.small, text_halign = text.align_left)
+    table.cell(tbl, 1, 6, (net >= 0 ? "+" : "") + str.tostring(math.round(net * 10) / 10.0) + " R", text_color = net >= 0 ? color.new(#26a69a, 0) : color.new(#ef5350, 0), text_size = size.small)
+
+// ------------------------------------------------------------------ alerts (signals only)
+alertcondition(sigL == 1, "RiskDesk long: inverted gap", "RiskDesk: long entry on the inverted gap. Signal only.")
+alertcondition(sigS == 1, "RiskDesk short: inverted gap", "RiskDesk: short entry on the inverted gap. Signal only.")
+alertcondition(sigL == 2, "RiskDesk long: gap retest", "RiskDesk: long entry on the gap retest. Signal only.")
+alertcondition(sigS == 2, "RiskDesk short: gap retest", "RiskDesk: short entry on the gap retest. Signal only.")
