@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """RiskDesk.ai, a local dashboard for trader-zones: your markets, their zones and the entries found, in a browser.
 
-    py trader-zones\\dashboard.py
+    py riskdesk\\dashboard.py
 
 opens http://127.0.0.1:8765 on your own computer. Nothing leaves your machine except the chart requests to
 Yahoo that zones.py already makes, and the journal coach's question to Anthropic when you press its button. It shows signals only. It never places an order.
 
-Standard library only, like zones.py. The page (dashboard.html next to this file) is self-contained with no outside scripts or fonts.
+Standard library only, like zones.py (which stays in the trader-zones folder). The page (dashboard.html next to this file) is self-contained with no outside scripts or fonts.
 """
 
 import argparse
@@ -23,7 +23,9 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zones.py, the zone finder this dashboard shows
+sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import coach         # noqa: E402
 

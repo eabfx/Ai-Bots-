@@ -13,7 +13,7 @@ import urllib.request
 from _load import load
 from test_zones import entry_data
 
-dash = load("trader-zones", "dashboard")
+dash = load("riskdesk", "dashboard")
 dz = dash.z                      # the zones module the dashboard itself uses
 NOW = "2026-10-26 20:00"
 
@@ -299,11 +299,11 @@ class LevelsData(unittest.TestCase):
 
 class Launcher(unittest.TestCase):
     def test_the_double_click_launcher_starts_the_dashboard_from_the_repo_folder(self):
-        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "trader-zones", "RiskDesk.bat")
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "riskdesk", "RiskDesk.bat")
         with open(path, newline="") as fh:
             text = fh.read()
         self.assertIn('cd /d "%~dp0.."', text)
-        self.assertIn("py trader-zones\\dashboard.py", text)
+        self.assertIn("py riskdesk\\dashboard.py", text)
         self.assertIn("\r\n", text)                                   # Windows line endings
 
 class Server(Patched):
@@ -778,7 +778,7 @@ class Outcome(unittest.TestCase):
 
 
 class PineIndicator(unittest.TestCase):
-    path = os.path.join(os.path.dirname(__file__), "..", "trader-zones", "RiskDesk_Indicator.pine")
+    path = os.path.join(os.path.dirname(__file__), "..", "riskdesk", "RiskDesk_Indicator.pine")
 
     def setUp(self):
         with open(self.path, encoding="utf-8") as fh:

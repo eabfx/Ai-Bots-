@@ -6,7 +6,7 @@ from unittest import mock
 
 from _load import load
 
-coach = load("trader-zones", "coach")
+coach = load("riskdesk", "coach")
 
 TRADES = [
     {"date": "2026-10-26", "inst": "xauusd", "dir": "short", "tag": "15m supply", "risk": 100, "pl": 300, "notes": "fib held"},

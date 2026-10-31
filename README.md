@@ -217,6 +217,7 @@ trader-alerts/      SKILL.md, alerts.py, alerts.example.json
 trader-analyst/     SKILL.md, facts.py, metrics.example.json
 trader-pelosi/      SKILL.md, ptr.py
 trader-zones/       SKILL.md, zones.py   (added in this fork)
+riskdesk/           dashboard.py, dashboard.html, coach.py, RiskDesk.bat, RiskDesk_Indicator.pine   (the RiskDesk.ai dashboard, added in this fork)
 tests/              unittest suite + offline fixtures
 ```
 
