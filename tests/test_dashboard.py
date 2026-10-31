@@ -33,6 +33,61 @@ class Patched(unittest.TestCase):
         dz.collect_zones, dz.get_bars, dz.resample, dz._raw_bars = self.saved
 
 
+class ChartCache(unittest.TestCase):
+    """The dashboard keeps downloaded charts for a minute so a refresh does not wait on Yahoo again."""
+
+    def setUp(self):
+        self.calls = []
+        self.saved = (dash._fetch_charts, dict(dash._CHARTS), dash.time.time)
+        self.clock = [1000.0]
+        dash._CHARTS.clear()
+        dash.time.time = lambda: self.clock[0]
+
+        def fake(sym, interval, days, offline=None):
+            self.calls.append((sym, interval, days, offline))
+            return [{"t": 1, "o": 1.0, "h": 2.0, "l": 0.5, "c": 1.5}]
+        dash._fetch_charts = fake
+        self.addCleanup(self.restore)
+
+    def restore(self):
+        dash._fetch_charts, saved, dash.time.time = self.saved
+        dash._CHARTS.clear()
+        dash._CHARTS.update(saved)
+
+    def test_the_dashboard_reads_charts_through_the_cache(self):
+        self.assertIs(dz._raw_bars, dash._cached_charts)
+
+    def test_a_second_request_inside_a_minute_does_not_download_again(self):
+        dash._cached_charts("MGC", "5m", 2)
+        self.clock[0] += dash.CACHE_SECS - 1
+        dash._cached_charts("MGC", "5m", 2)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_after_a_minute_it_downloads_again(self):
+        dash._cached_charts("MGC", "5m", 2)
+        self.clock[0] += dash.CACHE_SECS
+        dash._cached_charts("MGC", "5m", 2)
+        self.assertEqual(len(self.calls), 2)
+
+    def test_each_market_frame_and_number_of_days_is_kept_apart(self):
+        for args in (("MGC", "5m", 2), ("NQ", "5m", 2), ("MGC", "1m", 2), ("MGC", "5m", 7)):
+            dash._cached_charts(*args)
+        self.assertEqual(len(self.calls), 4)
+
+    def test_saved_charts_are_never_cached(self):
+        dash._cached_charts("MGC", "5m", 2, "folder")
+        dash._cached_charts("MGC", "5m", 2, "folder")
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(dash._CHARTS, {})
+
+    def test_changing_the_bars_you_were_given_does_not_change_the_kept_copy(self):
+        first = dash._cached_charts("MGC", "5m", 2)
+        first[0]["c"] = 999.0
+        first.append({"t": 2})
+        again = dash._cached_charts("MGC", "5m", 2)
+        self.assertEqual(again, [{"t": 1, "o": 1.0, "h": 2.0, "l": 0.5, "c": 1.5}])
+
+
 class Snapshot(Patched):
     def snap(self, sym="MGC", **kw):
         cfg = dz.read_config("none.json")

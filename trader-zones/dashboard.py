@@ -14,8 +14,10 @@ import contextlib
 import io
 import json
 import os
+import copy
 import sys
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -25,6 +27,25 @@ import zones as z    # noqa: E402
 
 PORT = 8765
 ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
+CACHE_SECS = 60
+_CHARTS = {}                      # (market, interval, days) -> (when fetched, bars)
+_fetch_charts = z._raw_bars
+
+
+def _cached_charts(sym, interval, days, offline=None):
+    """The Yahoo charts a page load needs, kept for CACHE_SECS so a second refresh, or a switch between markets
+    and back, does not wait on Yahoo again. Saved charts (--offline) are read every time."""
+    if offline:
+        return _fetch_charts(sym, interval, days, offline)
+    key, now = (sym, interval, days), time.time()
+    hit = _CHARTS.get(key)
+    if hit is None or now - hit[0] >= CACHE_SECS:
+        hit = (now, _fetch_charts(sym, interval, days, offline))
+        _CHARTS[key] = hit
+    return copy.deepcopy(hit[1])
+
+
+z._raw_bars = _cached_charts
 
 
 def dublin_text(ts):
