@@ -122,6 +122,12 @@ One candle, high to low, drawn by a fixed rule so it is the same every run:
    beyond its extreme by more than 0.1 x ATR before then, is a zone too. What came
    before the candle does not matter, so a pause inside a leg counts. One move
    gets one zone.
+2c. Which candle. By default the zone is the most extreme candle of the pause before the move.
+   `zone_candle` "last" in the config's `zones` block takes the nearest candle with the zone shape,
+   the one right before the move ("the candle before the big move, wick to wick"). It usually also
+   needs a lower `move_atr` (1.3 instead of 2.0), because that candle's near edge is further from the
+   move. On the user's saved charts this reproduces the EURUSD 15m box from Tue 27 08:45 but changes
+   zones on every market, including gold ones that match under the default, so it is an option only.
 3. Fresh until price trades back into it, then touched.
    **Respected.** The user's rule is that a zone has to be respected at some point. Once price trades
    back into a zone (from the bar after the move that made it), it is judged: *respected* when price then
