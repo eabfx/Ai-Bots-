@@ -30,11 +30,12 @@ ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
 CACHE_SECS = 60
 # The page's "Zone rule" setting. "before" is the user's own way of drawing a zone: the candle right before the
 # big move, even with a middling body, and a smaller move away than the standard rule asks for.
-RULES = {"standard": {}, "before": {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7}}
+RULES = {"standard": {k: z.DEFAULTS[k] for k in ("zone_candle", "move_atr", "base_body_atr")}, "before": {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7}}
 
 
 def apply_rule(cfg, rule):
-    """Put a named zone rule on top of the settings from the config file. Returns the same dict."""
+    """Put a named zone rule on top of the settings from the config file (the rule decides these three settings,
+    even if the config file sets them too). Returns the same dict."""
     if rule not in RULES:
         raise z.ZoneError("rule must be %s" % " or ".join('"%s"' % r for r in RULES))
     cfg.update(RULES[rule])

@@ -247,10 +247,27 @@ class Rules(unittest.TestCase):
         plain = dz.read_config("none.json")
         self.assertEqual(dash.apply_rule(dz.read_config("none.json"), "standard"), plain)
 
+    def test_standard_rule_wins_over_a_config_file_that_sets_the_same_settings(self):
+        cfg = dz.read_config("none.json")
+        cfg.update(zone_candle="last", move_atr=1.3, base_body_atr=0.7)
+        dash.apply_rule(cfg, "standard")
+        plain = dz.read_config("none.json")
+        self.assertEqual((cfg["zone_candle"], cfg["move_atr"], cfg["base_body_atr"]),
+                         (plain["zone_candle"], plain["move_atr"], plain["base_body_atr"]))
+
     def test_unknown_rule_is_refused(self):
         with self.assertRaises(dz.ZoneError):
             dash.apply_rule(dz.read_config("none.json"), "wild")
 
+
+class Launcher(unittest.TestCase):
+    def test_the_double_click_launcher_starts_the_dashboard_from_the_repo_folder(self):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "trader-zones", "RiskDesk.bat")
+        with open(path, newline="") as fh:
+            text = fh.read()
+        self.assertIn('cd /d "%~dp0.."', text)
+        self.assertIn("py trader-zones\\dashboard.py", text)
+        self.assertIn("\r\n", text)                                   # Windows line endings
 
 class Server(Patched):
     def setUp(self):

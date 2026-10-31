@@ -73,7 +73,7 @@ fresh one. The Zone rule setting switches between "candle before the move" (the 
 `zone_candle` "last", `move_atr` 1.3, `base_body_atr` 0.7, which finds more zones) and the standard rule, which
 is still what the command line uses. Refresh re-runs the tool; it can
 also refresh every 5 minutes.
-The dashboard is called RiskDesk.ai. The page is `trader-zones/dashboard.html`, laid out like the user's RiskDesk site: black and white, a dark or
+The dashboard is called RiskDesk.ai. On Windows, double-click `trader-zones\RiskDesk.bat` to start it. The page is `trader-zones/dashboard.html`, laid out like the user's RiskDesk site: black and white, a dark or
 light theme (button top right), and three sections. **Zones** has a Frames filter (1 hour, 30 min, 15 min), the
 Show zones setting and a Visits column that lists every time price came back to a zone (the session it opened
 in, how deep, and whether it held). **Trades** has RiskDesk's position size and risk/reward calculators (the
