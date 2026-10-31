@@ -131,7 +131,7 @@ DEFAULTS = {
     "leg_min_atr": 7.0,       # "yours": the leg has to be at least this many 5-minute ATRs long (a real swing, not a wobble)
     "leg_max_bars": 96,       # "yours": the leg has to finish within this many 5-minute bars of its start
     "leg_zone_slack": 1.0,    # "yours": the leg may start this many zone heights under the zone (a zone broken through)
-    "leg_zone_near": 0.5,     # "yours": a leg may also start this many zone heights short of the zone (a wick that nearly got there)
+    "leg_zone_near": 1.0,     # "yours": a leg may also start this many zone heights short of the zone (a wick that nearly got there)
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
