@@ -17,6 +17,7 @@ Standard library only.
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -29,6 +30,10 @@ KEY_FILE = "anthropic_key.txt"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 GEMINI_MODEL = "gemini-3.8-flash"
 GEMINI_KEY_FILE = "gemini_key.txt"
+# Google's newest model is often overloaded on the free plan (503, slow, dropped connections), so when it is busy the
+# next ones down are tried. A model named in GEMINI_MODEL is tried first.
+GEMINI_FALLBACKS = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
+GEMINI_BUDGET = 150          # seconds to keep trying before giving up (the dashboard answers one thing at a time)
 
 SYSTEM = """You are the journal coach inside RiskDesk.ai, a trading dashboard. You review one trader's own journal.
 
@@ -187,7 +192,7 @@ def build_prompt(trades, indicator, question):
     return "\n".join(parts)
 
 
-def api_post(url, headers, body, timeout=90):
+def api_post(url, headers, body, timeout=50):
     """One POST to the API. Replaced in the tests, so nothing goes out while they run."""
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
@@ -196,7 +201,7 @@ def api_post(url, headers, body, timeout=90):
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace")
     except (urllib.error.URLError, OSError) as e:
-        raise CoachError("could not reach Anthropic (%s). Check the internet connection." % e)
+        raise CoachError("could not reach the AI service (%s). Check the internet connection, or try again." % e)
 
 
 def api_error(status, text):
@@ -233,22 +238,38 @@ def gemini_error(status, text):
     return "Google returned an error (%d): %s" % (status, msg or "no details")
 
 
-def ask_gemini(prompt, key, model, post):
+def ask_gemini(prompt, key, model, post, clock=time.monotonic):
+    """Asks Google. When a model is busy or unreachable the next one is tried, until the time budget runs out."""
     body = json.dumps({"systemInstruction": {"parts": [{"text": SYSTEM}]},
                        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                       "generationConfig": {"maxOutputTokens": 4000}})
+                       "generationConfig": {"maxOutputTokens": 4000}}).encode("utf-8")
     headers = {"x-goog-api-key": key, "content-type": "application/json"}
-    status, text = post(GEMINI_URL % model, headers, body.encode("utf-8"))
-    if status != 200:
-        raise CoachError(gemini_error(status, text))
-    try:
-        parts = json.loads(text)["candidates"][0]["content"]["parts"]
-        answer = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
-    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        raise CoachError("Google's answer was not in the form expected (it may have been blocked). Try again.")
-    if not answer:
-        raise CoachError("Google sent an empty answer. Try again.")
-    return answer
+    models = [model] + [m for m in GEMINI_FALLBACKS if m != model]
+    start, last = clock(), "no answer"
+    for name in models:
+        if clock() - start > GEMINI_BUDGET:
+            break
+        try:
+            status, text = post(GEMINI_URL % name, headers, body)
+        except CoachError as e:
+            last = str(e)
+            continue
+        if status in (400, 401, 403):
+            raise CoachError(gemini_error(status, text))        # the key or the request is wrong: another model will not help
+        if status != 200:
+            last = gemini_error(status, text)
+            continue                                            # busy, over the free limit or retired: try the next one
+        try:
+            parts = json.loads(text)["candidates"][0]["content"]["parts"]
+            answer = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+        except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+            last = "Google's answer was not in the form expected (it may have been blocked)."
+            continue
+        if answer:
+            return answer
+        last = "Google sent an empty answer."
+    raise CoachError("Google's models are all busy or not answering right now (%s). Wait a minute and press the "
+                     "button again." % last)
 
 
 def ask(trades, question, indicator, key, model, post=api_post, service="anthropic"):

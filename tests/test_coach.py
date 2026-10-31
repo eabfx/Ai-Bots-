@@ -156,9 +156,49 @@ class Gemini(unittest.TestCase):
         self.assertIn("QUESTION: Any leaks?", seen["body"]["contents"][0]["parts"][0]["text"])
         self.assertIn("journal coach", seen["body"]["systemInstruction"]["parts"][0]["text"])
 
-    def test_errors_and_odd_answers_become_messages(self):
-        for status, body, word in ((400, '{"error": {"message": "API key not valid"}}', "key"),
-                                   (404, '{"error": {"message": "x"}}', "model"),
+    def test_a_wrong_key_stops_at_once_without_trying_other_models(self):
+        calls = []
+        with self.assertRaises(coach.CoachError) as cm:
+            coach.ask(TRADES, "", None, "k", "m", lambda *a: (calls.append(a) or (400, '{"error": {"message": "API key not valid"}}')), "gemini")
+        self.assertIn("key", str(cm.exception).lower())
+        self.assertEqual(len(calls), 1)
+
+    def test_a_busy_model_falls_through_to_the_next_one(self):
+        urls = []
+
+        def post(url, headers, body):
+            urls.append(url)
+            if len(urls) == 1:
+                return 503, '{"error": {"message": "high demand"}}'
+            if len(urls) == 2:
+                raise coach.CoachError("could not reach the AI service (reset)")
+            return self.reply("Third time lucky.")(url, headers, body)
+        out = coach.ask(TRADES, "", None, "k", "gemini-3.8-flash", post, "gemini")
+        self.assertEqual(out, "Third time lucky.")
+        self.assertEqual([u.split("/models/")[1].split(":")[0] for u in urls],
+                         ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"])
+
+    def test_when_every_model_fails_the_message_says_to_wait_and_try_again(self):
+        calls = []
+        with self.assertRaises(coach.CoachError) as cm:
+            coach.ask(TRADES, "", None, "k", "m", lambda *a: (calls.append(a) or (503, "{}")), "gemini")
+        self.assertEqual(len(calls), 1 + len(coach.GEMINI_FALLBACKS))
+        self.assertIn("again", str(cm.exception).lower())
+
+    def test_it_stops_trying_when_the_time_budget_is_spent(self):
+        now = [0.0]
+        calls = []
+
+        def post(*a):
+            calls.append(a)
+            now[0] += 100.0
+            return 503, "{}"
+        with self.assertRaises(coach.CoachError):
+            coach.ask_gemini("p", "k", "m", post, clock=lambda: now[0])
+        self.assertEqual(len(calls), 2)                    # 100 s then 200 s: over the 150 s budget
+
+    def test_other_errors_and_odd_answers_become_messages(self):
+        for status, body, word in ((404, '{"error": {"message": "x"}}', "again"),
                                    (429, "{}", "limit"), (503, "{}", "again")):
             with self.assertRaises(coach.CoachError) as cm:
                 coach.ask(TRADES, "", None, "k", "m", lambda *a, s=status, b=body: (s, b), "gemini")
