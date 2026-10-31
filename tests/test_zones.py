@@ -602,6 +602,18 @@ class YoursEntry(unittest.TestCase):
         self.assertGreater(res[0]["stop"], -102.2)
         self.assertLess(res[0]["target"], res[0]["entry"])
 
+    def test_a_leg_may_start_from_a_wick_that_stops_just_short_of_the_zone(self):
+        bars = self.bars()
+        bars[30] = dict(bars[30], l=100.3, c=100.5)                        # the zone is 99 to 100: this stops 0.3 short
+        bars[31] = dict(bars[31], l=100.3)                                 # and so does the next bar
+        cfg = z.read_config(None)
+        cfg.update(entry_style="yours", leg_min_atr=3.0)
+        res, _ = z.setups_for(self.zone(bars), bars, [], [], cfg)
+        self.assertEqual(res[0]["trigger"], "IFVG inverted")
+        cfg["leg_zone_near"] = 0.1                                         # only 0.1 of the zone height is allowed
+        res, best = z.setups_for(self.zone(bars), bars, [], [], cfg)
+        self.assertEqual((res, best), ([], 1))
+
     def test_a_small_wobble_is_not_a_leg(self):
         bars = self.bars()
         cfg = z.read_config(None)

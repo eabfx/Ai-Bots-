@@ -131,6 +131,7 @@ DEFAULTS = {
     "leg_min_atr": 7.0,       # "yours": the leg has to be at least this many 5-minute ATRs long (a real swing, not a wobble)
     "leg_max_bars": 96,       # "yours": the leg has to finish within this many 5-minute bars of its start
     "leg_zone_slack": 1.0,    # "yours": the leg may start this many zone heights under the zone (a zone broken through)
+    "leg_zone_near": 0.5,     # "yours": a leg may also start this many zone heights short of the zone (a wick that nearly got there)
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -862,7 +863,8 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
 def yours_long(zone, m5, cfg):
     """The user's own entry for a demand zone: the leg off the zone, the fib, a gap that inverts, a tight stop.
     1. A leg starts where price is in the zone: its lowest low is the start and the highest high after it is the
-       end (both known as they happen, so nothing looks ahead). It has to be at least `leg_min_atr` 5-minute ATRs
+       end (both known as they happen, so nothing looks ahead). A wick that stops short of the zone by up to
+       `leg_zone_near` zone heights still counts. It has to be at least `leg_min_atr` 5-minute ATRs
        long, finish within `leg_max_bars` bars of its start, and start no further under the zone than
        `leg_zone_slack` zone heights (a zone is reused after it breaks, but within reason).
     2. Price retraces down to the `fib_reach` line (0.705). A close beyond `fib_deep` (0.79), or a low under the
@@ -883,6 +885,7 @@ def yours_long(zone, m5, cfg):
     n = len(m5)
     rr_fixed = float(cfg["target_r"] or 3.0)
     slack = cfg["leg_zone_slack"] * (zone["high"] - zone["low"])
+    near = cfg["leg_zone_near"] * (zone["high"] - zone["low"])
 
     def attempt(L, H, hidx, reach):
         """Walk forward from the bar price reached the fib. Returns (entries, where the leg search carries on,
@@ -947,7 +950,7 @@ def yours_long(zone, m5, cfg):
         if L is not None and L < zone["low"] - slack and b["l"] > zone["high"]:
             L = None                                       # price left a zone it had broken through far below
         if L is None:
-            if b["l"] <= zone["high"]:                     # a leg starts where price is in the zone
+            if b["l"] <= zone["high"] + near:              # a leg starts where price is in the zone, or just short of it
                 L, Lidx, H, Hidx = b["l"], i, None, None
             i += 1
             continue
