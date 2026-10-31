@@ -994,6 +994,16 @@ class JournalPage(Server):
         self.assertIn('plan:t.plan==="followed"||t.plan==="deviated"?t.plan:""', body)
 
 
+class DefaultPaths(unittest.TestCase):
+    def test_settings_and_keys_are_found_from_the_repo_not_the_folder_it_was_started_in(self):
+        trader = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(dash.__file__))), "trader")
+        self.assertEqual(dash.TRADER, trader)
+        self.assertTrue(os.path.isabs(dash.TRADER))
+        for name in ("config_path", "mine_file", "levels_file"):
+            self.assertTrue(os.path.isabs(getattr(dash.Handler, name)), name)
+            self.assertTrue(getattr(dash.Handler, name).startswith(trader))
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

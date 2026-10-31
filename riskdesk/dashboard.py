@@ -24,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+TRADER = os.path.join(os.path.dirname(HERE), "trader")          # your settings and keys, found from the repo whatever folder you start it in
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zones.py, the zone finder this dashboard shows
 sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
@@ -309,10 +310,10 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None, leve
 
 
 class Handler(BaseHTTPRequestHandler):
-    config_path = "trader/config.json"
+    config_path = os.path.join(TRADER, "config.json")
     offline = None
-    mine_file = "trader/my_zones.json"
-    levels_file = "trader/my_levels.json"
+    mine_file = os.path.join(TRADER, "my_zones.json")
+    levels_file = os.path.join(TRADER, "my_levels.json")
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
 
@@ -467,7 +468,7 @@ class DashboardServer(HTTPServer):
     allow_reuse_address = os.name != "nt"
 
 
-def make_server(port=PORT, config_path="trader/config.json", offline=None):
+def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offline=None):
     handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
                                          "mine_file": mine_path(config_path),
                                          "levels_file": levels_path(config_path)})
@@ -481,7 +482,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.ht
 def main(argv=None):
     p = argparse.ArgumentParser(prog="dashboard.py", description="Local dashboard for trader-zones (signals only)")
     p.add_argument("--port", type=int, default=PORT)
-    p.add_argument("--config", default="trader/config.json")
+    p.add_argument("--config", default=os.path.join(TRADER, "config.json"))
     p.add_argument("--offline", help="folder with saved Yahoo charts, to try the dashboard without the internet")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     args = p.parse_args(argv)
