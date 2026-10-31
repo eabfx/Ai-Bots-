@@ -936,6 +936,7 @@ var DAY=86400000,MONTHS=["January","February","March","April","May","June","July
 if(["all","90","30","7"].indexOf(jRange)<0)jRange="all";
 function dparse(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?Date.UTC(+m[1],+m[2]-1,+m[3]):null}
 function wdOf(ms){return(new Date(ms).getUTCDay()+6)%7}
+function pl(n,w,p){return n+" "+(n===1?w:(p||w+"s"))}
 function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))}
 function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
@@ -971,7 +972,7 @@ function jScoreCard(st,list){
   if(st.winrate!==null)parts.push(["Win rate",clamp(st.winrate/60*100),fmt(st.winrate,1)+"%","60% or better scores 100"]);
   var wg=weekGreen(list);if(wg)parts.push(["Consistency",wg.green/wg.total*100,wg.green+" of "+wg.total+" weeks","share of weeks that ended in profit"]);
   if(st.planned>=3)parts.push(["Discipline",st.followed/st.planned*100,st.followed+" of "+st.planned,"share of trades where you followed the plan"]);
-  if(!parts.length||st.n<1){box.appendChild(el("div","empty","Log a few trades and the score appears here."));return}
+  if(!parts.length||st.n<5){box.appendChild(el("div","empty",(st.n?"Only "+pl(st.n,"trade")+" in this period. ":"")+"The score needs at least 5 trades, otherwise it says more than the data can."));return}
   var score=Math.round(parts.reduce(function(a,p){return a+p[1]},0)/parts.length),weak=parts.slice().sort(function(a,b){return a[1]-b[1]})[0];
   var top=el("div","jscoretop");top.appendChild(el("div","jscore",String(score)));
   var side=el("div",null);side.appendChild(el("div","jsub","out of 100, from "+parts.length+" parts"));
@@ -979,7 +980,7 @@ function jScoreCard(st,list){
   parts.forEach(function(p){
     var row=el("div","jrow"),nm=el("div","nm",p[0]);nm.appendChild(el("small",null,p[3]));row.appendChild(nm);
     var tr=el("div","jtrack"),b=el("i","fill");b.style.width=clamp(p[1])+"%";tr.appendChild(b);row.appendChild(tr);row.appendChild(el("div","jv",p[2]));box.appendChild(row)});
-  box.appendChild(el("div","jsub",(st.n<20?"Only "+st.n+" trades so far, so treat this as a hint. ":"")+"Each part is scaled 0 to 100 by the fixed rule under it. It describes your journal. It does not predict anything."))}
+  box.appendChild(el("div","jsub",(st.n<20?"Only "+pl(st.n,"trade")+" so far, so treat this as a hint. ":"")+"Each part is scaled 0 to 100 by the fixed rule under it. It describes your journal. It does not predict anything."))}
 function jCurve(list){
   var box=$("j-curve"),sub=$("j-curvesub");box.textContent="";sub.textContent="";
   var ch=jChron(list);
@@ -1047,10 +1048,10 @@ function jRender(){
   $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange];
   var tot=$("j-total");tot.textContent=st.n?signed(st.net):"-";tot.className="jtotal "+(st.n?cls(st.net):"");
   var wk=jStats(sinceDays(7));
-  $("j-totsub").textContent=st.n?st.w+" wins / "+st.l+" losses"+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+st.n+" trade"+(st.n===1?"":"s")+
-    (trades.length?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":""):trades.length?"No trades in this period.":"Log your first trade below and the numbers fill in.";
+  $("j-totsub").textContent=st.n?pl(st.w,"win")+" / "+pl(st.l,"loss","losses")+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+pl(st.n,"trade")+
+    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":"."):trades.length?"No trades in this period.":"Log your first trade below and the numbers fill in.";
   var cards=[["Win rate",st.winrate===null?"-":fmt(st.winrate,1)+"%",st.n?st.w+"W / "+st.l+"L":"",null],
-    ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+st.rs.length+" trades",st.avgR===null?null:cls(st.avgR)],
+    ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+pl(st.rs.length,"trade"),st.avgR===null?null:cls(st.avgR)],
     ["Profit factor",st.pf===null?"-":st.pf===Infinity?"no losses":fmt(st.pf,2),st.avgWinR===null?"":"avg winner "+fmt(st.avgWinR,2)+"R",null],
     ["Avg win / loss",st.avgW===null?"-":"+"+money(st.avgW),st.avgL===null?"":"avg loss "+money(st.avgL),st.avgW===null?null:"up"],
     ["Plan followed",st.planned?Math.round(st.followed/st.planned*100)+"%":"-",st.planned?st.followed+" of "+st.planned+" marked":"mark it when you log",null]];
