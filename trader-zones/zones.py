@@ -862,8 +862,8 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
 
 def yours_long(zone, m5, cfg):
     """The user's own entry for a demand zone: the leg off the zone, the fib, a gap that inverts, a tight stop.
-    1. A leg starts where price is in the zone: its lowest low is the start and the highest high after it is the
-       end (both known as they happen, so nothing looks ahead). A wick that stops short of the zone by up to
+    1. A leg starts at the latest swing low at the zone (the last time price was there before it moved away); the
+       highest high after it is the end (both known as they happen, so nothing looks ahead). A wick that stops short of the zone by up to
        `leg_zone_near` zone heights still counts. It has to be at least `leg_min_atr` 5-minute ATRs
        long, finish within `leg_max_bars` bars of its start, and start no further under the zone than
        `leg_zone_slack` zone heights (a zone is reused after it breaks, but within reason).
@@ -943,28 +943,35 @@ def yours_long(zone, m5, cfg):
                 return found, j + 1, True                  # this gap has had its inversion and its retest
         return found, n, True
 
+    _, pl5 = pivots(m5, cfg["swing_n"])
+    start = bisect.bisect_left(t5, zone["touched_t"])
+    pp = 0
     L = Lidx = H = Hidx = None
-    i = bisect.bisect_left(t5, zone["touched_t"])
+    i = start
     while i < n:
         b = m5[i]
-        if L is not None and L < zone["low"] - slack and b["l"] > zone["high"]:
-            L = None                                       # price left a zone it had broken through far below
+        while pp < len(pl5) and pl5[pp][0] <= i:           # a swing low at the zone, now confirmed, starts a leg
+            _, idx, price = pl5[pp]
+            pp += 1
+            if idx >= start and zone["low"] - slack <= price <= zone["high"] + near:
+                L, Lidx, H, Hidx = price, idx, None, None
+                for k in range(idx + 1, i + 1):
+                    if H is None or m5[k]["h"] > H:
+                        H, Hidx = m5[k]["h"], k
         if L is None:
-            if b["l"] <= zone["high"] + near:              # a leg starts where price is in the zone, or just short of it
-                L, Lidx, H, Hidx = b["l"], i, None, None
             i += 1
             continue
-        if b["l"] < L:
-            L, Lidx, H, Hidx = b["l"], i, None, None
+        if b["l"] < L:                                     # the start of the leg was taken out: wait for a new one
+            L = H = Hidx = None
             i += 1
             continue
         if H is None or b["h"] > H:
             H, Hidx = b["h"], i
             if Hidx - Lidx > cfg["leg_max_bars"]:          # too long to be the leg off the zone
-                L = None
+                L = H = Hidx = None
             i += 1
             continue
-        if L < zone["low"] - slack or a5[i] is None or H - L < cfg["leg_min_atr"] * a5[i]:
+        if a5[i] is None or H - L < cfg["leg_min_atr"] * a5[i]:
             i += 1
             continue
         best = max(best, 2)                                # a leg is drawn
@@ -977,7 +984,7 @@ def yours_long(zone, m5, cfg):
         if keep:
             H, Hidx = None, None                           # the leg's start stays: a new leg can grow from it
         else:
-            L = None
+            L = H = Hidx = None
     return out, best
 
 
