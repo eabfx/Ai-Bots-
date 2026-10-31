@@ -1076,6 +1076,20 @@ class Command(unittest.TestCase):
         self.assertEqual(result, [2])
         self.assertIn("Try --port", err.getvalue())
 
+    def test_starting_it_twice_just_opens_the_one_that_is_running(self):
+        server = dash.make_server(0, "none.json")
+        self.addCleanup(server.server_close)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        port = server.server_address[1]
+        out, result = io.StringIO(), []
+        runner = threading.Thread(target=lambda: result.append(dash.main(["--port", str(port), "--no-browser"])), daemon=True)
+        with contextlib.redirect_stdout(out):
+            runner.start()
+            runner.join(10)
+        self.assertEqual(result, [0])
+        self.assertIn("already running", out.getvalue())
+
     def test_address_reuse_is_off_on_windows_where_it_lets_two_servers_share_a_port(self):
         self.assertEqual(dash.DashboardServer.allow_reuse_address, os.name != "nt")
 

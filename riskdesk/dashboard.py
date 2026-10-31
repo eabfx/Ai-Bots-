@@ -479,6 +479,16 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.ht
     PAGE = _fh.read()
 
 
+def already_running(port):
+    """True when the thing holding the port is this dashboard (it answers the status route)."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d/api/coach/status" % port, timeout=2) as r:
+            return "ready" in json.loads(r.read().decode("utf-8", "replace"))
+    except Exception:
+        return False
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="dashboard.py", description="Local dashboard for trader-zones (signals only)")
     p.add_argument("--port", type=int, default=PORT)
@@ -489,6 +499,12 @@ def main(argv=None):
     try:
         server = make_server(args.port, args.config, args.offline)
     except OSError as e:
+        url = "http://127.0.0.1:%d" % args.port
+        if already_running(args.port):                                  # a second double-click just opens the one that is running
+            print("RiskDesk is already running at %s. Opening it." % url)
+            if not args.no_browser:
+                webbrowser.open(url)
+            return 0
         print("error: cannot use port %d (%s). Try --port 8766." % (args.port, e), file=sys.stderr)
         return 2
     url = "http://127.0.0.1:%d" % args.port
