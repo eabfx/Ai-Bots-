@@ -128,7 +128,7 @@ DEFAULTS = {
     "entry_style": "tool",    # "tool": sweep + FVG in the OTE + 3-minute CHoCH. "yours": the user's own way, see yours_long
     "fib_reach": 0.705,       # "yours": price has to retrace this far into the leg (the 0.705 line)
     "fib_deep": 0.79,         # "yours": a close past this line means the fib was not respected
-    "leg_min_atr": 3.0,       # "yours": the leg has to be at least this many 5-minute ATRs long
+    "leg_min_atr": 7.0,       # "yours": the leg has to be at least this many 5-minute ATRs long (a real swing, not a wobble)
     "leg_max_bars": 96,       # "yours": the leg has to finish within this many 5-minute bars of its start
     "leg_zone_slack": 1.0,    # "yours": the leg may start this many zone heights under the zone (a zone broken through)
     "zones_in_sessions": True,

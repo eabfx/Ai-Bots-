@@ -557,7 +557,7 @@ class YoursEntry(unittest.TestCase):
 
     def go(self, bars, kind="demand", sign=1):
         cfg = z.read_config(None)
-        cfg["entry_style"] = "yours"
+        cfg.update(entry_style="yours", leg_min_atr=3.0)                  # the test leg is small: 3 ATRs is enough here
         return z.setups_for(self.zone(bars, kind, sign), bars, [], [], cfg)
 
     def test_a_gap_that_inverts_after_the_fib_gives_an_entry_just_under_where_the_fib_held(self):
@@ -602,10 +602,18 @@ class YoursEntry(unittest.TestCase):
         self.assertGreater(res[0]["stop"], -102.2)
         self.assertLess(res[0]["target"], res[0]["entry"])
 
+    def test_a_small_wobble_is_not_a_leg(self):
+        bars = self.bars()
+        cfg = z.read_config(None)
+        cfg.update(entry_style="yours", leg_min_atr=50.0)
+        res, best = z.setups_for(self.zone(bars), bars, [], [], cfg)
+        self.assertEqual((res, best), ([], 1))
+        self.assertEqual(z.read_config(None)["leg_min_atr"], 7.0)           # the real default asks for a real swing
+
     def test_a_leg_has_to_start_at_the_zone_and_finish_quickly(self):
         bars = self.bars()
         cfg = z.read_config(None)
-        cfg.update(entry_style="yours", leg_max_bars=5)                    # the leg took 11 bars: too long
+        cfg.update(entry_style="yours", leg_min_atr=3.0, leg_max_bars=5)   # the leg took 11 bars: too long
         res, best = z.setups_for(self.zone(bars), bars, [], [], cfg)
         self.assertEqual(res, [])
         self.assertLessEqual(best, 2)
