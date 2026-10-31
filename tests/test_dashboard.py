@@ -325,6 +325,7 @@ class Server(Patched):
         self.assertIn('id="rule"', body)
         self.assertIn('"&rule="', body)
         self.assertIn('"zd.rule"', body)
+        self.assertIn('<option value="before" selected>', body)       # the page starts on the user's own rule
         code, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&rule=before")
         self.assertEqual(code, 200)
         self.assertEqual(json.loads(js)["rule"], "before")
