@@ -977,6 +977,23 @@ class MacroRoutes(Server):
         self.assertNotIn("innerHTML", body.split("/* ---------------- macro desk")[1])    # outside text is only ever set as text
 
 
+class JournalPage(Server):
+    def test_the_journal_tab_has_the_overview_charts_and_reflection_fields(self):
+        _, _, body = self.get("/")
+        for needle in ('id="j-total"', 'id="j-score"', 'id="j-curve"', 'id="j-cal"', 'id="j-week"', 'id="j-groups"',
+                       'id="j-range"', 'id="j-grade"', 'id="j-plan"', 'id="j-emo"', "Edge score", "Cumulative P/L",
+                       "Plan followed", "Profit factor", "riskdesk_journal_v1"):
+            self.assertIn(needle, body)
+        journal = body.split("/* ---------------- journal")[1].split("/* ---------------- macro desk")[0]
+        self.assertNotIn("innerHTML", journal)                         # trade text is only ever set as text
+        self.assertIn("does not predict anything", journal)
+
+    def test_old_backups_still_load_because_the_new_fields_are_optional(self):
+        _, _, body = self.get("/")
+        self.assertIn('grade:g&&"ABCD".indexOf(g)>=0?g:""', body)
+        self.assertIn('plan:t.plan==="followed"||t.plan==="deviated"?t.plan:""', body)
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

@@ -179,6 +179,34 @@ class Chat(unittest.TestCase):
         self.assertIn("never invent", low)
 
 
+class Reflection(unittest.TestCase):
+    """The optional grade, plan and emotion fields the Journal tab can add to a trade."""
+
+    def rows(self):
+        return coach.clean_trades([
+            {"pl": 300, "risk": 100, "inst": "nq", "grade": "a", "plan": "followed", "emotion": "Calm"},
+            {"pl": -100, "risk": 100, "inst": "nq", "grade": "c", "plan": "deviated", "emotion": "FOMO"},
+            {"pl": -100, "risk": 100, "inst": "nq", "grade": "zzz", "plan": "maybe", "emotion": ""},
+            {"pl": 50, "inst": "nq"}])
+
+    def test_they_are_kept_when_valid_and_left_out_when_not(self):
+        a, b, c, d = self.rows()
+        self.assertEqual((a["grade"], a["plan"], a["emotion"]), ("A", "followed", "calm"))
+        self.assertEqual((b["grade"], b["plan"], b["emotion"]), ("C", "deviated", "fomo"))
+        for key in ("grade", "plan", "emotion"):
+            self.assertNotIn(key, c)
+            self.assertNotIn(key, d)
+
+    def test_the_summary_compares_results_across_them_only_when_used(self):
+        s = coach.summarise(self.rows())
+        self.assertEqual({r["name"]: r["net_pl"] for r in s["by_plan"]}, {"followed": 300.0, "deviated": -100.0, "(not set)": -50.0})
+        self.assertIn("by_emotion", s)
+        self.assertIn("by_grade", s)
+        plain = coach.summarise(coach.clean_trades([{"pl": 5}]))
+        for key in ("by_plan", "by_emotion", "by_grade"):
+            self.assertNotIn(key, plain)
+
+
 class Gemini(unittest.TestCase):
     def reply(self, text="Gold is your edge."):
         return lambda url, headers, body: (200, json.dumps(

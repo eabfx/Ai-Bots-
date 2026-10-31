@@ -219,6 +219,44 @@ tr.soon td{background:var(--panel2)}
 footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .foot{max-width:1120px;margin:0 auto;font-size:12px;color:var(--muted);line-height:1.6}
 @media (max-width:560px){.hero{padding-top:28px}.bar{gap:10px}}
+
+/* journal */
+.jhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 20px;flex-wrap:wrap}
+.jh{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.jhero{text-align:center;padding:26px 20px 22px}
+.jtotal{font:600 clamp(34px,8vw,54px) var(--mono);letter-spacing:-.02em;margin:8px 0 6px;text-shadow:0 0 36px rgba(255,255,255,.12)}
+:root[data-theme="light"] .jtotal{text-shadow:none}
+.jtotal.up,.stat .v.up,.jv.up{color:var(--up)}.jtotal.down,.stat .v.down,.jv.down{color:var(--down)}
+.jsub{color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:4px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px;margin-bottom:16px}
+.jgrid>.card{margin-bottom:0;min-width:0}
+.jscoretop{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+.jscore{font:600 46px var(--mono);letter-spacing:-.02em;line-height:1}
+.jrow{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;padding:6px 0;font-size:13px}
+.jrow .nm small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
+.jv{font:600 12.5px var(--mono);text-align:right;white-space:nowrap}
+.jtrack{position:relative;height:8px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.jtrack i{position:absolute;top:0;bottom:0;border-radius:99px}
+.jtrack i.fill{left:0;background:var(--text)}.jtrack i.up{left:50%;background:var(--up)}.jtrack i.down{right:50%;background:var(--down)}
+.jtrack::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.jtrack:has(i.fill)::after{display:none}
+.jcurve{width:100%;height:auto;display:block}
+.jcurve .zero{stroke:var(--line);stroke-dasharray:4 4;stroke-width:1}
+.jcurve .ln{stroke:var(--text);stroke-width:2;stroke-linejoin:round}
+.jcurve .area{fill:var(--text);opacity:.07}
+.jcurve .dot{fill:var(--text)}
+.jcurve.up .ln{stroke:var(--up)}.jcurve.up .area,.jcurve.up .dot{fill:var(--up)}
+.jcurve.down .ln{stroke:var(--down)}.jcurve.down .area,.jcurve.down .dot{fill:var(--down)}
+.jcalhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.jcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.jcal .dow{font:600 10px var(--mono);color:var(--muted);text-align:center;padding:2px 0}
+.jcal .cd{min-height:46px;border:1px solid var(--line);border-radius:8px;padding:4px 5px;overflow:hidden}
+.jcal .cd b{font:500 10px var(--mono);color:var(--muted)}
+.jcal .cd span{display:block;font:600 11px var(--mono);margin-top:2px}
+.jcal .cd.up span{color:var(--up)}.jcal .cd.down span{color:var(--down)}
+.jcal .cd.blank{border:0}.jcal .cd.today{border-color:var(--text)}
+.frow.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+@media(max-width:520px){.jcal .cd{min-height:40px;padding:3px}.jcal .cd span{font-size:10px}.jrow{grid-template-columns:minmax(80px,34%) 1fr auto}}
 </style>
 </head>
 <body>
@@ -329,10 +367,36 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </section>
 
 <section class="tool" id="tab-journal" role="tabpanel" hidden>
-<h2>Trading journal</h2>
-<p class="sub">Log trades in seconds and let the stats show your real edge. Everything is stored in this browser on this computer. Nothing is uploaded unless you press Ask the coach below. Use Backup JSON now and then, because clearing the browser's site data erases it.</p>
+<div class="jhead">
+<div><h2>Journal</h2>
+<p class="sub">Your trades, your numbers. Everything is stored in this browser on this computer, and nothing is uploaded unless you press Ask the coach below. Use Backup JSON now and then, because clearing the browser's site data erases it.</p></div>
+<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
+</div>
+
+<div class="card jhero">
+<div class="eyebrow">Total P/L <span id="j-rangename">all time</span></div>
+<div class="jtotal" id="j-total">-</div>
+<div class="jsub" id="j-totsub"></div>
+</div>
+
 <div class="stats" id="j-stats"></div>
-<div class="card">
+
+<div class="jgrid">
+<div class="card" id="j-score"></div>
+<div class="card"><h3 class="jh">Cumulative P/L</h3><div id="j-curve"></div><div class="jsub" id="j-curvesub"></div></div>
+</div>
+
+<div class="jgrid">
+<div class="card"><div class="jcalhead"><button class="btn ghost small" id="j-prev" type="button" aria-label="Previous month">&lsaquo;</button><div><h3 class="jh" id="j-monthname" style="margin:0"></h3><div class="jsub" id="j-monthsub"></div></div><button class="btn ghost small" id="j-next" type="button" aria-label="Next month">&rsaquo;</button></div><div class="jcal" id="j-cal"></div></div>
+<div class="card"><h3 class="jh">By day of the week</h3><div id="j-week"></div></div>
+</div>
+
+<div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
+<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button></div></div>
+<div id="j-groups"></div></div>
+
+<div class="card" id="j-form">
+<h3 class="jh">Log a trade</h3>
 <div class="frow two">
 <div><label for="j-date">Date</label><input type="date" id="j-date"></div>
 <div><label for="j-inst">Instrument</label><input type="text" id="j-inst" placeholder="EURUSD, NQ, XAUUSD" maxlength="20"></div>
@@ -345,6 +409,11 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="j-risk">Risk on the trade</label><input type="number" id="j-risk" placeholder="100" min="0" step="any"></div>
 <div><label for="j-pl">Result P/L (losses negative)</label><input type="number" id="j-pl" placeholder="-100 or 250" step="any"></div>
 </div>
+<div class="frow three">
+<div><label for="j-grade">Setup grade (optional)</label><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div>
+<div><label for="j-plan">Did you follow the plan? (optional)</label><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div>
+<div><label for="j-emo">How did you feel? (optional)</label><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div>
+</div>
 <div class="frow two"><div><label for="j-notes">Notes</label><input type="text" id="j-notes" placeholder="What did you do well or badly?" maxlength="140"></div></div>
 <div class="btnrow">
 <button class="btn" id="j-add" type="button">Log trade</button>
@@ -354,10 +423,12 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 <div class="err" id="j-err" style="display:none"></div>
 </div>
-<div class="card"><div class="scroll"><table>
-<thead><tr><th>Date</th><th>Instrument</th><th>Dir</th><th>Tag</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
+
+<div class="card"><h3 class="jh">Trades</h3><div class="scroll"><table>
+<thead><tr><th>Date</th><th>Instrument</th><th>Dir</th><th>Setup</th><th>Grade</th><th>Plan</th><th>Feeling</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
-<div class="empty" id="j-empty">No trades logged yet.</div></div>
+<div class="empty" id="j-empty">No trades logged yet. Log your first one above.</div>
+<div class="btnrow"><button class="btn ghost small" id="j-more" type="button" hidden>Show more</button></div></div>
 <div class="card" id="coach">
 <h2>Journal coach</h2>
 <p class="sub">An AI review of your journal and the Indicator Stats. Pressing the button sends your logged trades (date, instrument, direction, tag, risk, result, notes) to Anthropic (Claude) or Google (Gemini), whichever key you saved. It reviews past trades. It never places an order and never tells you what to take.</p>
@@ -852,44 +923,172 @@ $("j-date").value=today();
 function jSave(){jset(JKEY,JSON.stringify(trades))}
 function cleanTrade(t){
   if(!t||typeof t!=="object")return null;
-  var pl=parseFloat(t.pl),risk=parseFloat(t.risk);
+  var pl=parseFloat(t.pl),risk=parseFloat(t.risk),g=String(t.grade||"").toUpperCase().slice(0,1);
   if(!isFinite(pl))return null;
   return{date:String(t.date||"").slice(0,10),inst:String(t.inst||"-").slice(0,20),dir:t.dir==="short"?"short":"long",
-    tag:String(t.tag||"").slice(0,30),risk:isFinite(risk)&&risk>0?risk:0,pl:pl,notes:String(t.notes||"").slice(0,300)}
+    tag:String(t.tag||"").slice(0,30),risk:isFinite(risk)&&risk>0?risk:0,pl:pl,notes:String(t.notes||"").slice(0,300),
+    grade:g&&"ABCD".indexOf(g)>=0?g:"",plan:t.plan==="followed"||t.plan==="deviated"?t.plan:"",
+    emotion:String(t.emotion||"").trim().toLowerCase().slice(0,20)}
 }
+/* The numbers on this tab are all worked out here from the trades above, in this browser. */
+var DAY=86400000,MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"],
+  WDAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],JRKEY="zd.jrange",jRange=jget(JRKEY)||"all",jBy="inst",jShown=30,jMonth=null;
+if(["all","90","30","7"].indexOf(jRange)<0)jRange="all";
+function dparse(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?Date.UTC(+m[1],+m[2]-1,+m[3]):null}
+function wdOf(ms){return(new Date(ms).getUTCDay()+6)%7}
+function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))}
+function clamp(x){return Math.max(0,Math.min(100,x))}
+function cls(x){return x>0?"up":x<0?"down":""}
+function sinceDays(n){var c=dparse(today())-(n-1)*DAY;return trades.filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
+function jView(){return jRange==="all"?trades.slice():sinceDays(+jRange)}
+function jChron(list){
+  return list.map(function(t,i){return{t:t,i:i}}).sort(function(a,b){
+    var da=dparse(a.t.date)||0,db=dparse(b.t.date)||0;return da!==db?da-db:b.i-a.i}).map(function(x){return x.t})}
+function jStats(list){
+  var s={n:list.length,w:0,l:0,net:0,gw:0,gl:0,rs:[],wr:[],planned:0,followed:0};
+  list.forEach(function(t){
+    s.net+=t.pl;if(t.pl>0){s.w++;s.gw+=t.pl}else if(t.pl<0){s.l++;s.gl+=-t.pl}
+    if(t.risk>0){var r=t.pl/t.risk;s.rs.push(r);if(t.pl>0)s.wr.push(r)}
+    if(t.plan){s.planned++;if(t.plan==="followed")s.followed++}});
+  function mean(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.length:null}
+  s.winrate=s.n?s.w/s.n*100:null;s.avgR=mean(s.rs);s.netR=s.rs.length?s.rs.reduce(function(x,y){return x+y},0):null;s.avgWinR=mean(s.wr);
+  s.avgW=s.w?s.gw/s.w:null;s.avgL=s.l?-s.gl/s.l:null;
+  s.pf=s.gl>0?s.gw/s.gl:(s.gw>0?Infinity:null);
+  return s}
+function weekGreen(list){
+  var wk={};list.forEach(function(t){var d=dparse(t.date);if(d===null)return;var k=d-wdOf(d)*DAY;wk[k]=(wk[k]||0)+t.pl});
+  var ks=Object.keys(wk);return ks.length>=2?{green:ks.filter(function(k){return wk[k]>0}).length,total:ks.length}:null}
+function bars(box,rows,scale){
+  rows.forEach(function(r){
+    var row=el("div","jrow"),nm=el("div","nm",r.name);if(r.sub)nm.appendChild(el("small",null,r.sub));row.appendChild(nm);
+    var tr=el("div","jtrack"),b=el("i",r.fill?"fill":cls(r.v));b.style.width=(r.fill?clamp(r.v):Math.min(50,Math.abs(r.v)/scale*50))+"%";tr.appendChild(b);row.appendChild(tr);
+    var v=el("div","jv "+(r.fill?"":cls(r.v)),r.text);row.appendChild(v);box.appendChild(row)})}
+function jScoreCard(st,list){
+  var box=$("j-score");box.textContent="";box.appendChild(el("h3","jh","Edge score"));
+  var parts=[];
+  if(st.pf!==null)parts.push(["Profit factor",clamp(st.pf/2*100),st.pf===Infinity?"no losses":fmt(st.pf,2),"2.0 or better scores 100"]);
+  if(st.avgR!==null)parts.push(["Average R",clamp((st.avgR+0.5)/1.5*100),fmt(st.avgR,2)+"R","1.0R or better scores 100, -0.5R scores 0"]);
+  if(st.winrate!==null)parts.push(["Win rate",clamp(st.winrate/60*100),fmt(st.winrate,1)+"%","60% or better scores 100"]);
+  var wg=weekGreen(list);if(wg)parts.push(["Consistency",wg.green/wg.total*100,wg.green+" of "+wg.total+" weeks","share of weeks that ended in profit"]);
+  if(st.planned>=3)parts.push(["Discipline",st.followed/st.planned*100,st.followed+" of "+st.planned,"share of trades where you followed the plan"]);
+  if(!parts.length||st.n<1){box.appendChild(el("div","empty","Log a few trades and the score appears here."));return}
+  var score=Math.round(parts.reduce(function(a,p){return a+p[1]},0)/parts.length),weak=parts.slice().sort(function(a,b){return a[1]-b[1]})[0];
+  var top=el("div","jscoretop");top.appendChild(el("div","jscore",String(score)));
+  var side=el("div",null);side.appendChild(el("div","jsub","out of 100, from "+parts.length+" parts"));
+  side.appendChild(el("div","jsub","Weakest part: "+weak[0]));top.appendChild(side);box.appendChild(top);
+  parts.forEach(function(p){
+    var row=el("div","jrow"),nm=el("div","nm",p[0]);nm.appendChild(el("small",null,p[3]));row.appendChild(nm);
+    var tr=el("div","jtrack"),b=el("i","fill");b.style.width=clamp(p[1])+"%";tr.appendChild(b);row.appendChild(tr);row.appendChild(el("div","jv",p[2]));box.appendChild(row)});
+  box.appendChild(el("div","jsub",(st.n<20?"Only "+st.n+" trades so far, so treat this as a hint. ":"")+"Each part is scaled 0 to 100 by the fixed rule under it. It describes your journal. It does not predict anything."))}
+function jCurve(list){
+  var box=$("j-curve"),sub=$("j-curvesub");box.textContent="";sub.textContent="";
+  var ch=jChron(list);
+  if(ch.length<2){box.appendChild(el("div","empty","Log at least two trades to draw the curve."));return}
+  var pts=[0],s=0,peak=0,dd=0;
+  ch.forEach(function(t){s+=t.pl;pts.push(s);if(s>peak)peak=s;if(peak-s>dd)dd=peak-s});
+  var lo=Math.min.apply(null,pts),hi=Math.max.apply(null,pts),span=(hi-lo)||1,W=600,H=170;
+  function X(i){return i/(pts.length-1)*W}function Y(v){return H-8-(v-lo)/span*(H-16)}
+  var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("class","jcurve "+cls(s));svg.setAttribute("role","img");
+  svg.setAttribute("aria-label","Cumulative profit and loss over "+ch.length+" trades, ending at "+signed(s));
+  function mk(tag,at){var n=document.createElementNS(ns,tag);for(var k in at)n.setAttribute(k,at[k]);svg.appendChild(n);return n}
+  var d=pts.map(function(v,i){return(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)}).join(" ");
+  mk("line",{x1:0,x2:W,y1:Y(0),y2:Y(0),class:"zero"});
+  mk("path",{d:d+" L"+W+" "+Y(0).toFixed(1)+" L0 "+Y(0).toFixed(1)+" Z",class:"area"});
+  mk("path",{d:d,class:"ln",fill:"none"});mk("circle",{cx:X(pts.length-1),cy:Y(s),r:4,class:"dot"});
+  box.appendChild(svg);
+  sub.textContent=ch.length+" trades, oldest to newest. Now "+signed(s)+". Best point "+signed(hi)+". Deepest drop from a peak "+(dd?"-"+money(dd):"none")+"."}
+function jCal(){
+  var now=dparse(today());if(jMonth===null){var n=new Date(now);jMonth={y:n.getUTCFullYear(),m:n.getUTCMonth()}}
+  var y=jMonth.y,m=jMonth.m,days=new Date(Date.UTC(y,m+1,0)).getUTCDate(),lead=wdOf(Date.UTC(y,m,1)),byDay={},net=0,cnt=0,mx=0;
+  trades.forEach(function(t){var d=dparse(t.date);if(d===null)return;var n=new Date(d);
+    if(n.getUTCFullYear()===y&&n.getUTCMonth()===m){var k=n.getUTCDate();byDay[k]=byDay[k]||{pl:0,n:0};byDay[k].pl+=t.pl;byDay[k].n++;net+=t.pl;cnt++}});
+  Object.keys(byDay).forEach(function(k){mx=Math.max(mx,Math.abs(byDay[k].pl))});
+  var green=Object.keys(byDay).filter(function(k){return byDay[k].pl>0}).length,red=Object.keys(byDay).filter(function(k){return byDay[k].pl<0}).length;
+  $("j-monthname").textContent=MONTHS[m]+" "+y;
+  $("j-monthsub").textContent=cnt?signed(net)+" from "+cnt+" trade"+(cnt===1?"":"s")+" ("+green+" green day"+(green===1?"":"s")+", "+red+" red)":"No trades this month";
+  var g=$("j-cal");g.textContent="";
+  WDAYS.forEach(function(w){g.appendChild(el("div","dow",w))});
+  for(var i=0;i<lead;i++)g.appendChild(el("div","cd blank"));
+  for(var d=1;d<=days;d++){
+    var c=el("div","cd"),info=byDay[d];c.appendChild(el("b",null,String(d)));
+    if(Date.UTC(y,m,d)===now)c.className+=" today";
+    if(info){
+      c.className+=" "+cls(info.pl);c.title=info.n+" trade"+(info.n===1?"":"s")+", "+signed(info.pl);
+      c.style.background="color-mix(in srgb, var(--"+(info.pl>=0?"up":"down")+") "+Math.round(12+40*(mx?Math.abs(info.pl)/mx:0))+"%, transparent)";
+      var a=Math.abs(info.pl);c.appendChild(el("span",null,(info.pl>=0?"+":"-")+(a>=1000?(a/1000).toFixed(1)+"k":String(Math.round(a)))))}
+    g.appendChild(c)}}
+function jWeek(list){
+  var box=$("j-week");box.textContent="";
+  var by=[0,1,2,3,4,5,6].map(function(i){return{pl:0,n:0,w:0}});
+  list.forEach(function(t){var d=dparse(t.date);if(d===null)return;var b=by[wdOf(d)];b.pl+=t.pl;b.n++;if(t.pl>0)b.w++});
+  var rows=[],mx=0;by.forEach(function(b,i){if(i<5||b.n){mx=Math.max(mx,Math.abs(b.pl));
+    rows.push({name:WDAYS[i],sub:b.n?b.n+" trade"+(b.n===1?"":"s")+", "+Math.round(b.w/b.n*100)+"% won":"no trades",v:b.pl,text:b.n?signed(b.pl):"-"})}});
+  if(!list.length){box.appendChild(el("div","empty","No trades in this period."));return}
+  bars(box,rows,mx||1)}
+function jGroups(list){
+  var box=$("j-groups");box.textContent="";
+  var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},
+    plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""}}[jBy],
+    hint={tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
+      plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are."}[jBy],
+    g={},unset=0;
+  list.forEach(function(t){var k=key(t);if(!k){unset++;return}(g[k]=g[k]||[]).push(t)});
+  var names=Object.keys(g).sort(function(a,b){return g[b].length-g[a].length||(a<b?-1:1)}).slice(0,10);
+  if(!names.length){box.appendChild(el("div","empty",list.length?(hint||"Nothing to group yet."):"No trades in this period."));return}
+  var mx=Math.max.apply(null,names.map(function(k){return Math.abs(jStats(g[k]).net)}))||1;
+  bars(box,names.map(function(k){var s=jStats(g[k]);
+    return{name:k,sub:s.n+" trade"+(s.n===1?"":"s")+", "+Math.round(s.w/s.n*100)+"% won"+(s.avgR===null?"":", "+fmt(s.avgR,2)+"R avg"),v:s.net,text:signed(s.net)}}),mx);
+  if(unset)box.appendChild(el("div","jsub",unset+" trade"+(unset===1?"":"s")+" without this set are left out."))}
 function jRender(){
+  var list=jView(),st=jStats(list);
+  Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
+  Array.prototype.forEach.call($("j-by").children,function(b){b.className=b.getAttribute("data-by")===jBy?"on":""});
+  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange];
+  var tot=$("j-total");tot.textContent=st.n?signed(st.net):"-";tot.className="jtotal "+(st.n?cls(st.net):"");
+  var wk=jStats(sinceDays(7));
+  $("j-totsub").textContent=st.n?st.w+" wins / "+st.l+" losses"+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+st.n+" trade"+(st.n===1?"":"s")+
+    (trades.length?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":""):trades.length?"No trades in this period.":"Log your first trade below and the numbers fill in.";
+  var cards=[["Win rate",st.winrate===null?"-":fmt(st.winrate,1)+"%",st.n?st.w+"W / "+st.l+"L":"",null],
+    ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+st.rs.length+" trades",st.avgR===null?null:cls(st.avgR)],
+    ["Profit factor",st.pf===null?"-":st.pf===Infinity?"no losses":fmt(st.pf,2),st.avgWinR===null?"":"avg winner "+fmt(st.avgWinR,2)+"R",null],
+    ["Avg win / loss",st.avgW===null?"-":"+"+money(st.avgW),st.avgL===null?"":"avg loss "+money(st.avgL),st.avgW===null?null:"up"],
+    ["Plan followed",st.planned?Math.round(st.followed/st.planned*100)+"%":"-",st.planned?st.followed+" of "+st.planned+" marked":"mark it when you log",null]];
+  var box=$("j-stats");box.textContent="";
+  cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
+    if(s[2])c.appendChild(el("div","jsub",s[2]));box.appendChild(c)});
+  jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jGroups(list);
   var tb=$("j-rows");tb.textContent="";
-  $("j-empty").style.display=trades.length?"none":"block";
-  trades.forEach(function(t,ix){
+  $("j-empty").style.display=list.length?"none":"block";
+  $("j-empty").textContent=trades.length?"No trades in this period.":"No trades logged yet. Log your first one above.";
+  $("j-more").hidden=list.length<=jShown;
+  list.slice(0,jShown).forEach(function(t){
     var r=t.risk>0?t.pl/t.risk:null,tr=el("tr");
-    function td(text,cls){var c=el("td",cls||null,text);tr.appendChild(c);return c}
-    td(t.date);td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.risk?money(t.risk):"-");
-    td((t.pl>=0?"+":"")+money(t.pl),t.pl>=0?"pos":"neg");
+    function td(text,c){var n=el("td",c||null,text);tr.appendChild(n);return n}
+    td(t.date);td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
+    td(t.emotion||"");td(t.risk?money(t.risk):"-");
+    td(signed(t.pl),t.pl>=0?"pos":"neg");
     td(r===null?"-":fmt(r,2)+"R",r===null?null:(r>=0?"pos":"neg"));
     var nt=td(t.notes||"");nt.style.maxWidth="240px";nt.style.overflow="hidden";nt.style.textOverflow="ellipsis";nt.title=t.notes||"";
     var del=el("button","del","x");del.type="button";del.setAttribute("aria-label","Delete trade");
-    del.onclick=function(){trades.splice(ix,1);jSave();jRender()};
+    del.onclick=function(){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}};
     td("").appendChild(del);tb.appendChild(tr)});
-  var n=trades.length,wins=trades.filter(function(t){return t.pl>0}).length,pl=trades.reduce(function(a,t){return a+t.pl},0);
-  var rv=trades.filter(function(t){return t.risk>0}).map(function(t){return t.pl/t.risk});
-  var avgR=rv.length?rv.reduce(function(a,b){return a+b},0)/rv.length:null;
-  var winT=trades.filter(function(t){return t.pl>0}),lossT=trades.filter(function(t){return t.pl<0});
-  var avgW=winT.length?winT.reduce(function(a,t){return a+t.pl},0)/winT.length:null;
-  var avgL=lossT.length?lossT.reduce(function(a,t){return a+t.pl},0)/lossT.length:null;
-  var stats=[["Trades",String(n)],["Win rate",n?fmt(wins/n*100,1)+"%":"-"],["Net P/L",(pl>=0?"+":"")+money(pl),pl>=0?"var(--up)":"var(--down)"],
-    ["Avg R",avgR===null?"-":fmt(avgR,2)+"R",avgR===null?null:(avgR>=0?"var(--up)":"var(--down)")],
-    ["Avg win",avgW===null?"-":"+"+money(avgW),"var(--up)"],["Avg loss",avgL===null?"-":money(avgL),"var(--down)"]];
-  var box=$("j-stats");box.textContent="";
-  stats.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[2])v.style.color=s[2];c.appendChild(v);box.appendChild(c)});
 }
+Array.prototype.forEach.call($("j-range").children,function(b){b.onclick=function(){jRange=b.getAttribute("data-r");jset(JRKEY,jRange);jShown=30;jRender()}});
+Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function(){jBy=b.getAttribute("data-by");jRender()}});
+$("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}jCal()};
+$("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
+$("j-more").onclick=function(){jShown+=50;jRender()};
+$("j-log-go").onclick=function(){$("j-form").scrollIntoView({behavior:"smooth",block:"start"});$("j-pl").focus({preventScroll:true})};
 function jError(msg){var e=$("j-err");e.textContent=msg||"";e.style.display=msg?"":"none"}
 $("j-add").onclick=function(){
   jError("");
   var pl=$("j-pl").value.trim();
   if(pl===""||!isFinite(parseFloat(pl))){jError("Enter the result (P/L) first. Use a negative number for a loss.");return}
   var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
-    tag:$("j-tag").value.trim(),risk:num("j-risk"),pl:parseFloat(pl),notes:$("j-notes").value.trim()});
-  trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";
+    tag:$("j-tag").value.trim(),risk:num("j-risk"),pl:parseFloat(pl),notes:$("j-notes").value.trim(),
+    grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value});
+  trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";$("j-grade").value="";$("j-plan").value="";$("j-emo").value="";
 };
 function coachStatus(){
   var box=$("coach-setup");
