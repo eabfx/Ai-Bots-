@@ -86,7 +86,7 @@ def signal_row(r, levels=()):
     by_zone = levels_at(r["zone"]["low"], r["zone"]["high"], levels)
     by_entry = [dict(lv, via="entry") for lv in levels_at(r["entry"], r["entry"], levels)
                 if lv["index"] not in {q["index"] for q in by_zone}]
-    return {"style": r.get("style", "tool"), "levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
+    return {"fib": r.get("fib"), "style": r.get("style", "tool"), "levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
             "swept": dublin_text(r["sweep_t"]), "gap": list(r["gap"]), "entry_t": r["entry_t"],
             "entry_when": dublin_text(r["entry_t"]), "entry": r["entry"], "stop": r["stop"], "target": r["target"],
             "rr": r["rr"],

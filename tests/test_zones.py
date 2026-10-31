@@ -571,6 +571,10 @@ class YoursEntry(unittest.TestCase):
         self.assertAlmostEqual(first["rr"], 3.0)
         self.assertAlmostEqual(first["target"] - first["entry"], 3 * (first["entry"] - first["stop"]))
         self.assertEqual(first["gap"], (104.0, 105.0))
+        fib = first["fib"]
+        self.assertEqual((fib["start"], fib["end"]), (99.2, 110.0))
+        self.assertAlmostEqual(fib["l705"], 110.0 - 0.705 * 10.8)
+        self.assertAlmostEqual(fib["l79"], 110.0 - 0.79 * 10.8)
         self.assertEqual(first["entry_t"], self.T0 + 300 * 47 + 300)       # the close of the inverting candle
 
     def test_the_retest_of_the_inverted_gap_is_a_second_entry(self):
@@ -599,6 +603,8 @@ class YoursEntry(unittest.TestCase):
         self.assertEqual(best, 5)
         self.assertEqual((res[0]["side"], res[0]["trigger"]), ("short", "IFVG inverted"))
         self.assertAlmostEqual(res[0]["entry"], -105.3)
+        self.assertEqual((res[0]["fib"]["start"], res[0]["fib"]["end"]), (-99.2, -110.0))
+        self.assertGreater(res[0]["fib"]["l705"], res[0]["fib"]["end"])
         self.assertGreater(res[0]["stop"], -102.2)
         self.assertLess(res[0]["target"], res[0]["entry"])
 

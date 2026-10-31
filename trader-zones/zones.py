@@ -938,7 +938,8 @@ def yours_long(zone, m5, cfg):
                 focus = g
                 found.append({"trigger": trigger, "style": "yours", "sweep_t": t5[reach], "sweep_low": low_since,
                               "gap": (g["lo"], g["hi"]), "ote": (f_deep, f_reach), "entry_t": when, "entry": entry,
-                              "stop": stop, "target": target, "rr": rr})
+                              "stop": stop, "target": target, "rr": rr,
+                              "fib": {"start": L, "end": H, "l705": f_reach, "l79": f_deep}})
             if focus is not None and focus["done"]:
                 return found, j + 1, True                  # this gap has had its inversion and its retest
         return found, n, True
@@ -1023,6 +1024,7 @@ def setups_for(zone, m5, m3, fresh_other, cfg, trace=None):
             r["ote"] = (-r["ote"][1], -r["ote"][0])
             r["entry"], r["stop"] = -r["entry"], -r["stop"]
             r["target"] = -r["target"]
+            r["fib"] = {k: -v for k, v in r["fib"].items()}
         return res, best
     targets = [-z["high"] for z in fresh_other if z["kind"] == "demand"] + [-p[2] for p in pl5]
     mirror_trace = [] if trace is not None else None

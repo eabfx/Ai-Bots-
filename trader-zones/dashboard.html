@@ -446,16 +446,16 @@ function render(d){
   if(notes.length){var nc=el("div","card");notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
 
   var hrs=parseInt($("window").value,10)||0;
-  var shown=d.signals.slice().reverse().filter(function(r){return hrs===0||d.now_t-r.entry_t<=hrs*3600});
+  var shown=d.signals.slice().reverse().filter(function(r){return (hrs===0||d.now_t-r.entry_t<=hrs*3600)&&frames[r.zone.tf]!==false});          /* Frames also decide which entries show */
   var sc=el("div","card");sc.appendChild(el("h2",null,"Entries found ("+shown.length+
-    (shown.length<d.signals.length?" of "+d.signals.length+", change Entries above to see older ones":"")+")"));
+    (shown.length<d.signals.length?" of "+d.signals.length+", change Entries or Frames above to see the rest":"")+")"));
   if(!d.signals.length){
     sc.appendChild(el("div","empty","No entry. Furthest any zone got: "+d.furthest+"."));
     d.stages.forEach(function(s){var b=el("div","stage");b.appendChild(el("div","head",s.head));
       s.lines.forEach(function(l){b.appendChild(el("div","ln",l))});sc.appendChild(b)});
   }
   if(d.signals.length&&!shown.length){
-    sc.appendChild(el("div","empty","No entry in this window. The most recent was "+
+    sc.appendChild(el("div","empty","No entry in this window or these frames. The most recent was "+
       d.signals[d.signals.length-1].entry_when+" ("+age(d.now_t-d.signals[d.signals.length-1].entry_t)+")."));
   }
   shown.forEach(function(r){
@@ -464,6 +464,8 @@ function render(d){
       (r.style==="yours"?", price reached the fib "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)
         :", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE")));
     b.appendChild(h);
+    if(r.fib)b.appendChild(el("div","mute","Fib: the leg runs "+fmt(r.fib.start,d.digits)+" to "+fmt(r.fib.end,d.digits)+
+      "; 0.705 is at "+fmt(r.fib.l705,d.digits)+" and 0.79 at "+fmt(r.fib.l79,d.digits)+". Stop just beyond where it held."));
     if(r.levels.length)b.appendChild(el("div","mute","At your "+r.levels.map(function(l){
       return levelText(l,d)+(l.via==="entry"?" (the entry price is in it)":" (the zone is in it)")}).join("; ")+"."));
     var row=el("div","row");

@@ -755,6 +755,8 @@ class EntryStyle(Server):
         self.assertIn('"zd.entry"', body)
         self.assertIn('"&entry="', body)
         self.assertIn("price reached the fib", body)
+        self.assertIn("0.705 is at", body)
+        self.assertIn("frames[r.zone.tf]!==false", body)               # the Frames buttons filter entries too
 
     def test_the_server_takes_the_entry_style_and_says_which_it_used(self):
         _, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&entry=yours")
