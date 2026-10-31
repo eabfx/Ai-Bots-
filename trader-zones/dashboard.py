@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A local dashboard for trader-zones: your markets, their zones and the entries found, in a browser.
+"""RiskDesk.ai, a local dashboard for trader-zones: your markets, their zones and the entries found, in a browser.
 
     py trader-zones\\dashboard.py
 

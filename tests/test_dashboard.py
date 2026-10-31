@@ -307,7 +307,8 @@ class Server(Patched):
         self.assertIn('id="theme"', body)
         self.assertIn('store("zd.theme"', body)
         self.assertIn(':root[data-theme="light"]', body)
-        self.assertIn("RiskDesk", body)                                            # credited where the calculators came from
+        self.assertIn("<title>RiskDesk.ai</title>", body)                           # what the dashboard is called
+        self.assertIn('<span class="dot"></span>RiskDesk.ai</div>', body)
 
     def test_the_trades_tab_has_position_size_and_risk_reward_and_the_micro_gold_preset(self):
         _, _, body = self.get("/")
