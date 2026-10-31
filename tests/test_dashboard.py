@@ -243,9 +243,17 @@ class Rules(unittest.TestCase):
         cfg = dash.apply_rule(dz.read_config("none.json"), "before")
         self.assertEqual((cfg["zone_candle"], cfg["move_atr"], cfg["base_body_atr"]), ("last", 1.3, 0.7))
 
+    def test_both_rule_asks_for_the_standard_zones_and_the_users_together(self):
+        cfg = dash.apply_rule(dz.read_config("none.json"), "both")
+        self.assertEqual(cfg["zone_candle"], "extreme")
+        self.assertEqual(cfg["union_with"], {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7})
+        self.assertIsNone(dash.apply_rule(cfg, "before")["union_with"])
+
     def test_standard_rule_changes_nothing(self):
         plain = dz.read_config("none.json")
-        self.assertEqual(dash.apply_rule(dz.read_config("none.json"), "standard"), plain)
+        cfg = dash.apply_rule(dz.read_config("none.json"), "standard")
+        self.assertIsNone(cfg.pop("union_with"))
+        self.assertEqual(cfg, plain)
 
     def test_standard_rule_wins_over_a_config_file_that_sets_the_same_settings(self):
         cfg = dz.read_config("none.json")
@@ -342,7 +350,7 @@ class Server(Patched):
         self.assertIn('id="rule"', body)
         self.assertIn('"&rule="', body)
         self.assertIn('"zd.rule"', body)
-        self.assertIn('<option value="before" selected>', body)       # the page starts on the user's own rule
+        self.assertIn('<option value="both" selected>', body)         # the page starts on all the zones
         code, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&rule=before")
         self.assertEqual(code, 200)
         self.assertEqual(json.loads(js)["rule"], "before")

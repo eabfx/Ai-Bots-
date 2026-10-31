@@ -30,11 +30,14 @@ ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
 CACHE_SECS = 60
 # The page's "Zone rule" setting. "before" is the user's own way of drawing a zone: the candle right before the
 # big move, even with a middling body, and a smaller move away than the standard rule asks for.
-RULES = {"standard": {k: z.DEFAULTS[k] for k in ("zone_candle", "move_atr", "base_body_atr")}, "before": {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7}}
+BEFORE = {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7}
+STANDARD = {k: z.DEFAULTS[k] for k in ("zone_candle", "move_atr", "base_body_atr")}
+RULES = {"standard": dict(STANDARD, union_with=None), "before": dict(BEFORE, union_with=None),
+         "both": dict(STANDARD, union_with=BEFORE)}      # "both" lists the standard zones and the user's as well
 
 
 def apply_rule(cfg, rule):
-    """Put a named zone rule on top of the settings from the config file (the rule decides these three settings,
+    """Put a named zone rule on top of the settings from the config file (the rule decides these settings,
     even if the config file sets them too). Returns the same dict."""
     if rule not in RULES:
         raise z.ZoneError("rule must be %s" % " or ".join('"%s"' % r for r in RULES))
@@ -197,7 +200,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None):
                            "lines": [ln.strip() for ln in z.trace_lines(sym, zn, trace)]})
     market = z.MARKETS[sym]
     return {"symbol": sym, "yahoo": market["yahoo"], "market_note": market["note"], "spot_market": bool(market.get("spot")),
-            "digits": market["digits"], "rule": "before" if cfg["zone_candle"] == "last" else "standard", "shifted": shifted, "shift_value": used,
+            "digits": market["digits"], "rule": "both" if cfg.get("union_with") else "before" if cfg["zone_candle"] == "last" else "standard", "shifted": shifted, "shift_value": used,
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "per_day": cfg["max_per_day"], "notes": notes,

@@ -987,12 +987,23 @@ def trace_lines(sym, z, trace, max_sweeps=3, max_gaps=4):
 
 
 def collect_zones(sym, tfs, now, cfg, offline):
+    """The zones for each timeframe. When cfg["union_with"] holds a dict of settings, the zones those settings
+    find are added too (a zone both ways is listed once, as the main settings found it)."""
     found = []
+    cfgs = [cfg]
+    if cfg.get("union_with"):
+        cfgs.append(dict(cfg, union_with=None, **cfg["union_with"]))
     for tf in tfs:
         bars = closed_only(get_bars(sym, tf, cfg["days"], offline), INTERVAL_SECS[tf], now)
-        for z in limit_zones(find_zones(bars, cfg), now, cfg):
-            z["tf"] = tf
-            found.append(z)
+        seen = set()
+        for c in cfgs:
+            for z in limit_zones(find_zones(bars, c), now, c):
+                key = (z["kind"], z["t"], z["low"], z["high"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                z["tf"] = tf
+                found.append(z)
     return sorted(found, key=lambda z: z["t"])
 
 

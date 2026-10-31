@@ -187,7 +187,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="days">Days back</label><select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></div>
 <div><label for="window">Entries</label><select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></div>
 <div><label for="respect">Show zones</label><select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></div>
-<div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before" selected>candle before the move</option></select></div>
+<div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before">candle before the move</option><option value="both" selected>both (all zones)</option></select></div>
 <div><label for="perday">Zones per day</label><select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></div>
 </div>
 <div class="frow two">
@@ -558,7 +558,7 @@ $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
 var p0=store("zd.perday");if(p0)$("perday").value=p0;
 var w0=store("zd.window");if(w0)$("window").value=w0;
-var ru0=store("zd.rule");if(ru0==="before"||ru0==="standard")$("rule").value=ru0;
+var ru0=store("zd.rule");if(ru0==="before"||ru0==="standard"||ru0==="both")$("rule").value=ru0;
 var r0=store("zd.respect");if(r0&&["hide","all","held"].indexOf(r0)>=0)$("respect").value=r0;
 var f0=store("zd.frames");
 if(f0!==null&&f0!==undefined){

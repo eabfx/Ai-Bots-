@@ -526,6 +526,34 @@ class Bars(unittest.TestCase):
         self.assertEqual((f["o"], f["h"], f["l"], f["c"]), (-10, -9, -12, -11))
 
 
+class CollectUnion(unittest.TestCase):
+    """collect_zones with cfg["union_with"] lists the zones both sets of settings find, a shared zone once."""
+
+    def run_collect(self, union):
+        mk = lambda t, lo, hi: {"kind": "supply", "t": t, "low": lo, "high": hi}
+        by_mode = {"extreme": [mk(100, 1.0, 2.0), mk(300, 5.0, 6.0)], "last": [mk(100, 1.0, 2.0), mk(200, 3.0, 4.0)]}
+        saved = (z.get_bars, z.closed_only, z.find_zones, z.limit_zones)
+        z.get_bars = lambda *a, **k: []
+        z.closed_only = lambda bars, *a, **k: bars
+        z.find_zones = lambda bars, cfg: [dict(q) for q in by_mode[cfg["zone_candle"]]]
+        z.limit_zones = lambda zs, now, cfg: zs
+        try:
+            cfg = z.read_config(None)
+            cfg["union_with"] = {"zone_candle": "last"} if union else None
+            return z.collect_zones("EURUSD", ["30m", "15m"], 0, cfg, None)
+        finally:
+            z.get_bars, z.closed_only, z.find_zones, z.limit_zones = saved
+
+    def test_without_union_only_the_main_settings_are_used(self):
+        got = self.run_collect(False)
+        self.assertEqual(sorted((q["tf"], q["t"]) for q in got), [("15m", 100), ("15m", 300), ("30m", 100), ("30m", 300)])
+
+    def test_with_union_the_other_settings_zones_are_added_and_shared_ones_listed_once(self):
+        got = self.run_collect(True)
+        self.assertEqual(sorted((q["tf"], q["t"]) for q in got),
+                         [("15m", 100), ("15m", 200), ("15m", 300), ("30m", 100), ("30m", 200), ("30m", 300)])
+
+
 class FindZones(unittest.TestCase):
     def find(self, rows, **over):
         cfg = dict(CFG)
