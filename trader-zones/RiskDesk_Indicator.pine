@@ -46,8 +46,21 @@ lvl1Hi = input.float(0.0, "Level 1 high", group = "Your daily / 4h levels")
 lvl2Lo = input.float(0.0, "Level 2 low", group = "Your daily / 4h levels")
 lvl2Hi = input.float(0.0, "Level 2 high", group = "Your daily / 4h levels")
 
-demandCol = input.color(color.new(#26a69a, 80), "Demand", group = GS)
-supplyCol = input.color(color.new(#ef5350, 80), "Supply", group = GS)
+zoneCol   = input.color(color.new(#808080, 78), "Zone box (your grey 30 / 15 MIN ZONE boxes)", group = GS)
+sideCols  = input.bool(false, "Colour zones by side instead (green demand, red supply)", group = GS)
+demandCol = input.color(color.new(#26a69a, 80), "Demand colour (when colouring by side)", group = GS)
+supplyCol = input.color(color.new(#ef5350, 80), "Supply colour (when colouring by side)", group = GS)
+lbl1h     = input.string("1 HR ZONE",  "1h label",  group = GS)
+lbl30     = input.string("30 MIN ZONE", "30m label", group = GS)
+lbl15     = input.string("15 MIN ZONE", "15m label", group = GS)
+legDown   = input.color(color.new(#e57373, 70), "Leg box, down move (pink)", group = GS)
+legUp     = input.color(color.new(#4db6ac, 65), "Leg box, up move (teal)", group = GS)
+retraceCol = input.color(color.new(#fdd835, 78), "Retrace box (yellow)", group = GS)
+fibGreen  = input.color(#2e8b74, "0.705 and 0.79 lines", group = GS)
+fibBlack  = input.color(color.new(color.black, 10), "1, 0.5 and 0 lines", group = GS)
+zoneBars  = input.int(30, "Zone boxes run this many bars past the latest candle (not all the way right)", minval = 1, maxval = 500, group = GS)
+fibBars   = input.int(40, "Fib lines run this many bars past the entry", minval = 5, maxval = 300, group = GS)
+boxBars   = input.int(40, "Stop and target boxes run this many bars", minval = 5, maxval = 300, group = GS)
 showStats = input.bool(true, "Show Indicator Stats table", group = GS)
 statsPos  = input.string("Top right", "Table position", options = ["Top right", "Top left", "Bottom right", "Bottom left"], group = GS)
 
@@ -149,8 +162,9 @@ addZone(string tf, float hi, float lo, float tt, float kk) =>
         int t = int(tt)
         int kind = int(kk)
         if not zoneKnown(tf, t, kind) and (time - t) <= zoneDays * 86400000
-            color c = kind == 1 ? demandCol : supplyCol
-            box bx = box.new(t, hi, time, lo, xloc = xloc.bar_time, extend = extend.right, bgcolor = c, border_color = color.new(c, 30), text = tf + (kind == 1 ? " demand" : " supply"), text_color = color.new(color.gray, 20), text_size = size.small, text_halign = text.align_left)
+            color c = sideCols ? (kind == 1 ? demandCol : supplyCol) : zoneCol
+            string name = tf == "1h" ? lbl1h : tf == "30m" ? lbl30 : lbl15
+            box bx = box.new(t, hi, time + zoneBars * timeframe.in_seconds() * 1000, lo, xloc = xloc.bar_time, bgcolor = c, border_color = color.new(c, 100), text = str.upper(name), text_color = color.new(color.black, 35), text_size = size.small, text_halign = text.align_right, text_valign = text.align_center, text_formatting = text.format_italic)
             zones.push(Zone.new(bx, lo, hi, kind, tf, t))
 
 if showH1 and not na(h1t) and h1t != nz(h1t[1])
@@ -170,6 +184,11 @@ if zones.size() > 0
 while zones.size() > maxZones
     Zone z0 = zones.shift()
     z0.bx.delete()
+
+// keep each zone box a short way past the latest candle instead of running off the screen
+if barstate.islast and zones.size() > 0
+    for z in zones
+        z.bx.set_right(time + zoneBars * timeframe.in_seconds() * 1000)
 
 // ------------------------------------------------------------------ your levels
 var box lv1 = na
@@ -313,20 +332,36 @@ drawTrade(Leg lg, int s, int sig) =>
     float st = s * lg.stop
     float tg = s * lg.target
     if sig == 1 and not na(lg.L)
-        float r705 = s * (lg.H - fibReach * (lg.H - lg.L))
-        float r79 = s * (lg.H - fibDeep * (lg.H - lg.L))
-        line.new(lg.Lidx, s * lg.L, lg.Hidx, s * lg.H, color = color.new(color.gray, 20), width = 1)
-        line.new(lg.Hidx, r705, bar_index + 12, r705, color = color.new(color.orange, 10), style = line.style_dashed)
-        line.new(lg.Hidx, r79, bar_index + 12, r79, color = color.new(color.orange, 40), style = line.style_dotted)
-        label.new(bar_index + 12, r705, "0.705", style = label.style_none, textcolor = color.orange, size = size.tiny)
-        label.new(bar_index + 12, r79, "0.79", style = label.style_none, textcolor = color.new(color.orange, 30), size = size.tiny)
+        float R = lg.H - lg.L
+        float p1 = s * lg.L                                  // 1: where the leg started
+        float p0 = s * lg.H                                  // 0: where the leg ended
+        float p5 = s * (lg.H - 0.5 * R)
+        float r705 = s * (lg.H - fibReach * R)
+        float r79 = s * (lg.H - fibDeep * R)
+        int xe = bar_index + fibBars
+        // the leg (pink going down, teal going up) and the retrace from its end to the 0.705
+        box.new(lg.Lidx, math.max(p1, p0), lg.Hidx, math.min(p1, p0), bgcolor = s == -1 ? legDown : legUp, border_color = color.new(color.black, 100))
+        box.new(lg.Hidx, math.max(p0, r705), bar_index, math.min(p0, r705), bgcolor = retraceCol, border_color = color.new(color.black, 100))
+        // your fib: 1 at the start, 0 at the end, dotted line between them
+        line.new(lg.Lidx, p1, lg.Hidx, p0, color = fibBlack, style = line.style_dotted)
+        line.new(lg.Hidx, p1, xe, p1, color = fibBlack)
+        line.new(lg.Hidx, r79, xe, r79, color = fibGreen)
+        line.new(lg.Hidx, r705, xe, r705, color = fibGreen)
+        line.new(lg.Hidx, p5, xe, p5, color = fibBlack)
+        line.new(lg.Hidx, p0, xe, p0, color = fibBlack)
+        label.new(xe, p1, "1", style = label.style_none, textcolor = fibBlack, size = size.tiny)
+        label.new(xe, r79, "0.79", style = label.style_none, textcolor = fibGreen, size = size.tiny)
+        label.new(xe, r705, "0.705", style = label.style_none, textcolor = fibGreen, size = size.tiny)
+        label.new(xe, p5, "0.5", style = label.style_none, textcolor = fibBlack, size = size.tiny)
+        label.new(xe, p0, "0", style = label.style_none, textcolor = fibBlack, size = size.tiny)
         if not na(lg.gapTop)
             box.new(lg.gapBi - 2, s == 1 ? lg.gapTop : s * lg.gapBot, bar_index, s == 1 ? lg.gapBot : s * lg.gapTop, bgcolor = color.new(color.blue, 85), border_color = color.new(color.blue, 40))
     string tag = (sig == 1 ? "Inverted gap " : "Gap retest ") + (s == 1 ? "long" : "short")
     label.new(bar_index, s == 1 ? low : high, tag, style = s == 1 ? label.style_label_up : label.style_label_down, color = col, textcolor = color.white, size = size.small)
-    line.new(bar_index, e, bar_index + 20, e, color = color.gray, width = 1)
-    line.new(bar_index, st, bar_index + 20, st, color = color.new(#ef5350, 0), style = line.style_dashed)
-    line.new(bar_index, tg, bar_index + 20, tg, color = color.new(#26a69a, 0), style = line.style_dashed)
+    // stop box (pink) and target box (teal), like your position tool
+    box.new(bar_index, math.max(e, st), bar_index + boxBars, math.min(e, st), bgcolor = legDown, border_color = color.new(color.black, 100))
+    box.new(bar_index, math.max(e, tg), bar_index + boxBars, math.min(e, tg), bgcolor = legUp, border_color = color.new(color.black, 100))
+    line.new(bar_index, e, bar_index + boxBars, e, color = color.gray, width = 1)
 
 if sigL == 1
     drawTrade(longLeg, 1, 1)
