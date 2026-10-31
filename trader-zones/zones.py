@@ -129,6 +129,8 @@ DEFAULTS = {
     "fib_reach": 0.705,       # "yours": price has to retrace this far into the leg (the 0.705 line)
     "fib_deep": 0.79,         # "yours": a close past this line means the fib was not respected
     "leg_min_atr": 3.0,       # "yours": the leg has to be at least this many 5-minute ATRs long
+    "leg_max_bars": 96,       # "yours": the leg has to finish within this many 5-minute bars of its start
+    "leg_zone_slack": 1.0,    # "yours": the leg may start this many zone heights under the zone (a zone broken through)
     "zones_in_sessions": True,
     # Session hours [start, end) in the clock named by session_tz: "dublin" (Irish time, with its
     # own daylight saving) or "ny" (New York time). 24 means midnight.
@@ -859,13 +861,16 @@ def long_setups(zone, m5, m3, targets, cfg, trace=None):
 
 def yours_long(zone, m5, cfg):
     """The user's own entry for a demand zone: the leg off the zone, the fib, a gap that inverts, a tight stop.
-    1. After the zone is touched the lowest low is the start of a leg and the highest high since is its end
-       (both known as they happen, so nothing looks ahead). The leg must be `leg_min_atr` 5-minute ATRs long.
+    1. A leg starts where price is in the zone: its lowest low is the start and the highest high after it is the
+       end (both known as they happen, so nothing looks ahead). It has to be at least `leg_min_atr` 5-minute ATRs
+       long, finish within `leg_max_bars` bars of its start, and start no further under the zone than
+       `leg_zone_slack` zone heights (a zone is reused after it breaks, but within reason).
     2. Price retraces down to the `fib_reach` line (0.705). A close beyond `fib_deep` (0.79), or a low under the
        leg's start, means the fib was not respected and this leg is dropped.
-    3. A bearish FVG (a gap down) that sits in the 0.79 to 0.5 band. Once it has reached the fib, the first 5-minute
-       close back above it inverts it (an IFVG): that close is the entry, or the first later bar that comes back
-       into the gap and closes above it again (the retest) is a second entry.
+    3. A bearish FVG (a gap down) that sits in the 0.79 to 0.5 band. Once price has reached the fib, the first
+       5-minute close back above the gap inverts it (an IFVG): that close is the entry. The first later bar that
+       comes back into the gap and closes above it again (the retest) is a second entry on the same gap. One gap
+       is traded per leg.
     4. The stop sits just under the lowest low since price reached the fib, which is where it was respected; the
        target is `target_r` times the risk (3 means 1:3).
     Supply zones run the same code on mirrored prices. Returns (entries, furthest stage in STAGES_YOURS)."""
@@ -877,20 +882,23 @@ def yours_long(zone, m5, cfg):
     t5 = [b["t"] for b in m5]
     n = len(m5)
     rr_fixed = float(cfg["target_r"] or 3.0)
+    slack = cfg["leg_zone_slack"] * (zone["high"] - zone["low"])
 
     def attempt(L, H, hidx, reach):
-        """Walk forward from the bar price reached the fib. Returns (entries, best, where to carry on, keep the
-        leg's start for the next leg)."""
+        """Walk forward from the bar price reached the fib. Returns (entries, where the leg search carries on,
+        whether the leg's start is kept for the next leg)."""
         nonlocal best
         R = H - L
         f_reach, f_deep, f_half = H - cfg["fib_reach"] * R, H - cfg["fib_deep"] * R, H - 0.5 * R
-        gaps, found, low_since = [], [], None
+        gaps, found, low_since, focus = [], [], None, None
         for j in range(hidx + 1, n):
             b = m5[j]
             if j >= reach:
                 low_since = b["l"] if low_since is None else min(low_since, b["l"])
-                if b["l"] < L or b["c"] < f_deep:
-                    return found, j + (0 if b["l"] < L else 1), b["l"] >= L
+                if b["l"] < L:
+                    return found, j, False
+                if b["c"] < f_deep:
+                    return found, j + 1, True
                 if b["h"] > H and j > reach:
                     return found, j, True
             if j >= hidx + 2 and a5[j] is not None and m5[j - 2]["l"] - b["h"] >= cfg["fvg_min_atr"] * a5[j]:
@@ -898,7 +906,7 @@ def yours_long(zone, m5, cfg):
                 if hi >= f_deep and lo <= f_half:
                     gaps.append({"i": j, "lo": lo, "hi": hi, "inv": None, "done": False})
             for g in gaps:
-                if g["i"] >= j or g["done"]:
+                if g["i"] >= j or g["done"] or (focus is not None and g is not focus):
                     continue
                 trigger = None
                 if g["inv"] is None:
@@ -924,24 +932,36 @@ def yours_long(zone, m5, cfg):
                 if rr < cfg["min_rr"] or any(o["entry_t"] == when for o in found):
                     continue
                 best = 5
+                focus = g
                 found.append({"trigger": trigger, "style": "yours", "sweep_t": t5[reach], "sweep_low": low_since,
                               "gap": (g["lo"], g["hi"]), "ote": (f_deep, f_reach), "entry_t": when, "entry": entry,
                               "stop": stop, "target": target, "rr": rr})
+            if focus is not None and focus["done"]:
+                return found, j + 1, True                  # this gap has had its inversion and its retest
         return found, n, True
 
     L = Lidx = H = Hidx = None
     i = bisect.bisect_left(t5, zone["touched_t"])
     while i < n:
         b = m5[i]
-        if L is None or b["l"] < L:
+        if L is not None and L < zone["low"] - slack and b["l"] > zone["high"]:
+            L = None                                       # price left a zone it had broken through far below
+        if L is None:
+            if b["l"] <= zone["high"]:                     # a leg starts where price is in the zone
+                L, Lidx, H, Hidx = b["l"], i, None, None
+            i += 1
+            continue
+        if b["l"] < L:
             L, Lidx, H, Hidx = b["l"], i, None, None
             i += 1
             continue
         if H is None or b["h"] > H:
             H, Hidx = b["h"], i
+            if Hidx - Lidx > cfg["leg_max_bars"]:          # too long to be the leg off the zone
+                L = None
             i += 1
             continue
-        if a5[i] is None or H - L < cfg["leg_min_atr"] * a5[i]:
+        if L < zone["low"] - slack or a5[i] is None or H - L < cfg["leg_min_atr"] * a5[i]:
             i += 1
             continue
         best = max(best, 2)                                # a leg is drawn

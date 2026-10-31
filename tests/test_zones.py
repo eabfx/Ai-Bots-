@@ -602,6 +602,24 @@ class YoursEntry(unittest.TestCase):
         self.assertGreater(res[0]["stop"], -102.2)
         self.assertLess(res[0]["target"], res[0]["entry"])
 
+    def test_a_leg_has_to_start_at_the_zone_and_finish_quickly(self):
+        bars = self.bars()
+        cfg = z.read_config(None)
+        cfg.update(entry_style="yours", leg_max_bars=5)                    # the leg took 11 bars: too long
+        res, best = z.setups_for(self.zone(bars), bars, [], [], cfg)
+        self.assertEqual(res, [])
+        self.assertLessEqual(best, 2)
+
+    def test_only_one_gap_is_traded_per_leg(self):
+        bars = self.bars()
+        extra = [(106.0, 106.0, 105.6, 105.8), (105.8, 105.8, 103.5, 103.8), (103.8, 103.9, 103.3, 103.5),
+                 (103.5, 104.0, 103.3, 103.9)]                              # a second gap down, 105.6 to 103.9
+        extra += [(103.9, 106.5, 103.8, 106.4)]                             # that closes back above and inverts it too
+        rows = [(b["o"], b["h"], b["l"], b["c"]) for b in bars] + extra
+        bars = [{"t": self.T0 + 300 * i, "o": o, "h": h, "l": l, "c": c} for i, (o, h, l, c) in enumerate(rows)]
+        res, _ = self.go(bars)
+        self.assertEqual([r["gap"] for r in res], [(104.0, 105.0)] * 2)     # the first gap and its retest, nothing else
+
     def test_the_tool_style_is_untouched_and_a_bad_style_is_refused(self):
         self.assertEqual(z.read_config(None)["entry_style"], "tool")
         with self.assertRaises(z.ZoneError):
