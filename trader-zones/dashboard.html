@@ -187,6 +187,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="days">Days back</label><select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></div>
 <div><label for="window">Entries</label><select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></div>
 <div><label for="respect">Show zones</label><select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></div>
+<div><label for="rule">Zone rule</label><select id="rule"><option value="standard" selected>standard</option><option value="before">candle before the move</option></select></div>
 <div><label for="perday">Zones per day</label><select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></div>
 </div>
 <div class="frow two">
@@ -293,7 +294,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <script>
 (function(){
 "use strict";
-var markets=[],current=null,timer=null,busy=false,lastData=null;
+var markets=[],current=null,timer=null,busy=false,lastData=null,clientNote="";
+var GAP_MAX_MS=3*3600*1000;      /* the gap between futures and spot drifts, so a gap measured longer ago is not reused */
 var frames={"60m":true,"30m":true,"15m":true};
 var $=function(id){return document.getElementById(id)};
 function store(k,v){try{if(v===undefined){return localStorage.getItem(k)}localStorage.setItem(k,v)}catch(e){return null}}
@@ -424,7 +426,8 @@ function ticket(d,shownEntries,shownZones){
 function render(d){
   lastData=d;
   var out=$("out");out.textContent="";
-  if(d.notes.length){var nc=el("div","card");d.notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
+  var notes=(clientNote?[clientNote]:[]).concat(d.notes);
+  if(notes.length){var nc=el("div","card");notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
 
   var hrs=parseInt($("window").value,10)||0;
   var shown=d.signals.slice().reverse().filter(function(r){return hrs===0||d.now_t-r.entry_t<=hrs*3600});
@@ -520,14 +523,22 @@ function load(){
   if(m&&!m.spot)store("zd.spot."+sym,typed);
   store("zd.days",$("days").value);store("zd.perday",$("perday").value);
   var kept=null;try{kept=JSON.parse(store("zd.gap."+sym)||"null")}catch(e){kept=null}
-  if(typed&&kept&&kept.text===typed){query="&shift="+encodeURIComponent(kept.v)}     /* same price as before: reuse its gap */
+  clientNote="";
+  if(typed&&kept&&kept.text===typed){
+    if(kept.at&&Date.now()-kept.at<GAP_MAX_MS){query="&shift="+encodeURIComponent(kept.v)}   /* same price, typed recently: reuse its gap */
+    else{                                                                                    /* typed too long ago: its gap is out of date */
+      clientNote="The chart price "+typed+" was typed "+(kept.at?Math.round((Date.now()-kept.at)/3600000)+" hours ago":"some time ago")+
+        ", so the gap to spot is out of date and is not applied. Type the price your chart shows now and press Refresh.";
+      store("zd.gap."+sym,"");store("zd.spot."+sym,"");$("spot").value="";typed="";$("spot").focus()}
+  }
   else if(typed){query="&spot="+encodeURIComponent(typed)}                           /* a new price: measure the gap now */
   else{store("zd.gap."+sym,"")}
+  store("zd.rule",$("rule").value);
   var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+
-    "&per_day="+encodeURIComponent($("perday").value)+query;
+    "&per_day="+encodeURIComponent($("perday").value)+"&rule="+encodeURIComponent($("rule").value)+query;
   fetch(url).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){
     if(x.ok){
-      if(typed&&query.indexOf("&spot=")===0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value}));
+      if(typed&&query.indexOf("&spot=")>=0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value,at:Date.now()}));
       render(x.j)
     }else{showError(x.j.error||"Something went wrong")}
   }).catch(function(e){showError("Could not reach the dashboard server: "+e)}).then(function(){
@@ -538,6 +549,7 @@ function redraw(){if(lastData)render(lastData)}
 $("refresh").onclick=load;$("auto").onchange=auto;
 $("window").onchange=function(){store("zd.window",$("window").value);redraw()};
 $("respect").onchange=function(){store("zd.respect",$("respect").value);redraw()};
+$("rule").onchange=load;
 $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 (function(){var bs=$("frames").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){
@@ -546,6 +558,7 @@ $("spot").onkeydown=function(e){if(e.key==="Enter")load()};
 var d0=store("zd.days");if(d0)$("days").value=d0;
 var p0=store("zd.perday");if(p0)$("perday").value=p0;
 var w0=store("zd.window");if(w0)$("window").value=w0;
+var ru0=store("zd.rule");if(ru0==="before"||ru0==="standard")$("rule").value=ru0;
 var r0=store("zd.respect");if(r0&&["hide","all","held"].indexOf(r0)>=0)$("respect").value=r0;
 var f0=store("zd.frames");
 if(f0!==null&&f0!==undefined){

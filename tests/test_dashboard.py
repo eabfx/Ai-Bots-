@@ -238,6 +238,20 @@ class Snapshot(Patched):
         self.assertEqual(dz.SHIFT, 0.0)
 
 
+class Rules(unittest.TestCase):
+    def test_before_rule_uses_the_candle_before_the_move_and_looser_limits(self):
+        cfg = dash.apply_rule(dz.read_config("none.json"), "before")
+        self.assertEqual((cfg["zone_candle"], cfg["move_atr"], cfg["base_body_atr"]), ("last", 1.3, 0.7))
+
+    def test_standard_rule_changes_nothing(self):
+        plain = dz.read_config("none.json")
+        self.assertEqual(dash.apply_rule(dz.read_config("none.json"), "standard"), plain)
+
+    def test_unknown_rule_is_refused(self):
+        with self.assertRaises(dz.ZoneError):
+            dash.apply_rule(dz.read_config("none.json"), "wild")
+
+
 class Server(Patched):
     def setUp(self):
         Patched.setUp(self)
@@ -298,6 +312,27 @@ class Server(Patched):
         _, _, body = self.get("/")
         self.assertIn('"zd.gap."', body)
         self.assertIn('"&shift="', body)
+
+    def test_a_kept_gap_expires_so_an_old_typed_price_is_never_reused(self):
+        _, _, body = self.get("/")
+        self.assertIn("GAP_MAX_MS", body)
+        self.assertIn("Date.now()-kept.at<GAP_MAX_MS", body)
+        self.assertIn("at:Date.now()", body)                   # the time the price was typed is kept with the gap
+        self.assertIn("is out of date and is not applied", body)
+
+    def test_the_page_has_a_zone_rule_choice_the_server_understands(self):
+        _, _, body = self.get("/")
+        self.assertIn('id="rule"', body)
+        self.assertIn('"&rule="', body)
+        self.assertIn('"zd.rule"', body)
+        code, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&rule=before")
+        self.assertEqual(code, 200)
+        self.assertEqual(json.loads(js)["rule"], "before")
+        code, _, js = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        self.assertEqual(json.loads(js)["rule"], "standard")
+        code, _, js = self.get("/api/snapshot?symbol=MGC&rule=nonsense")
+        self.assertEqual(code, 400)
+        self.assertIn("rule must be", json.loads(js)["error"])
 
     def test_snapshot_takes_a_kept_gap_and_rejects_a_bad_one(self):
         code, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00&shift=4.5")

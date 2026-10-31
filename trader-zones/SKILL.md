@@ -68,7 +68,10 @@ the user's own box).
 only from that computer). One tab per market shows the last price, the entries found with entry, stop,
 target and reward to risk, a ladder of the zones by timeframe against price, and a table of the zones. All
 times are Dublin. The "your chart price now" box does what `--spot` does and is hidden for GBPUSD and
-EURUSD. Refresh re-runs the tool; it can also refresh every 5 minutes.
+EURUSD, and the price is only trusted for 3 hours (the gap drifts): after that it is cleared and the page asks for a
+fresh one. The Zone rule setting switches between the standard rule and "candle before the move" (the user's way:
+`zone_candle` "last", `move_atr` 1.3, `base_body_atr` 0.7), which finds more zones. Refresh re-runs the tool; it can
+also refresh every 5 minutes.
 The dashboard is called RiskDesk.ai. The page is `trader-zones/dashboard.html`, laid out like the user's RiskDesk site: black and white, a dark or
 light theme (button top right), and three sections. **Zones** has a Frames filter (1 hour, 30 min, 15 min), the
 Show zones setting and a Visits column that lists every time price came back to a zone (the session it opened

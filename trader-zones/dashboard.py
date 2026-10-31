@@ -28,6 +28,17 @@ import zones as z    # noqa: E402
 PORT = 8765
 ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
 CACHE_SECS = 60
+# The page's "Zone rule" setting. "before" is the user's own way of drawing a zone: the candle right before the
+# big move, even with a middling body, and a smaller move away than the standard rule asks for.
+RULES = {"standard": {}, "before": {"zone_candle": "last", "move_atr": 1.3, "base_body_atr": 0.7}}
+
+
+def apply_rule(cfg, rule):
+    """Put a named zone rule on top of the settings from the config file. Returns the same dict."""
+    if rule not in RULES:
+        raise z.ZoneError("rule must be %s" % " or ".join('"%s"' % r for r in RULES))
+    cfg.update(RULES[rule])
+    return cfg
 _CHARTS = {}                      # (market, interval, days) -> (when fetched, bars)
 _fetch_charts = z._raw_bars
 
@@ -185,7 +196,7 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None):
                            "lines": [ln.strip() for ln in z.trace_lines(sym, zn, trace)]})
     market = z.MARKETS[sym]
     return {"symbol": sym, "yahoo": market["yahoo"], "market_note": market["note"], "spot_market": bool(market.get("spot")),
-            "digits": market["digits"], "shifted": shifted, "shift_value": used,
+            "digits": market["digits"], "rule": "before" if cfg["zone_candle"] == "last" else "standard", "shifted": shifted, "shift_value": used,
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "per_day": cfg["max_per_day"], "notes": notes,
@@ -277,7 +288,7 @@ class Handler(BaseHTTPRequestHandler):
                 shift = float(shift_text) if shift_text else None
             except ValueError:
                 raise z.ZoneError("shift must be a number")
-            cfg = z.read_config(self.config_path)
+            cfg = apply_rule(z.read_config(self.config_path), (q.get("rule") or ["standard"])[0] or "standard")
             days = (q.get("days") or [""])[0]
             if days:
                 if not days.isdigit() or not 1 <= int(days) <= 14:
