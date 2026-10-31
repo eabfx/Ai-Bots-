@@ -118,10 +118,10 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 .ticket-note{padding:12px 18px;border-top:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#8f8f8b;line-height:1.5}
 
 .scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font:400 13px var(--mono);font-variant-numeric:tabular-nums}
-th{font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
-td.wrap{white-space:normal;min-width:130px}
+table{width:100%;border-collapse:collapse;font:400 12.5px var(--mono);font-variant-numeric:tabular-nums}
+th{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 7px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+td.wrap{white-space:normal;min-width:90px}
 tr:last-child td{border-bottom:0}
 td.pos{color:var(--up)}td.neg{color:var(--down)}
 .tag{display:inline-block;border-radius:6px;padding:1px 8px;font:600 11px var(--mono);color:#0a0a0a}
@@ -363,6 +363,10 @@ function visibleZones(d){
     if(mode==="hide")return x.respect!=="failed";
     if(mode==="held")return x.respect==="respected";
     return true})}
+function respectText(x){
+  if(x.respect&&RESPECT_TEXT[x.respect])return RESPECT_TEXT[x.respect]+(x.respect_when&&x.respect!=="testing"?" "+x.respect_when:"");
+  return x.status==="fresh"?"not tested yet":"-";
+}
 function touchLine(t,d){
   var depth=t.depth>=1?"through it":Math.round(t.depth*100)+"% in";
   var res=t.result+(t.result_when?" "+t.result_when:"");
@@ -465,10 +469,8 @@ function render(d){
   else if(!vz.length){zc.appendChild(el("div","empty","All "+d.zones.length+" zones are hidden by the Show zones and Frames settings above."))}
   else{
     if(vz.length<d.zones.length)zc.appendChild(el("div","mute","Showing "+vz.length+" of "+d.zones.length+" zones. Change Show zones or Frames above to see the rest."));
-    zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Status","Respected?","Visits"],vz.slice().reverse().map(function(x){
-      return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),x.status+(x.touched?", back in "+x.touched:""),
-        x.respect&&RESPECT_TEXT[x.respect]?RESPECT_TEXT[x.respect]+(x.respect_when&&x.respect!=="testing"?" "+x.respect_when:""):"-",
-        touchCell(x,d)]}),[5,6]))}
+    zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Respected?","Visits"],vz.slice().reverse().map(function(x){
+      return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),respectText(x),touchCell(x,d)]}),[2,5]))}
   out.appendChild(zc);
   out.appendChild(mineCard(d));
   ticket(d,shown.length,vz.length);
