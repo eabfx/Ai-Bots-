@@ -1004,6 +1004,17 @@ class DefaultPaths(unittest.TestCase):
             self.assertTrue(getattr(dash.Handler, name).startswith(trader))
 
 
+class TradesPage(Server):
+    def test_the_trades_tab_has_the_contract_reference_exchange_rate_margin_and_prop_room(self):
+        _, _, body = self.get("/")
+        for needle in ('id="ref-rows"', 'id="ps-fx"', 'id="ps-margin"', 'id="pf-out"', 'id="pf-type"', 'id="pf-use"',
+                       "Prop firm room", "Contract reference", 'id:"GC",tick:0.1', 'id:"MNQ",tick:0.25', 'id:"ES",tick:0.25'):
+            self.assertIn(needle, body)
+        prop = body.split("/* prop firm room")[1].split("function setSeg(")[0]
+        self.assertNotIn("innerHTML", prop)
+        self.assertIn("Firms that trail on open profit", body)          # the page says what it does not model
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

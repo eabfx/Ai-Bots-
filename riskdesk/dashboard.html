@@ -331,11 +331,19 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="ps-vpl" id="ps-vpl-label">Pip value per standard lot</label><input type="number" id="ps-vpl" value="10" min="0" step="any"><div class="hint">Prefilled from the preset. Edit it if your broker differs.</div></div>
 <div><label for="ps-round">Round result down to</label><select id="ps-round"><option value="0.01">0.01 lot / contract</option><option value="0.1">0.1</option><option value="1" selected>Whole units</option></select></div>
 </div>
+<div class="frow two">
+<div><label for="ps-fx" id="ps-fx-label">Exchange rate</label><input type="number" id="ps-fx" value="1" min="0" step="any"><div class="hint" id="ps-fx-hint">Only needed when the instrument and your account are in different currencies.</div></div>
+<div><label for="ps-margin">Margin per unit (optional)</label><input type="number" id="ps-margin" placeholder="your broker's figure" min="0" step="any"><div class="hint">Margin changes by broker and by day. Type yours to see how much of the account the position ties up.</div></div>
+</div>
 </div>
 <aside class="ticket"><div class="ticket-head"><span>Order ticket</span><span class="live" aria-hidden="true"></span></div>
 <div class="ticket-body" id="ps-out"></div>
 <div class="ticket-note">Assumes the value per pip or point stays constant across the stop distance. Confirm contract specs with your broker.</div></aside>
 </div>
+
+<details class="card" id="ref-box"><summary class="jh" style="cursor:pointer;margin:0">Contract reference: value per point and per tick</summary>
+<div class="scroll" style="margin-top:12px"><table><thead><tr><th>Instrument</th><th>Per point</th><th>Tick size</th><th>Per tick</th><th>Sized in</th></tr></thead><tbody id="ref-rows"></tbody></table></div>
+<div class="hint">Standard exchange values. Forex pip values move with the exchange rate. Always confirm with your broker.</div></details>
 
 <div class="block-gap"></div>
 
@@ -356,6 +364,35 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <aside class="ticket"><div class="ticket-head"><span>Setup readout</span><span class="live" aria-hidden="true"></span></div>
 <div class="ticket-body" id="rr-out"></div>
 <div class="ticket-note">Breakeven win rate = risk / (risk + reward). Anything above it is theoretical edge, before costs.</div></aside>
+</div>
+
+<div class="block-gap"></div>
+
+<h3>Prop firm room</h3>
+<p class="sub">How much you can still lose today and overall before you break your account's rules. It reads your Journal for today's result and the running result. Firms differ, so enter your own rules and check the numbers against the firm's dashboard.</p>
+<div class="tool-grid">
+<div class="card">
+<div class="frow two">
+<div><label for="pf-size">Account size</label><input type="number" id="pf-size" value="50000" min="0" step="any"></div>
+<div><label for="pf-target">Profit target</label><input type="number" id="pf-target" value="3000" min="0" step="any"></div>
+</div>
+<div class="frow two">
+<div><label for="pf-daily">Max daily loss</label><input type="number" id="pf-daily" value="1000" min="0" step="any"></div>
+<div><label for="pf-dd">Max drawdown</label><input type="number" id="pf-dd" value="2000" min="0" step="any"></div>
+</div>
+<div class="frow two">
+<div><label for="pf-type">Drawdown type</label><select id="pf-type"><option value="static">Fixed floor (start minus drawdown)</option><option value="trail">Trails your highest balance</option><option value="lock">Trails, stops at the start balance</option></select></div>
+<div><label for="pf-from">Count journal trades from</label><input type="date" id="pf-from"></div>
+</div>
+<div class="frow two">
+<div><label for="pf-risk">Your usual risk per trade</label><input type="number" id="pf-risk" value="250" min="0" step="any"></div>
+<div><label for="pf-adj">P/L not in the journal (optional)</label><input type="number" id="pf-adj" value="0" step="any"></div>
+</div>
+<div class="hint">Set the date to the day you started this account, or the journal will count older trades too. Trailing drawdown here follows your closed trades only. Firms that trail on open profit will show a lower floor than this does.</div>
+</div>
+<aside class="ticket"><div class="ticket-head"><span>Room left</span><span class="live" aria-hidden="true"></span></div>
+<div class="ticket-body" id="pf-out"></div>
+<div class="ticket-note"><button class="btn small" id="pf-use" type="button">Size my next trade with this</button></div></aside>
 </div>
 </section>
 
@@ -492,7 +529,7 @@ function showTab(name){
   var bs=$("nav").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
-  if(name==="macro")loadMacro(false);
+  if(name==="macro")loadMacro(false);if(name==="trades")propCalc();
 }
 (function(){var bs=$("nav").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){showTab(b.getAttribute("data-tab"))}})(bs[i])})();
@@ -821,17 +858,18 @@ var INSTRUMENTS=[
  {g:"Forex majors",id:"USDCHF",name:"USD/CHF",unit:"pip",vpl:11.4,cur:"USD",size:"lots",note:"The pip value depends on the CHF rate. Edit it to match."},
  {g:"Forex majors",id:"USDCAD",name:"USD/CAD",unit:"pip",vpl:7.3,cur:"USD",size:"lots",note:"The pip value depends on the CAD rate. Edit it to match."},
  {g:"Metals",id:"XAUUSD",name:"Gold (XAU/USD)",unit:"point",vpl:100,cur:"USD",size:"lots",note:"1 lot = 100 oz. A $1.00 move = $100 per lot. Many brokers have a 0.01 lot minimum."},
- {g:"Metals",id:"MGC",name:"Micro Gold futures (MGC)",unit:"point",vpl:10,cur:"USD",size:"contracts",note:"10 oz per contract. A $1.00 move = $10 per contract. Full-size gold (GC) is $100."},
- {g:"Index futures (CME/CBOT)",id:"ES",name:"E-mini S&P 500 (ES)",unit:"point",vpl:50,cur:"USD",size:"contracts",note:"$50 per index point. Micro (MES) is $5."},
- {g:"Index futures (CME/CBOT)",id:"MES",name:"Micro S&P 500 (MES)",unit:"point",vpl:5,cur:"USD",size:"contracts",note:"$5 per index point."},
- {g:"Index futures (CME/CBOT)",id:"NQ",name:"E-mini Nasdaq-100 (NQ)",unit:"point",vpl:20,cur:"USD",size:"contracts",note:"$20 per index point. Micro (MNQ) is $2."},
- {g:"Index futures (CME/CBOT)",id:"MNQ",name:"Micro Nasdaq-100 (MNQ)",unit:"point",vpl:2,cur:"USD",size:"contracts",note:"$2 per index point."},
- {g:"Index futures (CME/CBOT)",id:"YM",name:"E-mini Dow (YM)",unit:"point",vpl:5,cur:"USD",size:"contracts",note:"$5 per index point. Micro (MYM) is $0.50."},
- {g:"Index futures (CME/CBOT)",id:"RTY",name:"E-mini Russell 2000 (RTY)",unit:"point",vpl:50,cur:"USD",size:"contracts",note:"$50 per index point. Micro (M2K) is $5."},
- {g:"Index futures (Eurex/ICE)",id:"FDAX",name:"DAX Future (FDAX)",unit:"point",vpl:25,cur:"EUR",size:"contracts",note:"25 EUR per index point. Mini (FDXM) is 5, micro (FDXS) is 1."},
- {g:"Index futures (Eurex/ICE)",id:"FDXM",name:"Mini-DAX (FDXM)",unit:"point",vpl:5,cur:"EUR",size:"contracts",note:"5 EUR per index point."},
- {g:"Index futures (Eurex/ICE)",id:"FESX",name:"EURO STOXX 50 (FESX)",unit:"point",vpl:10,cur:"EUR",size:"contracts",note:"10 EUR per index point."},
- {g:"Index futures (Eurex/ICE)",id:"Z",name:"FTSE 100 Future (Z)",unit:"point",vpl:10,cur:"GBP",size:"contracts",note:"10 GBP per index point."},
+ {g:"Metals",id:"GC",tick:0.1,name:"Gold futures (GC)",unit:"point",vpl:100,cur:"USD",size:"contracts",note:"100 oz per contract. A $1.00 move = $100 per contract. Micro gold (MGC) is $10."},
+ {g:"Metals",id:"MGC",tick:0.1,name:"Micro Gold futures (MGC)",unit:"point",vpl:10,cur:"USD",size:"contracts",note:"10 oz per contract. A $1.00 move = $10 per contract. Full-size gold (GC) is $100."},
+ {g:"Index futures (CME/CBOT)",id:"ES",tick:0.25,name:"E-mini S&P 500 (ES)",unit:"point",vpl:50,cur:"USD",size:"contracts",note:"$50 per index point. Micro (MES) is $5."},
+ {g:"Index futures (CME/CBOT)",id:"MES",tick:0.25,name:"Micro S&P 500 (MES)",unit:"point",vpl:5,cur:"USD",size:"contracts",note:"$5 per index point."},
+ {g:"Index futures (CME/CBOT)",id:"NQ",tick:0.25,name:"E-mini Nasdaq-100 (NQ)",unit:"point",vpl:20,cur:"USD",size:"contracts",note:"$20 per index point. Micro (MNQ) is $2."},
+ {g:"Index futures (CME/CBOT)",id:"MNQ",tick:0.25,name:"Micro Nasdaq-100 (MNQ)",unit:"point",vpl:2,cur:"USD",size:"contracts",note:"$2 per index point."},
+ {g:"Index futures (CME/CBOT)",id:"YM",tick:1,name:"E-mini Dow (YM)",unit:"point",vpl:5,cur:"USD",size:"contracts",note:"$5 per index point. Micro (MYM) is $0.50."},
+ {g:"Index futures (CME/CBOT)",id:"RTY",tick:0.1,name:"E-mini Russell 2000 (RTY)",unit:"point",vpl:50,cur:"USD",size:"contracts",note:"$50 per index point. Micro (M2K) is $5."},
+ {g:"Index futures (Eurex/ICE)",id:"FDAX",tick:0.5,name:"DAX Future (FDAX)",unit:"point",vpl:25,cur:"EUR",size:"contracts",note:"25 EUR per index point. Mini (FDXM) is 5, micro (FDXS) is 1."},
+ {g:"Index futures (Eurex/ICE)",id:"FDXM",tick:1,name:"Mini-DAX (FDXM)",unit:"point",vpl:5,cur:"EUR",size:"contracts",note:"5 EUR per index point."},
+ {g:"Index futures (Eurex/ICE)",id:"FESX",tick:1,name:"EURO STOXX 50 (FESX)",unit:"point",vpl:10,cur:"EUR",size:"contracts",note:"10 EUR per index point."},
+ {g:"Index futures (Eurex/ICE)",id:"Z",tick:0.5,name:"FTSE 100 Future (Z)",unit:"point",vpl:10,cur:"GBP",size:"contracts",note:"10 GBP per index point."},
  {g:"Cash indices (CFD, typical)",id:"GER40",name:"GER40 / DAX CFD",unit:"point",vpl:1,cur:"EUR",size:"lots",note:"Typically 1 EUR per point per lot. It varies by broker, check yours."},
  {g:"Cash indices (CFD, typical)",id:"US100",name:"US100 / Nasdaq CFD",unit:"point",vpl:1,cur:"USD",size:"lots",note:"Typically $1 per point per lot. It varies by broker."},
  {g:"Cash indices (CFD, typical)",id:"US500",name:"US500 / S&P CFD",unit:"point",vpl:1,cur:"USD",size:"lots",note:"Typically $1 per point per lot. It varies by broker."},
@@ -844,31 +882,41 @@ function inst(id){return INSTRUMENTS.filter(function(i){return i.id===id})[0]||I
     var o=el("option",null,i.name);o.value=i.id;og.appendChild(o)})})();
 var psMode="pct",rrDir="long",lastRisk=0;
 function psApplyPreset(){
-  var i=inst($("ps-inst").value);
+  var i=inst($("ps-inst").value),cur=$("ps-cur").value;
   $("ps-inst-hint").textContent=i.note;
   $("ps-vpl").value=i.vpl;
   $("ps-stop-label").textContent="Stop distance ("+i.unit+"s)";
   $("ps-vpl-label").textContent=i.unit==="pip"?"Pip value per standard lot ("+i.cur+")":
     "Value per point, per "+(i.size==="contracts"?"contract":"lot")+" ("+i.cur+")";
   $("ps-round").value=i.size==="contracts"?"1":"0.01";
+  if(i.cur===cur)$("ps-fx").value=1;
   calcPS();
 }
 function calcPS(){
   var i=inst($("ps-inst").value),bal=num("ps-bal"),riskIn=num("ps-risk"),stop=num("ps-stop"),vpl=num("ps-vpl");
-  var step=parseFloat($("ps-round").value)||1,cur=$("ps-cur").value;
+  var step=parseFloat($("ps-round").value)||1,cur=$("ps-cur").value,fx=num("ps-fx"),margin=num("ps-margin");
+  var sameCur=i.cur===cur;if(sameCur)fx=1;if(!(fx>0))fx=1;
+  $("ps-fx").disabled=sameCur;
+  $("ps-fx-label").textContent=sameCur?"Exchange rate (not needed)":"1 "+i.cur+" in "+cur;
   var riskAmt=psMode==="pct"?bal*riskIn/100:riskIn;
-  var raw=(stop>0&&vpl>0)?riskAmt/(stop*vpl):0;
+  var unitPer=vpl*fx;                                   // value of one point (or pip) per unit, in your account currency
+  var raw=(stop>0&&unitPer>0)?riskAmt/(stop*unitPer):0;
   var size=Math.floor(raw/step+1e-9)*step;if(size<0)size=0;
-  var actual=size*stop*vpl,per=size*vpl,sym={USD:"$",EUR:"EUR ",GBP:"GBP "}[cur]||"";
+  var actual=size*stop*unitPer,per=size*unitPer,sym={USD:"$",EUR:"EUR ",GBP:"GBP "}[cur]||"";
   lastRisk=actual;
   var o=$("ps-out");o.textContent="";
   o.appendChild(trow("Risk budget",sym+money(riskAmt)+(psMode==="pct"?" ("+fmt(riskIn,1)+"%)":"")));
   o.appendChild(trow("Position size",fmt(size,step<1?2:0)+" "+i.size,"big"));
   o.appendChild(trow("Value per "+i.unit,sym+money(per)));
+  if(i.tick)o.appendChild(trow("Value per tick ("+i.tick+")",sym+money(per*i.tick)));
   o.appendChild(trow("Loss at stop ("+fmt(stop,stop%1?1:0)+" "+i.unit+"s)","-"+sym+money(actual),"neg"));
   o.appendChild(trow("Risk as % of balance",(bal>0?fmt(actual/bal*100,2):"-")+"%"));
+  if(margin>0&&size>0){var mu=size*margin;
+    o.appendChild(trow("Margin tied up",sym+money(mu)+(bal>0?" ("+fmt(mu/bal*100,1)+"% of balance)":""),mu>bal?"warn":null))}
+  if(!sameCur&&fx===1)
+    o.appendChild(trow("Check","This is a "+i.cur+" instrument and your account is in "+cur+". Enter today's exchange rate or the sizing is off.","warn"));
   if(raw>0&&size===0)o.appendChild(trow("Note","Risk too small for the minimum size. Widen the risk or use a micro.","warn"));
-  store("zd.ps",JSON.stringify({bal:$("ps-bal").value,risk:$("ps-risk").value,mode:psMode}));
+  store("zd.ps",JSON.stringify({bal:$("ps-bal").value,risk:$("ps-risk").value,mode:psMode,fx:$("ps-fx").value,margin:$("ps-margin").value}));
 }
 function calcRR(){
   var e=num("rr-entry"),s=num("rr-stop"),t=num("rr-tp"),ra=num("rr-riskamt"),sign=rrDir==="long"?1:-1;
@@ -890,12 +938,51 @@ function segInit(box,attr,fn){var bs=box.querySelectorAll("button");
 segInit($("ps-mode"),"data-riskmode",function(v){psMode=v;calcPS()});
 segInit($("rr-dir"),"data-dir",function(v){rrDir=v;calcRR()});
 $("ps-inst").onchange=function(){$("ps-from").textContent="Enter your account, risk and stop distance.";psApplyPreset()};
-["ps-bal","ps-risk","ps-stop","ps-vpl","ps-round","ps-cur"].forEach(function(id){$(id).oninput=calcPS});
+["ps-bal","ps-risk","ps-stop","ps-vpl","ps-round","ps-cur","ps-fx","ps-margin"].forEach(function(id){$(id).oninput=calcPS});
 ["rr-entry","rr-stop","rr-tp","rr-riskamt"].forEach(function(id){$(id).oninput=calcRR});
 try{var ps0=JSON.parse(store("zd.ps")||"null");
-  if(ps0){if(isFinite(parseFloat(ps0.bal)))$("ps-bal").value=ps0.bal;if(isFinite(parseFloat(ps0.risk)))$("ps-risk").value=ps0.risk;
+  if(ps0){if(isFinite(parseFloat(ps0.bal)))$("ps-bal").value=ps0.bal;if(isFinite(parseFloat(ps0.risk)))$("ps-risk").value=ps0.risk;if(isFinite(parseFloat(ps0.fx)))$("ps-fx").value=ps0.fx;if(isFinite(parseFloat(ps0.margin)))$("ps-margin").value=ps0.margin;
     if(ps0.mode==="amt"){psMode="amt";var mb=$("ps-mode").querySelectorAll("button");mb[0].classList.remove("on");mb[1].classList.add("on")}}}catch(e){}
 psApplyPreset();calcRR();
+
+(function(){var tb=$("ref-rows");
+  INSTRUMENTS.forEach(function(i){if(i.id==="CUSTOM"||i.unit==="pip")return;
+    var tr=el("tr");[i.name,i.cur+" "+money(i.vpl),i.tick?String(i.tick):"-",i.tick?i.cur+" "+money(i.vpl*i.tick):"-",i.size].forEach(function(t){tr.appendChild(el("td",null,t))});tb.appendChild(tr)})})();
+
+/* prop firm room: worked out from the rules typed here and the journal below */
+var PFKEY="zd.prop",PFIDS=["pf-size","pf-target","pf-daily","pf-dd","pf-type","pf-from","pf-risk","pf-adj"],pfRoom=0;
+try{var pf0=JSON.parse(store(PFKEY)||"null");if(pf0)PFIDS.forEach(function(id){if(pf0[id]!==undefined&&pf0[id]!==null)$(id).value=pf0[id]})}catch(e){}
+function propCalc(){
+  var size=num("pf-size"),target=num("pf-target"),daily=num("pf-daily"),dd=num("pf-dd"),type=$("pf-type").value,from=$("pf-from").value,
+    risk=num("pf-risk"),adj=parseFloat($("pf-adj").value)||0,o=$("pf-out");
+  var saved={};PFIDS.forEach(function(id){saved[id]=$(id).value});store(PFKEY,JSON.stringify(saved));
+  o.textContent="";
+  if(!(size>0)||!(dd>0)){o.appendChild(trow("Check","Enter the account size and the max drawdown.","warn"));pfRoom=0;return}
+  var list=trades.filter(function(t){return !from||(t.date&&t.date>=from)}),ch=jChron(list),run=size+adj,peak=run;
+  ch.forEach(function(t){run+=t.pl;if(run>peak)peak=run});
+  var bal=run,floor=type==="static"?size-dd:type==="lock"?Math.min(size,peak-dd):peak-dd,
+    day=today(),todayPL=list.filter(function(t){return t.date===day}).reduce(function(a,t){return a+t.pl},0),
+    dailyRoom=daily>0?Math.max(0,daily+todayPL):Infinity,ddRoom=Math.max(0,bal-floor),room=Math.min(dailyRoom,ddRoom);
+  pfRoom=isFinite(room)?room:0;
+  o.appendChild(trow("Balance",money(bal)+" ("+signed(bal-size)+" from start)"));
+  o.appendChild(trow("Today's P/L",signed(todayPL),todayPL>0?"pos":todayPL<0?"neg":null));
+  o.appendChild(trow("Drawdown floor",money(floor)));
+  o.appendChild(trow("Room to the floor",money(ddRoom),ddRoom<=0?"neg":null));
+  if(daily>0)o.appendChild(trow("Room left today",money(dailyRoom),dailyRoom<=0?"neg":null));
+  o.appendChild(trow("Most you can lose now",money(room),"big"));
+  o.appendChild(trow("Limit that bites first",dailyRoom<ddRoom?"daily loss":"drawdown"));
+  if(risk>0)o.appendChild(trow("Losses at your usual risk",String(Math.floor(room/risk+1e-9))+" before a limit",room<risk?"warn":null));
+  if(target>0){var got=Math.max(0,bal-size);o.appendChild(trow("Target progress",fmt(Math.min(100,got/target*100),0)+"% ("+money(Math.max(0,target-got))+" to go)"))}
+  if(room<=0)o.appendChild(trow("Note","A limit is reached. Check it against the firm's own dashboard before you do anything else.","warn"));
+  else if(risk>0&&room<risk)o.appendChild(trow("Note","Your usual risk is bigger than the room left. Size down or leave it.","warn"));
+}
+PFIDS.forEach(function(id){$(id).oninput=propCalc;$(id).onchange=propCalc});
+$("pf-use").onclick=function(){
+  if(!(pfRoom>0))return;
+  var risk=num("pf-risk"),use=risk>0?Math.min(risk,pfRoom):pfRoom;
+  psMode="amt";setSeg($("ps-mode"),"data-riskmode","amt");$("ps-risk").value=Math.floor(use*100)/100;calcPS();
+  $("ps-from").textContent="Risk set from your prop room: the smaller of your usual risk and what is left before a limit.";
+  window.scrollTo({top:0,behavior:"smooth"})};
 
 function setSeg(box,attr,val){var bs=box.querySelectorAll("button");
   for(var i=0;i<bs.length;i++)bs[i].classList.toggle("on",bs[i].getAttribute(attr)===val)}
@@ -1074,6 +1161,7 @@ function jRender(){
     var del=el("button","del","x");del.type="button";del.setAttribute("aria-label","Delete trade");
     del.onclick=function(){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}};
     td("").appendChild(del);tb.appendChild(tr)});
+  propCalc();
 }
 Array.prototype.forEach.call($("j-range").children,function(b){b.onclick=function(){jRange=b.getAttribute("data-r");jset(JRKEY,jRange);jShown=30;jRender()}});
 Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function(){jBy=b.getAttribute("data-by");jRender()}});
