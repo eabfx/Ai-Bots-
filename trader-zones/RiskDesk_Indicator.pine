@@ -164,7 +164,7 @@ addZone(string tf, float hi, float lo, float tt, float kk) =>
         if not zoneKnown(tf, t, kind) and (time - t) <= zoneDays * 86400000
             color c = sideCols ? (kind == 1 ? demandCol : supplyCol) : zoneCol
             string name = tf == "1h" ? lbl1h : tf == "30m" ? lbl30 : lbl15
-            box bx = box.new(t, hi, time + zoneBars * timeframe.in_seconds() * 1000, lo, xloc = xloc.bar_time, bgcolor = c, border_color = color.new(c, 100), text = str.upper(name), text_color = color.new(color.black, 35), text_size = size.small, text_halign = text.align_right, text_valign = text.align_center, text_formatting = text.format_italic)
+            box bx = box.new(t, hi, time + zoneBars * timeframe.in_seconds() * 1000, lo, xloc = xloc.bar_time, bgcolor = c, border_color = color.new(c, 100), text = str.upper(name), text_color = color.black, text_size = size.small, text_halign = text.align_right, text_valign = text.align_center, text_formatting = text.format_italic)
             zones.push(Zone.new(bx, lo, hi, kind, tf, t))
 
 if showH1 and not na(h1t) and h1t != nz(h1t[1])
