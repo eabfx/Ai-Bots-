@@ -13,6 +13,7 @@ import argparse
 import contextlib
 import io
 import json
+import math
 import os
 import copy
 import sys
@@ -67,8 +68,8 @@ def dublin_text(ts):
     return z.to_dublin(ts).strftime("%a %d %b %H:%M")
 
 
-def zone_row(zn):
-    return {"tf": zn["tf"], "kind": zn["kind"], "low": zn["low"], "high": zn["high"], "status": zn["status"],
+def zone_row(zn, levels=()):
+    return {"levels": levels_at(zn["low"], zn["high"], levels), "tf": zn["tf"], "kind": zn["kind"], "low": zn["low"], "high": zn["high"], "status": zn["status"],
             "t": zn["t"], "when": dublin_text(zn["t"]),
             "touched": dublin_text(zn["touched_t"]) if zn.get("touched_t") else None,
             "respect": zn.get("respect"),
@@ -79,8 +80,13 @@ def zone_row(zn):
                         for tc in zn.get("touches") or []]}
 
 
-def signal_row(r):
-    return {"side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
+def signal_row(r, levels=()):
+    """An entry's levels: the saved ones its zone sits in, or its entry price sits in (the user enters on the
+    5 or 3 minute chart, so the entry is often some way from the zone)."""
+    by_zone = levels_at(r["zone"]["low"], r["zone"]["high"], levels)
+    by_entry = [dict(lv, via="entry") for lv in levels_at(r["entry"], r["entry"], levels)
+                if lv["index"] not in {q["index"] for q in by_zone}]
+    return {"levels": [dict(lv, via="zone") for lv in by_zone] + by_entry, "side": r["side"], "trigger": r["trigger"], "zone": dict(r["zone"], when=dublin_text(r["zone"]["t"])),
             "swept": dublin_text(r["sweep_t"]), "gap": list(r["gap"]), "entry_t": r["entry_t"],
             "entry_when": dublin_text(r["entry_t"]), "entry": r["entry"], "stop": r["stop"], "target": r["target"],
             "rr": r["rr"],
@@ -139,6 +145,75 @@ def add_mine(path, sym, kind, low, high, when, note=""):
     return doc[sym]
 
 
+LEVEL_KINDS = ("support", "resistance")
+LEVEL_FRAMES = ("4h", "daily")
+MAX_LEVELS = 50
+
+
+def levels_path(config_path):
+    """The user's daily and 4h support and resistance zones live next to the config file, in my_levels.json."""
+    return os.path.join(os.path.dirname(os.path.abspath(config_path)), "my_levels.json")
+
+
+def add_level(path, sym, kind, frame, low, high, note=""):
+    """Save a big support or resistance zone from the 4-hour or daily chart. The tool does not find these itself:
+    it marks the zones and entries that sit inside one."""
+    sym = z.resolve(sym)
+    if not isinstance(kind, str) or kind.lower() not in LEVEL_KINDS:
+        raise z.ZoneError('kind must be "support" or "resistance", not %r' % (kind,))
+    if not isinstance(frame, str) or frame.lower() not in LEVEL_FRAMES:
+        raise z.ZoneError('frame must be "4h" or "daily", not %r' % (frame,))
+    try:
+        low, high = float(low), float(high)
+    except (TypeError, ValueError):
+        raise z.ZoneError("a level wants two prices, low then high")
+    if not (math.isfinite(low) and math.isfinite(high)):
+        raise z.ZoneError("a level wants two prices, low then high")
+    if low >= high:
+        raise z.ZoneError("a level wants the low price first and it must be under the high price")
+    doc = load_mine(path)
+    items = mine_list(doc, sym)
+    entry = {"kind": kind.lower(), "frame": frame.lower(), "low": low, "high": high, "note": str(note or "")[:80]}
+    if any(all(m.get(k) == entry[k] for k in ("kind", "frame", "low", "high")) for m in items):
+        raise z.ZoneError("that level is already in your list")
+    if len(items) >= MAX_LEVELS:
+        raise z.ZoneError("you have %d levels saved for %s already: remove some first" % (len(items), sym))
+    doc[sym] = items + [entry]
+    save_mine(path, doc)
+    return doc[sym]
+
+
+def remove_level(path, sym, index):
+    sym = z.resolve(sym)
+    doc = load_mine(path)
+    items = mine_list(doc, sym)
+    if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(items):
+        raise z.ZoneError("there is no saved level number %s for %s" % (index, sym))
+    doc[sym] = items[:index] + items[index + 1:]
+    save_mine(path, doc)
+    return doc[sym]
+
+
+def level_dicts(items, price=None):
+    """The saved levels with their position: where price is now (inside, above or below), for the page."""
+    out = []
+    for i, m in enumerate(items):
+        lv = dict(m, index=i)
+        lo, hi = m.get("low"), m.get("high")
+        if price is not None and isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+            lv["where"] = "inside" if lo <= price <= hi else "above" if price > hi else "below"
+        out.append(lv)
+    return out
+
+
+def levels_at(low, high, levels):
+    """The saved levels a price range touches (a single price is a range with low equal to high)."""
+    return [{"index": lv["index"], "kind": lv.get("kind"), "frame": lv.get("frame"), "low": lv["low"],
+             "high": lv["high"], "note": lv.get("note", "")}
+            for lv in levels if isinstance(lv.get("low"), (int, float)) and isinstance(lv.get("high"), (int, float))
+            and lv["low"] <= high and lv["high"] >= low]
+
+
 def remove_mine(path, sym, index):
     sym = z.resolve(sym)
     doc = load_mine(path)
@@ -150,12 +225,13 @@ def remove_mine(path, sym, index):
     return doc[sym]
 
 
-def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None):
+def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None, levels=None):
     """Everything the page shows for one market, as plain JSON-ready data. Errors raise z.ZoneError.
     `spot` is the price on the user's chart right now: the gap to the data is measured and applied.
     `shift` is a gap measured earlier, reused as it is (a price typed an hour ago would give a wrong gap now).
     Spot wins when both are given. Spot forex pairs take neither.
-    `mine` is the user's own saved zones for this market: they are checked for entries next to the tool's own."""
+    `mine` is the user's own saved zones for this market: they are checked for entries next to the tool's own.
+    `levels` is their saved daily and 4h support and resistance: zones and entries inside one are marked."""
     sym = z.resolve(sym)
     notes = []
     shifted = False
@@ -199,14 +275,16 @@ def snapshot(sym, cfg, now, spot=None, offline=None, shift=None, mine=None):
             stages.append({"head": z.stage_line(sym, zn, best).strip(),
                            "lines": [ln.strip() for ln in z.trace_lines(sym, zn, trace)]})
     market = z.MARKETS[sym]
+    level_list = level_dicts(levels or [], m1[-1]["c"] if m1 else None)
     return {"symbol": sym, "yahoo": market["yahoo"], "market_note": market["note"], "spot_market": bool(market.get("spot")),
             "digits": market["digits"], "rule": "both" if cfg.get("union_with") else "before" if cfg["zone_candle"] == "last" else "standard", "shifted": shifted, "shift_value": used,
             "as_of": dublin_text(now), "now_t": now, "price": m1[-1]["c"] if m1 else None,
             "price_when": dublin_text(m1[-1]["t"] + 60) if m1 else None,
             "days": cfg["days"], "per_day": cfg["max_per_day"], "notes": notes,
             "mine": [dict(m, index=i) for i, m in enumerate(mine or [])],
-            "zones": [zone_row(zn) for zn in found["zones"]],
-            "signals": [signal_row(r) for r in found["results"]],
+            "levels": level_list,
+            "zones": [zone_row(zn, level_list) for zn in found["zones"]],
+            "signals": [signal_row(r, level_list) for r in found["results"]],
             "stages": stages, "furthest": z.STAGES[found["best"]]}
 
 
@@ -214,6 +292,7 @@ class Handler(BaseHTTPRequestHandler):
     config_path = "trader/config.json"
     offline = None
     mine_file = "trader/my_zones.json"
+    levels_file = "trader/my_levels.json"
 
     def log_message(self, fmt, *args):        # keep the console quiet
         pass
@@ -257,6 +336,13 @@ class Handler(BaseHTTPRequestHandler):
                                  body.get("high"), body.get("when"), body.get("note", ""))
             elif path == "/api/mine/remove":
                 items = remove_mine(self.mine_file, str(body.get("symbol", "")), body.get("index"))
+            elif path == "/api/levels/add":
+                items = add_level(self.levels_file, str(body.get("symbol", "")), body.get("kind"), body.get("frame"),
+                                  body.get("low"), body.get("high"), body.get("note", ""))
+                return self.send_json(200, {"levels": level_dicts(items)})
+            elif path == "/api/levels/remove":
+                items = remove_level(self.levels_file, str(body.get("symbol", "")), body.get("index"))
+                return self.send_json(200, {"levels": level_dicts(items)})
             else:
                 return self.send_json(404, {"error": "not found"})
             self.send_json(200, {"mine": [dict(m, index=i) for i, m in enumerate(items)]})
@@ -305,7 +391,8 @@ class Handler(BaseHTTPRequestHandler):
                 cfg["max_per_day"] = int(per_day)
             now = z.parse_now((q.get("now") or [""])[0] or None)
             mine = mine_list(load_mine(self.mine_file), z.resolve(sym))
-            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift, mine))
+            levels = mine_list(load_mine(self.levels_file), z.resolve(sym))
+            self.send_json(200, snapshot(sym, cfg, now, spot, self.offline, shift, mine, levels))
         except z.ZoneError as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:                      # a network or data problem: say so, keep serving
@@ -320,7 +407,8 @@ class DashboardServer(HTTPServer):
 
 def make_server(port=PORT, config_path="trader/config.json", offline=None):
     handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
-                                         "mine_file": mine_path(config_path)})
+                                         "mine_file": mine_path(config_path),
+                                         "levels_file": levels_path(config_path)})
     return DashboardServer(("127.0.0.1", port), handler)
 
 

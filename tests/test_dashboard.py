@@ -268,6 +268,34 @@ class Rules(unittest.TestCase):
             dash.apply_rule(dz.read_config("none.json"), "wild")
 
 
+class LevelsData(unittest.TestCase):
+    def lv(self, **kw):
+        d = {"index": 0, "kind": "support", "frame": "daily", "low": 99.0, "high": 101.0, "note": ""}
+        d.update(kw)
+        return d
+
+    def test_a_range_touching_a_level_is_marked_and_one_that_misses_it_is_not(self):
+        levels = [self.lv(), self.lv(index=1, low=110.0, high=120.0, frame="4h", kind="resistance")]
+        self.assertEqual([h["index"] for h in dash.levels_at(100.5, 105.0, levels)], [0])
+        self.assertEqual([h["index"] for h in dash.levels_at(101.0, 101.0, levels)], [0])     # a price on the edge
+        self.assertEqual(dash.levels_at(102.0, 109.0, levels), [])
+        self.assertEqual([h["frame"] for h in dash.levels_at(95.0, 130.0, levels)], ["daily", "4h"])
+
+    def test_an_entry_is_marked_by_its_zone_or_by_its_entry_price(self):
+        levels = [self.lv(), self.lv(index=1, low=110.0, high=120.0, frame="4h", kind="resistance")]
+        r = {"zone": {"low": 99.5, "high": 100.5, "t": 0}, "entry": 115.0, "side": "long", "trigger": "FVG", "sweep_t": 0,
+             "gap": (1, 2), "entry_t": 0, "stop": 1, "target": 2, "rr": 3.0}
+        row = dash.signal_row(r, levels)
+        self.assertEqual([(h["index"], h["via"]) for h in row["levels"]], [(0, "zone"), (1, "entry")])
+        self.assertEqual(dash.signal_row(dict(r, entry=105.0), levels)["levels"][0]["via"], "zone")
+        self.assertEqual(dash.signal_row(dict(r, entry=105.0, zone={"low": 50.0, "high": 51.0, "t": 0}), levels)["levels"], [])
+
+    def test_where_price_is_now_compared_with_each_level(self):
+        got = dash.level_dicts([self.lv(), self.lv(low=110.0, high=120.0), self.lv(low=80.0, high=90.0)], 100.0)
+        self.assertEqual([g["where"] for g in got], ["inside", "below", "above"])
+        self.assertNotIn("where", dash.level_dicts([self.lv()], None)[0])
+
+
 class Launcher(unittest.TestCase):
     def test_the_double_click_launcher_starts_the_dashboard_from_the_repo_folder(self):
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "trader-zones", "RiskDesk.bat")
@@ -660,6 +688,63 @@ class Mine(Server):
         self.assertIn('"X-Requested-With":"zones-dashboard"', body)
         self.assertIn('lanes.push("mine")', body)
         self.assertNotIn("innerHTML", body)
+
+
+class Levels(Server):
+    def level(self, **kw):
+        body = {"symbol": "MGC", "kind": "support", "frame": "daily", "low": "98.5", "high": "100.5", "note": "big one"}
+        body.update(kw)
+        return body
+
+    def test_adding_a_level_saves_it_and_the_next_snapshot_marks_the_zone_and_the_entry(self):
+        code, doc = self.post("/api/levels/add", self.level())
+        self.assertEqual(code, 200)
+        self.assertEqual((doc["levels"][0]["frame"], doc["levels"][0]["low"], doc["levels"][0]["index"]),
+                         ("daily", 98.5, 0))
+        saved = os.path.join(self.tmp.name, "my_levels.json")
+        with open(saved, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["MGC"][0]["note"], "big one")
+        _, _, body = self.get("/api/snapshot?symbol=MGC&now=2026-10-26+20:00")
+        snap = json.loads(body)
+        self.assertEqual(len(snap["levels"]), 1)
+        self.assertIn(snap["levels"][0]["where"], ("inside", "above", "below"))
+        zr = snap["zones"][0]
+        self.assertEqual((zr["low"], zr["high"]), (99.0, 99.8))
+        self.assertEqual([lv["frame"] for lv in zr["levels"]], ["daily"])
+        self.assertEqual([lv["via"] for lv in snap["signals"][0]["levels"]][:1], ["zone"])
+
+    def test_levels_belong_to_their_market_and_can_be_removed(self):
+        self.post("/api/levels/add", self.level())
+        self.post("/api/levels/add", self.level(low="110", high="120", kind="resistance", frame="4h"))
+        _, _, other = self.get("/api/snapshot?symbol=NQ&now=2026-10-26+20:00")
+        self.assertEqual(json.loads(other)["levels"], [])
+        code, doc = self.post("/api/levels/remove", {"symbol": "MGC", "index": 0})
+        self.assertEqual(code, 200)
+        self.assertEqual([lv["frame"] for lv in doc["levels"]], ["4h"])
+        code, doc = self.post("/api/levels/remove", {"symbol": "MGC", "index": 5})
+        self.assertEqual(code, 400)
+        self.assertIn("no saved level number 5", doc["error"])
+
+    def test_a_bad_level_is_refused_with_a_plain_message(self):
+        for bad, text in ((dict(kind="floor"), "support"), (dict(frame="weekly"), '"4h" or "daily"'),
+                          (dict(low="abc"), "two prices"), (dict(low="101", high="100"), "under the high"),
+                          (dict(low="nan"), "two prices")):
+            code, doc = self.post("/api/levels/add", self.level(**bad))
+            self.assertEqual(code, 400, bad)
+            self.assertIn(text, doc["error"])
+        self.post("/api/levels/add", self.level())
+        code, doc = self.post("/api/levels/add", self.level())
+        self.assertEqual((code, doc["error"]), (400, "that level is already in your list"))
+
+    def test_posting_levels_needs_the_same_guards_as_my_zones(self):
+        code, _ = self.post("/api/levels/add", self.level(), headers={"X-Requested-With": "nope"})
+        self.assertEqual(code, 403)
+
+    def test_the_page_has_a_levels_card_tags_and_ladder_bands(self):
+        _, _, body = self.get("/")
+        for needle in ("levelsCard(d)", "/api/levels/add", "/api/levels/remove", "frameCell(x,d)", "At your ",
+                       "your daily and 4h levels"):
+            self.assertIn(needle, body)
 
 
 class Command(unittest.TestCase):

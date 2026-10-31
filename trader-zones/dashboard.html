@@ -187,7 +187,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="days">Days back</label><select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></div>
 <div><label for="window">Entries</label><select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></div>
 <div><label for="respect">Show zones</label><select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></div>
-<div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before">candle before the move</option><option value="both" selected>both (all zones)</option></select></div>
+<div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before">candle before the move</option><option value="both" selected>both</option></select></div>
 <div><label for="perday">Zones per day</label><select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></div>
 </div>
 <div class="frow two">
@@ -369,6 +369,14 @@ function respectText(x){
   if(x.respect&&RESPECT_TEXT[x.respect])return RESPECT_TEXT[x.respect]+(x.respect_when&&x.respect!=="testing"?" "+x.respect_when:"");
   return x.status==="fresh"?"not tested yet":"-";
 }
+function levelText(lv,d){
+  return lv.frame+" "+lv.kind+" "+fmt(lv.low,d.digits)+" to "+fmt(lv.high,d.digits)+(lv.note?" ("+lv.note+")":"");
+}
+function frameCell(x,d){
+  var ls=x.levels||[];if(!ls.length)return x.tf;
+  var c=el("span",null,x.tf+" "),m=el("span","mute","at "+ls.map(function(l){return l.frame}).filter(function(f,i,a){return a.indexOf(f)===i}).join(" + "));
+  m.title="Inside "+ls.map(function(l){return levelText(l,d)}).join("; ");c.appendChild(m);return c;
+}
 function touchLine(t,d){
   var depth=t.depth>=1?"through it":Math.round(t.depth*100)+"% in";
   var res=t.result+(t.result_when?" "+t.result_when:"");
@@ -397,6 +405,13 @@ function ladder(d){
   for(var i=0;i<=4;i++){var p=lo+(hi-lo)*i/4;
     add("line",{x1:L,x2:W,y1:y(p),y2:y(p),stroke:"var(--line)","stroke-width":1});
     add("text",{x:L-6,y:y(p)+4,"text-anchor":"end"},fmt(p,d.digits>3?4:2))}
+  (d.levels||[]).forEach(function(lv){                                /* your daily and 4h levels, behind the zones */
+    if(lv.high<lo||lv.low>hi)return;
+    var top2=Math.max(top,y(Math.min(lv.high,hi))),bot2=Math.min(H-bot,y(Math.max(lv.low,lo)));
+    var r=add("rect",{x:L,y:top2,width:W-L,height:Math.max(2,bot2-top2),fill:"var(--muted)","fill-opacity":0.12,
+      stroke:"var(--muted)","stroke-dasharray":"3 3"});
+    var tt=document.createElementNS(ns,"title");tt.textContent="Your "+levelText(lv,d);r.appendChild(tt);
+    add("text",{x:L+4,y:top2+10,"text-anchor":"start","fill-opacity":0.8},lv.frame+" "+lv.kind)});
   var lw=(W-L)/lanes.length;
   lanes.forEach(function(name,i){add("text",{x:L+lw*i+lw/2,y:11,"text-anchor":"middle"},name);
     var inl=zs.filter(function(x){return x.tf===name});
@@ -447,6 +462,8 @@ function render(d){
     h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
       ", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE"));
     b.appendChild(h);
+    if(r.levels.length)b.appendChild(el("div","mute","At your "+r.levels.map(function(l){
+      return levelText(l,d)+(l.via==="entry"?" (the entry price is in it)":" (the zone is in it)")}).join("; ")+"."));
     var row=el("div","row");
     [["Entry time",r.entry_when+" ("+age(d.now_t-r.entry_t)+")"],["Entry",fmt(r.entry,d.digits)],["Stop",fmt(r.stop,d.digits)],
      ["Target",r.target===null?"none":fmt(r.target,d.digits)],["Reward to risk",r.rr===null?"-":r.rr.toFixed(1)]].forEach(function(p){
@@ -473,8 +490,9 @@ function render(d){
   else{
     if(vz.length<d.zones.length)zc.appendChild(el("div","mute","Showing "+vz.length+" of "+d.zones.length+" zones. Change Show zones or Frames above to see the rest."));
     zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Respected?","Visits"],vz.slice().reverse().map(function(x){
-      return [tag(x.kind),x.tf,x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),respectText(x),touchCell(x,d)]}),[2,5]))}
+      return [tag(x.kind),frameCell(x,d),x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),respectText(x),touchCell(x,d)]}),[2,5]))}
   out.appendChild(zc);
+  out.appendChild(levelsCard(d));
   out.appendChild(mineCard(d));
   ticket(d,shown.length,vz.length);
 }
@@ -509,6 +527,37 @@ function mineCard(d){
   add.onclick=function(){
     msg.style.display="none";
     post("/api/mine/add",{symbol:d.symbol,kind:side.value,low:low.value,high:high.value,when:when.value.trim(),note:note.value})
+      .then(function(x){if(x.ok){load()}else{msg.textContent=x.j.error||"Could not add it";msg.style.display=""}})
+      .catch(function(e){msg.textContent="Could not reach the dashboard server: "+e;msg.style.display=""});
+  };
+  return c;
+}
+function levelsCard(d){
+  var c=el("div","card");c.appendChild(el("h2",null,"My levels ("+(d.levels||[]).length+")"));
+  c.appendChild(el("div","mute","Your big daily and 4 hour support and resistance zones. The tool does not look for these: "+
+    "you save them, and any zone or entry that sits inside one is marked. Type prices as your chart shows them"+
+    (d.symbol==="XAUUSD"?" (enter your chart price at the top first, so gold lines up)":"")+"."));
+  var msg=el("div","err");msg.style.display="none";
+  if((d.levels||[]).length){
+    var WHERE={inside:"price is inside it",above:"price is above it",below:"price is below it"};
+    c.appendChild(table(["Frame","Kind","Low","High","Note","Price now",""],d.levels.map(function(m){
+      var rm=el("button","btn small ghost","Remove");
+      rm.onclick=function(){post("/api/levels/remove",{symbol:d.symbol,index:m.index}).then(function(x){
+        if(x.ok){load()}else{msg.textContent=x.j.error||"Could not remove it";msg.style.display=""}})};
+      return [m.frame||"?",m.kind||"?",fmt(m.low,d.digits),fmt(m.high,d.digits),m.note||"",WHERE[m.where]||"-",rm]}),[4,5]));
+  }
+  var f=el("div","form"),frame=el("select"),kind=el("select"),low=el("input"),high=el("input"),note=el("input"),
+      add=el("button","btn","Add level");
+  add.type="button";
+  ["daily","4h"].forEach(function(k){var o=el("option",null,k);o.value=k;frame.appendChild(o)});
+  ["support","resistance"].forEach(function(k){var o=el("option",null,k);o.value=k;kind.appendChild(o)});
+  low.type=high.type="number";low.step=high.step="any";note.type="text";note.placeholder="optional";note.maxLength=80;
+  function lab(text,input){var l=el("label",null,text);l.appendChild(input);f.appendChild(l)}
+  lab("Frame",frame);lab("Kind",kind);lab("Low",low);lab("High",high);lab("Note",note);
+  f.appendChild(add);c.appendChild(f);c.appendChild(msg);
+  add.onclick=function(){
+    msg.style.display="none";
+    post("/api/levels/add",{symbol:d.symbol,frame:frame.value,kind:kind.value,low:low.value,high:high.value,note:note.value})
       .then(function(x){if(x.ok){load()}else{msg.textContent=x.j.error||"Could not add it";msg.style.display=""}})
       .catch(function(e){msg.textContent="Could not reach the dashboard server: "+e;msg.style.display=""});
   };

@@ -69,7 +69,12 @@ only from that computer). One tab per market shows the last price, the entries f
 target and reward to risk, a ladder of the zones by timeframe against price, and a table of the zones. All
 times are Dublin. The "your chart price now" box does what `--spot` does and is hidden for GBPUSD and
 EURUSD, and the price is only trusted for 3 hours (the gap drifts): after that it is cleared and the page asks for a
-fresh one. The Zone rule setting switches between "both" (the page's default: the standard zones plus the user's way),
+fresh one. **My levels** holds the user's daily and 4h support and resistance zones (saved in `my_levels.json` next to the
+config, like My zones). The tool does not find them. A zone inside one is marked "at daily" or "at 4h" in the
+table, an entry says which level its zone or its entry price is in (the user enters on the 5 or 3 minute chart, so
+the entry is often away from the zone), and the ladder draws them as bands. They are context, not a limit: the user
+reuses zones, even broken ones, when they are at a big level and checks that they are respected before looking for
+buys or sells. The Zone rule setting switches between "both" (the page's default: the standard zones plus the user's way),
 "candle before the move" (the user's way alone: `zone_candle` "last", `move_atr` 1.3, `base_body_atr` 0.7) and
 "standard", which is still what the command line uses. "Both" exists because neither rule alone found every box the
 user drew by hand. Refresh re-runs the tool; it can
