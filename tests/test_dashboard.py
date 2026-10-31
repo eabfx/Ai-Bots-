@@ -827,6 +827,19 @@ class CoachRoutes(Server):
         self.assertTrue(json.loads(js)["ready"])
         self.assertNotIn("sk-secret", js)
 
+    def test_a_gemini_key_alone_is_enough_and_goes_to_google(self):
+        with open(os.path.join(self.tmp.name, "gemini_key.txt"), "w") as fh:
+            fh.write("g-secret")
+        _, _, js = self.get("/api/coach/status")
+        self.assertEqual(json.loads(js)["service"], "gemini")
+        seen = []
+        self.server.RequestHandlerClass.coach_post = staticmethod(lambda u, h, b: (
+            seen.append((u, h)) or (200, json.dumps({"candidates": [{"content": {"parts": [{"text": "From Gemini."}]}}]}))))
+        code, doc = self.post("/api/coach", {"trades": self.TRADES})
+        self.assertEqual((code, doc), (200, {"answer": "From Gemini."}))
+        self.assertIn("generativelanguage.googleapis.com", seen[0][0])
+        self.assertEqual(seen[0][1]["x-goog-api-key"], "g-secret")
+
     def test_no_key_is_a_clear_400_and_nothing_goes_out(self):
         code, doc = self.post("/api/coach", {"trades": self.TRADES})
         self.assertEqual(code, 400)

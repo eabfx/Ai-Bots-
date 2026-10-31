@@ -8,6 +8,9 @@ Where the key comes from: the ANTHROPIC_API_KEY environment variable, or a file 
 the same folder as config.json (the trader folder, which git leaves out). The model is claude-sonnet-5-5 unless
 RISKDESK_MODEL names another.
 
+A free Google Gemini key works too (GEMINI_API_KEY, or gemini_key.txt in the same folder). When both keys exist the
+Claude key is used. Google's free plan may use what you send to improve its products.
+
 The coach reviews and explains. It never places an order and does not tell you what to buy or sell.
 Standard library only.
 """
@@ -23,6 +26,9 @@ DEFAULT_MODEL = "claude-sonnet-5-5"
 MAX_TRADES = 200
 MAX_QUESTION = 600
 KEY_FILE = "anthropic_key.txt"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
+GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_KEY_FILE = "gemini_key.txt"
 
 SYSTEM = """You are the journal coach inside RiskDesk.ai, a trading dashboard. You review one trader's own journal.
 
@@ -50,12 +56,12 @@ class CoachError(Exception):
     """A problem the page should show to the user as it is."""
 
 
-def load_key(config_path, environ=None):
+def load_key(config_path, environ=None, env_name="ANTHROPIC_API_KEY", file_name=KEY_FILE):
     environ = os.environ if environ is None else environ
-    key = (environ.get("ANTHROPIC_API_KEY") or "").strip()
+    key = (environ.get(env_name) or "").strip()
     if key:
         return key
-    path = os.path.join(os.path.dirname(os.path.abspath(config_path)), KEY_FILE)
+    path = os.path.join(os.path.dirname(os.path.abspath(config_path)), file_name)
     try:
         with open(path, encoding="utf-8") as fh:
             return fh.read().strip()
@@ -66,6 +72,18 @@ def load_key(config_path, environ=None):
 def model_name(environ=None):
     environ = os.environ if environ is None else environ
     return (environ.get("RISKDESK_MODEL") or "").strip() or DEFAULT_MODEL
+
+
+def provider(config_path, environ=None):
+    """Which service to ask, its key and its model: Claude when its key exists, else Gemini, else none."""
+    environ = os.environ if environ is None else environ
+    key = load_key(config_path, environ)
+    if key:
+        return {"name": "anthropic", "key": key, "model": model_name(environ)}
+    key = load_key(config_path, environ, "GEMINI_API_KEY", GEMINI_KEY_FILE)
+    if key:
+        return {"name": "gemini", "key": key, "model": (environ.get("GEMINI_MODEL") or "").strip() or GEMINI_MODEL}
+    return {"name": "none", "key": "", "model": model_name(environ)}
 
 
 def num(x):
@@ -199,14 +217,51 @@ def api_error(status, text):
     return "Anthropic returned an error (%d): %s" % (status, msg or "no details")
 
 
-def ask(trades, question, indicator, key, model, post=api_post):
+def gemini_error(status, text):
+    try:
+        msg = json.loads(text)["error"]["message"]
+    except (ValueError, KeyError, TypeError):
+        msg = ""
+    if status in (400, 401, 403) and "key" in msg.lower():
+        return "Google did not accept the API key. Check %s for a typo, or make a new key in AI Studio." % GEMINI_KEY_FILE
+    if status == 404:
+        return "Google does not know that model: %s" % (msg or "set GEMINI_MODEL to one your key can use.")
+    if status == 429:
+        return "Google says the free limit was reached. Wait a minute and try again."
+    if status >= 500:
+        return "Google had a problem on its side (%d). Try again in a minute." % status
+    return "Google returned an error (%d): %s" % (status, msg or "no details")
+
+
+def ask_gemini(prompt, key, model, post):
+    body = json.dumps({"systemInstruction": {"parts": [{"text": SYSTEM}]},
+                       "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                       "generationConfig": {"maxOutputTokens": 4000}})
+    headers = {"x-goog-api-key": key, "content-type": "application/json"}
+    status, text = post(GEMINI_URL % model, headers, body.encode("utf-8"))
+    if status != 200:
+        raise CoachError(gemini_error(status, text))
+    try:
+        parts = json.loads(text)["candidates"][0]["content"]["parts"]
+        answer = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+        raise CoachError("Google's answer was not in the form expected (it may have been blocked). Try again.")
+    if not answer:
+        raise CoachError("Google sent an empty answer. Try again.")
+    return answer
+
+
+def ask(trades, question, indicator, key, model, post=api_post, service="anthropic"):
     """The coach's answer as plain text. Raises CoachError with something the user can act on."""
     if not key:
-        raise CoachError("No API key yet. Save it in a file called %s next to config.json (the trader folder), "
-                         "or set ANTHROPIC_API_KEY, then restart the dashboard." % KEY_FILE)
+        raise CoachError("No API key yet. Save a Claude key in a file called %s, or a free Gemini key in %s, next "
+                         "to config.json (the trader folder), then press the button again."
+                         % (KEY_FILE, GEMINI_KEY_FILE))
     trades = clean_trades(trades)
     if not trades:
         raise CoachError("There are no trades in your journal to review yet.")
+    if service == "gemini":
+        return ask_gemini(build_prompt(trades, clean_indicator(indicator), question), key, model, post)
     body = json.dumps({"model": model, "max_tokens": 1400, "system": SYSTEM,
                        "messages": [{"role": "user", "content": build_prompt(trades, clean_indicator(indicator), question)}]})
     headers = {"x-api-key": key, "anthropic-version": API_VERSION, "content-type": "application/json"}

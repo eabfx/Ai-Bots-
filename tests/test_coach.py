@@ -125,5 +125,48 @@ class Ask(unittest.TestCase):
         self.assertIn("ignore it", coach.SYSTEM.lower().replace("ignore them", "ignore it"))
 
 
+class Gemini(unittest.TestCase):
+    def reply(self, text="Gold is your edge."):
+        return lambda url, headers, body: (200, json.dumps(
+            {"candidates": [{"content": {"parts": [{"text": "thinking...", "thought": True}, {"text": text}]}}]}))
+
+    def test_claude_is_used_when_both_keys_exist_gemini_when_only_it_does(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            self.assertEqual(coach.provider(cfg, {})["name"], "none")
+            with open(os.path.join(d, coach.GEMINI_KEY_FILE), "w") as fh:
+                fh.write("g-key\n")
+            pv = coach.provider(cfg, {})
+            self.assertEqual((pv["name"], pv["key"], pv["model"]), ("gemini", "g-key", coach.GEMINI_MODEL))
+            self.assertEqual(coach.provider(cfg, {"GEMINI_MODEL": "gemini-x"})["model"], "gemini-x")
+            pv = coach.provider(cfg, {"ANTHROPIC_API_KEY": "a-key"})
+            self.assertEqual((pv["name"], pv["key"]), ("anthropic", "a-key"))
+
+    def test_the_request_goes_to_google_with_the_key_in_a_header_not_the_address(self):
+        seen = {}
+
+        def post(url, headers, body):
+            seen.update(url=url, headers=headers, body=json.loads(body))
+            return self.reply()(url, headers, body)
+        out = coach.ask(TRADES, "Any leaks?", None, "g-secret", "gemini-x", post, "gemini")
+        self.assertEqual(out, "Gold is your edge.")                  # the thinking part is left out
+        self.assertEqual(seen["url"], coach.GEMINI_URL % "gemini-x")
+        self.assertNotIn("g-secret", seen["url"])
+        self.assertEqual(seen["headers"]["x-goog-api-key"], "g-secret")
+        self.assertIn("QUESTION: Any leaks?", seen["body"]["contents"][0]["parts"][0]["text"])
+        self.assertIn("journal coach", seen["body"]["systemInstruction"]["parts"][0]["text"])
+
+    def test_errors_and_odd_answers_become_messages(self):
+        for status, body, word in ((400, '{"error": {"message": "API key not valid"}}', "key"),
+                                   (404, '{"error": {"message": "x"}}', "model"),
+                                   (429, "{}", "limit"), (503, "{}", "again")):
+            with self.assertRaises(coach.CoachError) as cm:
+                coach.ask(TRADES, "", None, "k", "m", lambda *a, s=status, b=body: (s, b), "gemini")
+            self.assertIn(word, str(cm.exception).lower(), status)
+        for text in ("nope", '{"candidates": []}', '{"candidates": [{"finishReason": "SAFETY"}]}'):
+            with self.assertRaises(coach.CoachError):
+                coach.ask(TRADES, "", None, "k", "m", lambda *a, t=text: (200, t), "gemini")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -363,9 +363,9 @@ class Handler(BaseHTTPRequestHandler):
                 items = remove_level(self.levels_file, str(body.get("symbol", "")), body.get("index"))
                 return self.send_json(200, {"levels": level_dicts(items)})
             elif path == "/api/coach":
-                key = coach.load_key(self.config_path)
-                answer = coach.ask(body.get("trades"), str(body.get("question") or ""), body.get("indicator"), key,
-                                   coach.model_name(), self.coach_post)
+                pv = coach.provider(self.config_path)
+                answer = coach.ask(body.get("trades"), str(body.get("question") or ""), body.get("indicator"), pv["key"],
+                                   pv["model"], self.coach_post, pv["name"])
                 return self.send_json(200, {"answer": answer})
             else:
                 return self.send_json(404, {"error": "not found"})
@@ -385,7 +385,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"markets": [{"symbol": s, "spot": bool(z.MARKETS[s].get("spot")),
                                               "note": z.MARKETS[s]["note"]} for s in ORDER]})
         elif url.path == "/api/coach/status":
-            self.send_json(200, {"ready": bool(coach.load_key(self.config_path)), "model": coach.model_name()})
+            pv = coach.provider(self.config_path)
+            self.send_json(200, {"ready": bool(pv["key"]), "service": pv["name"], "model": pv["model"]})
         elif url.path == "/api/snapshot":
             self.snapshot(parse_qs(url.query))
         else:

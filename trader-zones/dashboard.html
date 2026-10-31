@@ -289,7 +289,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="empty" id="j-empty">No trades logged yet.</div></div>
 <div class="card" id="coach">
 <h2>Journal coach</h2>
-<p class="sub">An AI review of your journal and the Indicator Stats. Pressing the button sends your logged trades (date, instrument, direction, tag, risk, result, notes) to Anthropic, using your own API key. It reviews past trades. It never places an order and never tells you what to take.</p>
+<p class="sub">An AI review of your journal and the Indicator Stats. Pressing the button sends your logged trades (date, instrument, direction, tag, risk, result, notes) to Anthropic (Claude) or Google (Gemini), whichever key you saved. It reviews past trades. It never places an order and never tells you what to take.</p>
 <div class="notice" id="coach-setup" hidden></div>
 <div class="frow"><div><label for="coach-q">Your question (optional)</label>
 <input type="text" id="coach-q" placeholder="e.g. Which instrument should I stop trading? Am I cutting winners early?" maxlength="300"></div></div>
@@ -813,7 +813,7 @@ function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
     if(s.ready){box.hidden=true;return}
-    box.hidden=false;box.textContent="No API key yet. Make one at console.anthropic.com, then save it as a plain text file called anthropic_key.txt in your trader folder (next to config.json), with nothing else in it. Press Ask the coach again after saving."
+    box.hidden=false;box.textContent="No API key yet. Save a free Gemini key (aistudio.google.com) as a plain text file called gemini_key.txt, or a Claude key (console.anthropic.com) as anthropic_key.txt, in your trader folder next to config.json, with nothing else in it. Then press Ask the coach."
   }).catch(function(){})
 }
 $("coach-go").onclick=function(){
