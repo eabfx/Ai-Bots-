@@ -6,6 +6,7 @@ import os
 import tempfile
 import threading
 import unittest
+from unittest import mock
 import urllib.error
 import urllib.request
 
@@ -799,6 +800,64 @@ class PineIndicator(unittest.TestCase):
         self.assertEqual(self.src.count("["), self.src.count("]"))
         for n, line in enumerate(self.src.split("\n"), 1):
             self.assertEqual((len(line) - len(line.lstrip(" "))) % 4, 0, "line %d" % n)
+
+
+class CoachRoutes(Server):
+    def setUp(self):
+        Server.setUp(self)
+        env = mock.patch.dict(os.environ, {}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        self.sent = []
+
+        def fake(url, headers, body):
+            self.sent.append((headers, json.loads(body)))
+            return 200, json.dumps({"content": [{"type": "text", "text": "Gold is your edge."}]})
+        self.server.RequestHandlerClass.coach_post = staticmethod(fake)
+
+    TRADES = [{"date": "2026-10-26", "inst": "XAUUSD", "dir": "short", "tag": "15m supply", "risk": 100, "pl": 300, "notes": "x"}]
+
+    def test_status_says_whether_a_key_exists_and_never_shows_it(self):
+        _, _, js = self.get("/api/coach/status")
+        self.assertFalse(json.loads(js)["ready"])
+        with open(os.path.join(self.tmp.name, "anthropic_key.txt"), "w") as fh:
+            fh.write("sk-secret")
+        _, _, js = self.get("/api/coach/status")
+        self.assertTrue(json.loads(js)["ready"])
+        self.assertNotIn("sk-secret", js)
+
+    def test_no_key_is_a_clear_400_and_nothing_goes_out(self):
+        code, doc = self.post("/api/coach", {"trades": self.TRADES})
+        self.assertEqual(code, 400)
+        self.assertIn("anthropic_key.txt", doc["error"])
+        self.assertEqual(self.sent, [])
+
+    def test_with_a_key_the_answer_comes_back_and_the_key_stays_on_the_server(self):
+        with open(os.path.join(self.tmp.name, "anthropic_key.txt"), "w") as fh:
+            fh.write("sk-secret")
+        code, doc = self.post("/api/coach", {"trades": self.TRADES, "question": "How am I doing?",
+                                             "indicator": {"symbol": "MGC", "entries": 2}})
+        self.assertEqual(code, 200)
+        self.assertEqual(doc, {"answer": "Gold is your edge."})
+        self.assertEqual(self.sent[0][0]["x-api-key"], "sk-secret")
+        self.assertNotIn("sk-secret", json.dumps(doc))
+
+    def test_it_is_guarded_like_the_other_posts_and_takes_a_bigger_body(self):
+        code, _ = self.post("/api/coach", {"trades": self.TRADES}, headers={"X-Requested-With": "other"})
+        self.assertEqual(code, 403)
+        code, _ = self.post("/api/coach", {"trades": self.TRADES}, headers={"Host": "evil.example"})
+        self.assertEqual(code, 403)
+        big = {"trades": [dict(self.TRADES[0], notes="n" * 300)] * 200}        # about 60 KB: over the 20 KB other posts allow
+        self.assertGreater(len(json.dumps(big)), 20000)
+        code, doc = self.post("/api/coach", big)
+        self.assertEqual(code, 400)
+        self.assertIn("anthropic_key.txt", doc["error"])                 # it got as far as the key check
+
+    def test_the_page_has_the_coach_card_and_says_what_is_sent(self):
+        _, _, body = self.get("/")
+        for needle in ('id="coach-go"', "Ask the coach", "sends your logged trades", "/api/coach/status", "lastIndicator"):
+            self.assertIn(needle, body)
 
 
 class EntryStyle(Server):

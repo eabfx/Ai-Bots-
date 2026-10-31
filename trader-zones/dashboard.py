@@ -4,7 +4,7 @@
     py trader-zones\\dashboard.py
 
 opens http://127.0.0.1:8765 on your own computer. Nothing leaves your machine except the chart requests to
-Yahoo that zones.py already makes. It shows signals only. It never places an order.
+Yahoo that zones.py already makes, and the journal coach's question to Anthropic when you press its button. It shows signals only. It never places an order.
 
 Standard library only, like zones.py. The page (dashboard.html next to this file) is self-contained with no outside scripts or fonts.
 """
@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import zones as z    # noqa: E402
+import coach         # noqa: E402
 
 PORT = 8765
 ORDER = ["XAUUSD", "NQ", "MGC", "GBPUSD", "EURUSD"]
@@ -309,6 +310,7 @@ class Handler(BaseHTTPRequestHandler):
     offline = None
     mine_file = "trader/my_zones.json"
     levels_file = "trader/my_levels.json"
+    coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
 
     def log_message(self, fmt, *args):        # keep the console quiet
         pass
@@ -338,7 +340,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(403, {"error": "missing X-Requested-With header"})
         try:
             size = int(self.headers.get("Content-Length") or 0)
-            if not 0 < size <= 20000:
+            limit = 150000 if urlparse(self.path).path == "/api/coach" else 20000     # a journal is bigger than a zone
+            if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
                 body = json.loads(self.rfile.read(size).decode("utf-8"))
@@ -359,10 +362,15 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/levels/remove":
                 items = remove_level(self.levels_file, str(body.get("symbol", "")), body.get("index"))
                 return self.send_json(200, {"levels": level_dicts(items)})
+            elif path == "/api/coach":
+                key = coach.load_key(self.config_path)
+                answer = coach.ask(body.get("trades"), str(body.get("question") or ""), body.get("indicator"), key,
+                                   coach.model_name(), self.coach_post)
+                return self.send_json(200, {"answer": answer})
             else:
                 return self.send_json(404, {"error": "not found"})
             self.send_json(200, {"mine": [dict(m, index=i) for i, m in enumerate(items)]})
-        except z.ZoneError as e:
+        except (z.ZoneError, coach.CoachError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -376,6 +384,8 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/markets":
             self.send_json(200, {"markets": [{"symbol": s, "spot": bool(z.MARKETS[s].get("spot")),
                                               "note": z.MARKETS[s]["note"]} for s in ORDER]})
+        elif url.path == "/api/coach/status":
+            self.send_json(200, {"ready": bool(coach.load_key(self.config_path)), "model": coach.model_name()})
         elif url.path == "/api/snapshot":
             self.snapshot(parse_qs(url.query))
         else:

@@ -147,6 +147,7 @@ td details summary{margin-top:0}
 .del{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:5px}
 .del:hover{color:var(--down)}
 .notice{margin-top:18px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);font-size:12.5px;color:var(--muted)}
+.coach-out{white-space:pre-wrap;line-height:1.55;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
 .sig .part+.part{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px}
 .form label{margin:0;display:flex;flex-direction:column;gap:3px}
@@ -258,7 +259,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 
 <section class="tool" id="tab-journal" role="tabpanel" hidden>
 <h2>Trading journal</h2>
-<p class="sub">Log trades in seconds and let the stats show your real edge. Everything is stored in this browser on this computer. Nothing is uploaded. Use Backup JSON now and then, because clearing the browser's site data erases it.</p>
+<p class="sub">Log trades in seconds and let the stats show your real edge. Everything is stored in this browser on this computer. Nothing is uploaded unless you press Ask the coach below. Use Backup JSON now and then, because clearing the browser's site data erases it.</p>
 <div class="stats" id="j-stats"></div>
 <div class="card">
 <div class="frow two">
@@ -286,6 +287,16 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <thead><tr><th>Date</th><th>Instrument</th><th>Dir</th><th>Tag</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
 <div class="empty" id="j-empty">No trades logged yet.</div></div>
+<div class="card" id="coach">
+<h2>Journal coach</h2>
+<p class="sub">An AI review of your journal and the Indicator Stats. Pressing the button sends your logged trades (date, instrument, direction, tag, risk, result, notes) to Anthropic, using your own API key. It reviews past trades. It never places an order and never tells you what to take.</p>
+<div class="notice" id="coach-setup" hidden></div>
+<div class="frow"><div><label for="coach-q">Your question (optional)</label>
+<input type="text" id="coach-q" placeholder="e.g. Which instrument should I stop trading? Am I cutting winners early?" maxlength="300"></div></div>
+<div class="btnrow"><button class="btn" id="coach-go" type="button">Ask the coach</button></div>
+<div class="err" id="coach-err" style="display:none"></div>
+<div id="coach-out" class="coach-out" hidden></div>
+</div>
 <div class="notice" id="j-storage-note" hidden>This browser is blocking local storage, so trades only last for this session. Use Backup JSON before you close the tab.</div>
 </section>
 
@@ -512,12 +523,14 @@ function render(d){
   out.appendChild(mineCard(d));
   ticket(d,shown.length,vz.length);
 }
+var lastIndicator=null;                                   /* what the Indicator Stats card last showed, for the coach */
 function indicatorStats(groups,d){                      /* what the shown entries did next: one trade per card, the earliest entry */
   var c=el("div","card");c.appendChild(el("h2",null,"Indicator Stats"));
   var w=0,l=0,o=0,net=0;
   groups.forEach(function(g){var x=g.items[0].outcome;
     if(x.result==="target"){w++;net+=x.r_mult}else if(x.result==="stop"){l++;net-=1}else o++});
   var done=w+l,box=el("div","stats");
+  lastIndicator={symbol:d.symbol,entries:groups.length,hit_target:w,hit_stop:l,still_open:o,win_rate_pct:done?Math.round(w/done*1000)/10:null,net_r:Math.round(net*10)/10};
   [["Entries",String(groups.length)],["Hit target",String(w)],["Hit stop",String(l)],["Still open",String(o)],
    ["Win rate",done?fmt(w/done*100,1)+"%":"-"],["Net result",(net>=0?"+":"")+fmt(net,1)+" R",net>=0?"var(--up)":"var(--down)"]].forEach(function(s){
     var x=el("div","stat");x.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[2])v.style.color=s[2];x.appendChild(v);box.appendChild(x)});
@@ -796,6 +809,28 @@ $("j-add").onclick=function(){
     tag:$("j-tag").value.trim(),risk:num("j-risk"),pl:parseFloat(pl),notes:$("j-notes").value.trim()});
   trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";
 };
+function coachStatus(){
+  var box=$("coach-setup");
+  fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
+    if(s.ready){box.hidden=true;return}
+    box.hidden=false;box.textContent="No API key yet. Make one at console.anthropic.com, then save it as a plain text file called anthropic_key.txt in your trader folder (next to config.json), with nothing else in it. Press Ask the coach again after saving."
+  }).catch(function(){})
+}
+$("coach-go").onclick=function(){
+  var err=$("coach-err"),out=$("coach-out"),btn=$("coach-go");
+  err.style.display="none";out.hidden=true;
+  if(!trades.length){err.textContent="Log some trades first, then ask the coach.";err.style.display="";return}
+  btn.disabled=true;btn.textContent="Thinking... this can take half a minute";
+  fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
+    body:JSON.stringify({trades:trades.slice(0,200),question:$("coach-q").value.trim(),indicator:lastIndicator})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){
+    if(!x.ok){err.textContent=x.j.error||"The coach could not answer.";err.style.display="";coachStatus();return}
+    out.textContent=x.j.answer;out.hidden=false})
+  .catch(function(e){err.textContent="The dashboard did not answer: "+e;err.style.display=""})
+  .then(function(){btn.disabled=false;btn.textContent="Ask the coach"})
+};
+coachStatus();
 function journalFrom(d,r){
   $("j-date").value=today();$("j-inst").value=d.symbol;$("j-dir").value=r.side;
   $("j-tag").value=(r.zone.tf+" "+r.zone.kind+" zone").slice(0,30);
