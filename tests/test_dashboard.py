@@ -756,6 +756,8 @@ class EntryStyle(Server):
         self.assertIn('"&entry="', body)
         self.assertIn("price reached the fib", body)
         self.assertIn("0.705 is at", body)
+        self.assertIn("Entry on the inversion of the gap", body)         # one card per gap, with its retest inside it
+        self.assertIn("Entry on the retest of the gap", body)
         self.assertIn("frames[r.zone.tf]!==false", body)               # the Frames buttons filter entries too
 
     def test_the_server_takes_the_entry_style_and_says_which_it_used(self):

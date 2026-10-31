@@ -147,6 +147,7 @@ td details summary{margin-top:0}
 .del{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:5px}
 .del:hover{color:var(--down)}
 .notice{margin-top:18px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);font-size:12.5px;color:var(--muted)}
+.sig .part+.part{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px}
 .form label{margin:0;display:flex;flex-direction:column;gap:3px}
 .form input[type=text]{width:170px}
@@ -458,31 +459,41 @@ function render(d){
     sc.appendChild(el("div","empty","No entry in this window or these frames. The most recent was "+
       d.signals[d.signals.length-1].entry_when+" ("+age(d.now_t-d.signals[d.signals.length-1].entry_t)+")."));
   }
+  var groups=[],byKey={};                                /* one card per gap: its inversion entry and its retest entry go together */
   shown.forEach(function(r){
+    var key=r.style==="yours"?[r.zone.tf,r.zone.kind,r.zone.low,r.zone.high,r.gap[0],r.gap[1],r.fib&&r.fib.start,r.fib&&r.fib.end].join("|"):null;
+    if(key!==null&&byKey[key]){byKey[key].items.unshift(r);return}                /* shown is newest first: oldest goes first */
+    var g={items:[r]};groups.push(g);if(key!==null)byKey[key]=g});
+  groups.forEach(function(g){
+    var r=g.items[0],yours=r.style==="yours";
     var b=el("div","sig"),h=el("div");h.appendChild(tag(r.side));
     h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
-      (r.style==="yours"?", price reached the fib "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)
+      (yours?", price reached the fib "+r.swept+", gap "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)
         :", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE")));
     b.appendChild(h);
     if(r.fib)b.appendChild(el("div","mute","Fib: the leg runs "+fmt(r.fib.start,d.digits)+" to "+fmt(r.fib.end,d.digits)+
       "; 0.705 is at "+fmt(r.fib.l705,d.digits)+" and 0.79 at "+fmt(r.fib.l79,d.digits)+". Stop just beyond where it held."));
     if(r.levels.length)b.appendChild(el("div","mute","At your "+r.levels.map(function(l){
       return levelText(l,d)+(l.via==="entry"?" (the entry price is in it)":" (the zone is in it)")}).join("; ")+"."));
-    var row=el("div","row");
-    [["Entry time",r.entry_when+" ("+age(d.now_t-r.entry_t)+")"],["Entry",fmt(r.entry,d.digits)],["Stop",fmt(r.stop,d.digits)],
-     ["Target",r.target===null?"none":fmt(r.target,d.digits)],["Reward to risk",r.rr===null?"-":r.rr.toFixed(1)]].forEach(function(p){
-      var x=el("div");x.appendChild(el("span",null,p[0]));x.appendChild(el("b",null,p[1]));row.appendChild(x)});
-    b.appendChild(row);
-    var acts=el("div","acts"),sz=el("button","btn small","Size this trade"),lg=el("button","btn small ghost","Log in journal");
-    sz.type=lg.type="button";
-    sz.onclick=function(){sizeTrade(d,r)};lg.onclick=function(){journalFrom(d,r)};
-    acts.appendChild(sz);acts.appendChild(lg);b.appendChild(acts);
-    if(r.also.length){
-      var dt=el("details","mute"),sm=el("summary",null,"Same trade also seen from "+r.also.length+" other zone"+(r.also.length>1?"s":""));
-      dt.appendChild(sm);
-      r.also.forEach(function(o){dt.appendChild(el("div",null,"The "+o.tf+" "+o.kind+" zone "+
-        fmt(o.low,d.digits)+" to "+fmt(o.high,d.digits)))});
-      b.appendChild(dt)}
+    g.items.forEach(function(it){
+      var part=el("div","part");
+      if(yours)part.appendChild(el("div","mute",it.trigger==="IFVG retest"?"Entry on the retest of the gap":"Entry on the inversion of the gap"));
+      var row=el("div","row");
+      [["Entry time",it.entry_when+" ("+age(d.now_t-it.entry_t)+")"],["Entry",fmt(it.entry,d.digits)],["Stop",fmt(it.stop,d.digits)],
+       ["Target",it.target===null?"none":fmt(it.target,d.digits)],["Reward to risk",it.rr===null?"-":it.rr.toFixed(1)]].forEach(function(p){
+        var x=el("div");x.appendChild(el("span",null,p[0]));x.appendChild(el("b",null,p[1]));row.appendChild(x)});
+      part.appendChild(row);
+      var acts=el("div","acts"),sz=el("button","btn small","Size this trade"),lg=el("button","btn small ghost","Log in journal");
+      sz.type=lg.type="button";
+      sz.onclick=function(){sizeTrade(d,it)};lg.onclick=function(){journalFrom(d,it)};
+      acts.appendChild(sz);acts.appendChild(lg);part.appendChild(acts);
+      if(it.also.length){
+        var dt=el("details","mute"),sm=el("summary",null,"Same trade also seen from "+it.also.length+" other zone"+(it.also.length>1?"s":""));
+        dt.appendChild(sm);
+        it.also.forEach(function(o){dt.appendChild(el("div",null,"The "+o.tf+" "+o.kind+" zone "+
+          fmt(o.low,d.digits)+" to "+fmt(o.high,d.digits)))});
+        part.appendChild(dt)}
+      b.appendChild(part)});
     sc.appendChild(b)});
   out.appendChild(sc);
 
