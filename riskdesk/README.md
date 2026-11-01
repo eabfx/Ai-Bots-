@@ -33,6 +33,11 @@ out: `config.json`, `gemini_key.txt` or `anthropic_key.txt`.
 - **Journal details**: a total P/L, an edge score, win rate, average R, profit factor, plan followed, a cumulative curve, a month calendar, results by weekday, and results grouped by instrument, setup, emotion, plan or grade. Each trade can carry an optional time, grade (A to D), plan followed or deviated, and how you felt. Results can be grouped by session (Asia, London, New York, Late, on the Dublin clock) or by hour. **Import from a broker CSV** reads a trade history file in the browser (nothing is uploaded), guesses the columns, shows a preview you can correct, skips trades already in the journal and adds the rest. Everything is worked out in the browser from your trades.
 - **Assistant**: on Home it has its own panel, on the other pages it is the button at the bottom right. Ask about what is on screen. It sends only your journal totals, the macro numbers and the calendar, never your keys.
 
-On a narrow screen (a phone, or a small window) the pages move to a bar along the bottom and buttons and fields get bigger. The dashboard still runs on your PC and listens only on that computer, so a phone cannot reach it yet.
+On a narrow screen (a phone, or a small window) the pages move to a bar along the bottom and buttons and fields get bigger. The dashboard runs on your PC and listens only on that computer. To reach it from your phone without putting it on the internet, use Tailscale (a free private network between your own devices):
+
+1. Install Tailscale on the PC and on the phone and sign in to the same account. In the Tailscale admin page turn on MagicDNS and HTTPS certificates.
+2. On the PC, in PowerShell: `tailscale serve --bg 8765`. It prints an address like `https://my-pc.tail1234.ts.net`.
+3. Add that name (without https://) to `trader\config.json`: `"allowed_hosts": ["my-pc.tail1234.ts.net"]`, then restart RiskDesk. Any other name is still refused.
+4. Open the address on your phone. Only devices signed in to your Tailscale account can reach it, and your data stays on the PC, which has to be on. Alerts only fire while the page is open in a browser tab.
 
 The Zones app (zones, entries, Indicator Stats, the TradingView indicator) is described in `../zones-app/README.md`.

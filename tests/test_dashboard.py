@@ -423,3 +423,54 @@ class Command(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AllowedHosts(unittest.TestCase):
+    """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""
+
+    def start(self, **kw):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        config = os.path.join(self.tmp.name, "config.json")
+        if kw.get("cfg") is not None:
+            with open(config, "w", encoding="utf-8") as fh:
+                json.dump(kw["cfg"], fh)
+        server = dash.make_server(0, config, allowed_hosts=kw.get("cli", ()))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(lambda: (server.shutdown(), server.server_close(), thread.join(5)))
+        return server.server_address[1]
+
+    def status(self, port, host):
+        req = urllib.request.Request("http://127.0.0.1:%d/api/coach/status" % port, headers={"Host": host})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    def test_by_default_only_this_computer_is_answered(self):
+        port = self.start()
+        self.assertEqual(self.status(port, "127.0.0.1:%d" % port), 200)
+        for host in ("pc.tail1234.ts.net", "evil.example.com", "evil.example.com:%d" % port, ""):
+            self.assertEqual(self.status(port, host), 403, host)
+
+    def test_a_name_from_the_config_file_or_the_command_line_is_answered_with_or_without_a_port(self):
+        port = self.start(cfg={"allowed_hosts": ["PC.tail1234.ts.net"]}, cli=["phone-pc"])
+        for host in ("pc.tail1234.ts.net", "pc.tail1234.ts.net:8765", "PC.TAIL1234.TS.NET", "phone-pc"):
+            self.assertEqual(self.status(port, host), 200, host)
+        for host in ("other.tail1234.ts.net", "tail1234.ts.net", "pc.tail1234.ts.net.evil.com"):
+            self.assertEqual(self.status(port, host), 403, host)
+
+    def test_odd_entries_in_the_config_are_ignored(self):
+        port = self.start(cfg={"allowed_hosts": ["", "a b", "x/y", 5, None, "ok.example"]})
+        self.assertEqual(self.status(port, "ok.example"), 200)
+        self.assertEqual(self.status(port, "a b"), 403)
+
+    def test_posts_from_an_allowed_name_still_need_the_dashboard_header(self):
+        port = self.start(cli=["pc.tail1234.ts.net"])
+        req = urllib.request.Request("http://127.0.0.1:%d/api/journal" % port, data=b'{"trades":[]}', method="POST",
+                                     headers={"Host": "pc.tail1234.ts.net", "Content-Type": "application/json"})
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            urllib.request.urlopen(req, timeout=10)
+        self.assertEqual(cm.exception.code, 403)

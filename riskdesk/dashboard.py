@@ -34,6 +34,7 @@ PORT = 8765
 class Handler(BaseHTTPRequestHandler):
     config_path = os.path.join(TRADER, "config.json")
     offline = None
+    allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
@@ -66,7 +67,11 @@ class Handler(BaseHTTPRequestHandler):
         """Only answer requests addressed to this computer by name or number, which blocks other websites
         from reaching the dashboard through the browser (DNS rebinding)."""
         port = self.server.server_address[1]
-        return self.headers.get("Host", "") in ("127.0.0.1:%d" % port, "localhost:%d" % port)
+        host = self.headers.get("Host", "")
+        if host in ("127.0.0.1:%d" % port, "localhost:%d" % port):
+            return True
+        name = host.rsplit(":", 1)[0] if host.count(":") == 1 else host            # a proxy such as tailscale serve sends the name without the port
+        return bool(name) and name.lower() in self.allowed_hosts
 
     def do_POST(self):
         if not self.host_ok():
@@ -184,8 +189,21 @@ class DashboardServer(HTTPServer):
     allow_reuse_address = os.name != "nt"
 
 
-def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offline=None):
-    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
+def configured_hosts(config_path, extra=()):
+    """Names from "allowed_hosts" in the config file plus any given on the command line, lower case, plain host names only."""
+    names = list(extra or ())
+    try:
+        with open(config_path, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        if isinstance(cfg, dict) and isinstance(cfg.get("allowed_hosts"), list):
+            names += [n for n in cfg["allowed_hosts"] if isinstance(n, str)]
+    except (OSError, ValueError):
+        pass
+    return frozenset(n.strip().lower() for n in names if n.strip() and all(c.isalnum() or c in ".-" for c in n.strip()))
+
+
+def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offline=None, allowed_hosts=()):
+    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline, "allowed_hosts": configured_hosts(config_path, allowed_hosts),
                                           "data_dir": os.path.dirname(os.path.abspath(config_path))})
     return DashboardServer(("127.0.0.1", port), handler)
 
@@ -210,9 +228,11 @@ def main(argv=None):
     p.add_argument("--config", default=os.path.join(TRADER, "config.json"))
     p.add_argument("--offline", help="not used by RiskDesk, kept so old shortcuts still work")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    p.add_argument("--allow-host", action="append", default=[], metavar="NAME",
+                   help="also answer to this host name, for a private tunnel such as Tailscale (repeatable; or set allowed_hosts in config.json)")
     args = p.parse_args(argv)
     try:
-        server = make_server(args.port, args.config, args.offline)
+        server = make_server(args.port, args.config, args.offline, args.allow_host)
     except OSError as e:
         url = "http://127.0.0.1:%d" % args.port
         if already_running(args.port):                                  # a second double-click just opens the one that is running
