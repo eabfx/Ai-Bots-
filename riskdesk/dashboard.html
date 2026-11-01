@@ -336,6 +336,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .ntstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
 .ntstat div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2)}
 .ntstat .k{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.ntstat .v{font:600 20px var(--mono);margin-top:4px}
+#toasts{position:fixed;left:16px;bottom:16px;z-index:150;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--panel);border:1px solid var(--hover);border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.45);font-size:14px;line-height:1.45;display:grid;grid-template-columns:1fr auto;gap:10px}
+.toast b{display:block;font-weight:600;margin-bottom:2px}.toast .tx{background:none;border:0;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0 2px}
+.alrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.alrow:last-child{border-bottom:0}.alrow .st{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--flat)}.alrow .st.hit{color:var(--up)}
+@media(min-width:901px){#toasts{left:236px}}
+@media(max-width:640px){#toasts{bottom:calc(84px + env(safe-area-inset-bottom))}.bar nav{justify-content:flex-start!important;overflow-x:auto!important}.bar nav button{flex:0 0 auto!important;padding:8px 14px!important}}
 /* phone: the section tabs move to a bar along the bottom, and everything you tap gets bigger */
 @media(max-width:640px){
   header{backdrop-filter:none;background:var(--bgc)}
@@ -367,7 +374,10 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <button role="tab" aria-selected="true" data-tab="home">Home</button>
 <button role="tab" aria-selected="false" data-tab="macro">Macro</button>
 <button role="tab" aria-selected="false" data-tab="journal">Journal</button>
+<button role="tab" aria-selected="false" data-tab="backtest">Backtest</button>
 <button role="tab" aria-selected="false" data-tab="trades">Trades</button>
+<button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
+<button role="tab" aria-selected="false" data-tab="connect">Connections</button>
 </nav>
 <button class="themebtn" id="theme" type="button">Light mode</button>
 </div>
@@ -500,78 +510,10 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div id="macro-out"><div class="empty">Loading the macro desk...</div></div>
 </section>
 
-<section class="tool" id="tab-journal" role="tabpanel" hidden>
-<div class="jhead">
-<div><h2>Journal</h2>
-<p class="sub">Your trades, your numbers. Trades and screenshots are saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.</p></div>
-<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><div class="seg" id="j-acct" role="group" aria-label="Account"><button type="button" data-a="live">Live</button><button type="button" data-a="backtest">Backtest</button><button type="button" data-a="all">Both</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
-</div>
-
-<div class="card jhero">
-<div class="eyebrow">Total P/L <span id="j-rangename">all time</span></div>
-<div class="jtotal" id="j-total">-</div>
-<div class="jsub" id="j-totsub"></div>
-</div>
-
-<div class="stats" id="j-stats"></div>
-
-<div class="card" id="j-review"></div>
-
-<div class="jgrid">
-<div class="card" id="j-score"></div>
-<div class="card"><h3 class="jh">Cumulative P/L</h3><div id="j-curve"></div><div class="jsub" id="j-curvesub"></div></div>
-</div>
-
-<div class="jgrid">
-<div class="card"><div class="jcalhead"><button class="btn ghost small" id="j-prev" type="button" aria-label="Previous month">&lsaquo;</button><div><h3 class="jh" id="j-monthname" style="margin:0"></h3><div class="jsub" id="j-monthsub"></div></div><button class="btn ghost small" id="j-next" type="button" aria-label="Next month">&rsaquo;</button></div><div class="jcal" id="j-cal"></div></div>
-<div class="card"><h3 class="jh">By day of the week</h3><div id="j-week"></div></div>
-</div>
-
-<div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
-<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="acct">Account</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
-<div id="j-groups"></div></div>
-
-<div class="card" id="j-form">
-<h3 class="jh">Log a trade</h3>
-<div class="frow three">
-<div><label for="j-date">Date</label><input type="date" id="j-date"></div>
-<div><label for="j-time">Time (Dublin, optional)</label><input type="time" id="j-time"></div>
-<div><label for="j-inst">Instrument</label><input type="text" id="j-inst" placeholder="EURUSD, NQ, XAUUSD" maxlength="20"></div>
-</div>
-<div class="frow two">
-<div><label for="j-dir">Direction</label><select id="j-dir"><option value="long">Long</option><option value="short">Short</option></select></div>
-<div><label for="j-tag">Setup / strategy tag</label><input type="text" id="j-tag" placeholder="e.g. 30m demand, London" maxlength="30"></div>
-</div>
-<div class="frow two">
-<div><label for="j-risk">Risk on the trade</label><input type="number" id="j-risk" placeholder="100" min="0" step="any"></div>
-<div><label for="j-pl">Result P/L (losses negative)</label><input type="number" id="j-pl" placeholder="-100 or 250" step="any"></div>
-</div>
-<div class="frow three">
-<div><label for="j-grade">Setup grade (optional)</label><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div>
-<div><label for="j-plan">Did you follow the plan? (optional)</label><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div>
-<div><label for="j-emo">How did you feel? (optional)</label><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div>
-</div>
-<div class="frow three">
-<div><label for="j-acct-in">Account</label><select id="j-acct-in"><option value="live">Live</option><option value="backtest">Backtest</option></select></div>
-<div><label for="j-bias">Your bias (optional)</label><select id="j-bias"><option value="">Not set</option><option value="bullish">Bullish</option><option value="bearish">Bearish</option><option value="neutral">Neutral</option></select></div>
-<div><label for="j-zone">Zone (optional)</label><input type="text" id="j-zone" placeholder="e.g. 15m demand zone" maxlength="40"></div>
-</div>
-<div class="frow two">
-<div><label for="j-r">Result in R (optional)</label><input type="number" id="j-r" placeholder="3, -1 or 0" step="any"></div>
-<div><label for="j-rp">Risk as % of account (with R)</label><input type="number" id="j-rp" placeholder="1 or 0.75" min="0" step="any"></div>
-</div>
-<div class="hint" style="margin:-4px 0 10px">Use R and risk % instead of P/L if you track the account in percent: the result is stored as risk % times R and the stats then show %.</div>
-<div class="frow two"><div><label for="j-img">Screenshot (optional)</label><input type="file" id="j-img" accept="image/png,image/jpeg,image/webp,image/gif"><div class="jsub" id="j-img-state">You can also paste an image (Ctrl+V) while this form is open.</div></div></div>
-<div class="frow two"><div><label for="j-notes">Notes</label><input type="text" id="j-notes" placeholder="What did you do well or badly?" maxlength="140"></div></div>
-<div class="btnrow">
-<button class="btn" id="j-add" type="button">Log trade</button>
-<button class="btn ghost" id="j-export" type="button">Export CSV</button>
-<button class="btn ghost" id="j-backup" type="button">Backup JSON</button>
-<label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Restore JSON<input type="file" id="j-restore" accept=".json" style="display:none"></label>
-</div>
-<div class="err" id="j-err" style="display:none"></div>
-</div>
-
+<section class="tool" id="tab-connect" role="tabpanel" hidden>
+<h2>Connections</h2>
+<p class="sub">Where RiskDesk gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
+<div class="hnums" id="conn-status"></div>
 <div class="card" id="nt-card">
 <h3 class="jh">Import from Notion</h3>
 <p class="sub" style="margin-bottom:10px">In Notion open your Trade Journey database, choose Export, format Markdown &amp; CSV (include subpages), then put the downloaded .zip in the <b>trader\import</b> folder next to your keys. Press Preview to see what it would add. Nothing is saved until you press Import. Screenshots are copied to your PC with the trades, and trades already in the journal are skipped.</p>
@@ -602,6 +544,103 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 </div>
 
+</section>
+
+<section class="tool" id="tab-alerts" role="tabpanel" hidden>
+<h2>Alerts</h2>
+<p class="sub">Warnings for price levels, news, sessions and your own rules. They show on screen, as a desktop notification if you allow it, and with a short beep. They only work while RiskDesk is open in a browser tab, because that is where the prices are checked (every minute).</p>
+<div class="hgrid2">
+<div class="hpanel"><div class="hp-h"><h3>Price levels</h3></div>
+<div class="frow three"><div><label for="al-sym">Market</label><select id="al-sym"></select></div>
+<div><label for="al-dir">When price goes</label><select id="al-dir"><option value="above">Above</option><option value="below">Below</option></select></div>
+<div><label for="al-level">Level</label><input type="number" id="al-level" step="any" placeholder="e.g. 3910"></div></div>
+<div class="btnrow"><button class="btn small" id="al-add" type="button">Add alert</button></div>
+<div class="err" id="al-err" style="display:none"></div><div id="al-list"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>News, sessions and your rules</h3></div>
+<label class="ckrow"><input type="checkbox" id="al-news"><span>Warn before high-impact news</span></label>
+<div class="frow two" style="margin:6px 0 10px"><div><label for="al-newsmins">How early</label><select id="al-newsmins"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></div></div>
+<label class="ckrow"><input type="checkbox" id="al-sess"><span>Tell me 15 minutes before London and New York open</span></label>
+<label class="ckrow"><input type="checkbox" id="al-check"><span>Warn if I log a live trade with the checklist not fully ticked</span></label>
+<div class="frow two" style="margin-top:10px"><div><label for="al-dayloss">Daily loss limit (journal units, 0 = off)</label><input type="number" id="al-dayloss" min="0" step="any"></div>
+<div><label for="al-streak">Losing streak to warn at (0 = off)</label><input type="number" id="al-streak" min="0" step="1"></div></div>
+<label class="ckrow"><input type="checkbox" id="al-sound"><span>Beep when an alert fires</span></label>
+<div class="btnrow"><button class="btn small ghost" id="al-perm" type="button">Allow desktop notifications</button><button class="btn small ghost" id="al-test" type="button">Send a test alert</button></div>
+<div class="jsub" id="al-permstate"></div></div>
+</div>
+<div class="hpanel"><div class="hp-h"><h3>Recent alerts</h3><button class="btn small ghost" id="al-clear" type="button">Clear</button></div><div id="al-log"></div></div>
+</section>
+
+<section class="tool" id="tab-journal" role="tabpanel" hidden>
+<div class="jhead">
+<div><h2 id="j-title">Journal</h2>
+<p class="sub" id="j-sub">Your trades, your numbers.</p></div>
+<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
+</div>
+
+<div class="card jhero">
+<div class="eyebrow">Total P/L <span id="j-rangename">all time</span></div>
+<div class="jtotal" id="j-total">-</div>
+<div class="jsub" id="j-totsub"></div>
+</div>
+
+<div class="stats" id="j-stats"></div>
+
+<div class="card" id="j-review"></div>
+
+<div class="jgrid">
+<div class="card" id="j-score"></div>
+<div class="card"><h3 class="jh">Cumulative P/L</h3><div id="j-curve"></div><div class="jsub" id="j-curvesub"></div></div>
+</div>
+
+<div class="jgrid">
+<div class="card"><div class="jcalhead"><button class="btn ghost small" id="j-prev" type="button" aria-label="Previous month">&lsaquo;</button><div><h3 class="jh" id="j-monthname" style="margin:0"></h3><div class="jsub" id="j-monthsub"></div></div><button class="btn ghost small" id="j-next" type="button" aria-label="Next month">&rsaquo;</button></div><div class="jcal" id="j-cal"></div></div>
+<div class="card"><h3 class="jh">By day of the week</h3><div id="j-week"></div></div>
+</div>
+
+<div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
+<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
+<div id="j-groups"></div></div>
+
+<div class="card" id="j-form">
+<h3 class="jh">Log a trade</h3>
+<div class="frow three">
+<div><label for="j-date">Date</label><input type="date" id="j-date"></div>
+<div><label for="j-time">Time (Dublin, optional)</label><input type="time" id="j-time"></div>
+<div><label for="j-inst">Instrument</label><input type="text" id="j-inst" placeholder="EURUSD, NQ, XAUUSD" maxlength="20"></div>
+</div>
+<div class="frow two">
+<div><label for="j-dir">Direction</label><select id="j-dir"><option value="long">Long</option><option value="short">Short</option></select></div>
+<div><label for="j-tag">Setup / strategy tag</label><input type="text" id="j-tag" placeholder="e.g. 30m demand, London" maxlength="30"></div>
+</div>
+<div class="frow two">
+<div><label for="j-risk">Risk on the trade</label><input type="number" id="j-risk" placeholder="100" min="0" step="any"></div>
+<div><label for="j-pl">Result P/L (losses negative)</label><input type="number" id="j-pl" placeholder="-100 or 250" step="any"></div>
+</div>
+<div class="frow three">
+<div><label for="j-grade">Setup grade (optional)</label><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div>
+<div><label for="j-plan">Did you follow the plan? (optional)</label><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div>
+<div><label for="j-emo">How did you feel? (optional)</label><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div>
+</div>
+<div class="frow two">
+<div><label for="j-bias">Your bias (optional)</label><select id="j-bias"><option value="">Not set</option><option value="bullish">Bullish</option><option value="bearish">Bearish</option><option value="neutral">Neutral</option></select></div>
+<div><label for="j-zone">Zone (optional)</label><input type="text" id="j-zone" placeholder="e.g. 15m demand zone" maxlength="40"></div>
+</div>
+<div class="frow two">
+<div><label for="j-r">Result in R (optional)</label><input type="number" id="j-r" placeholder="3, -1 or 0" step="any"></div>
+<div><label for="j-rp">Risk as % of account (with R)</label><input type="number" id="j-rp" placeholder="1 or 0.75" min="0" step="any"></div>
+</div>
+<div class="hint" style="margin:-4px 0 10px">Use R and risk % instead of P/L if you track the account in percent: the result is stored as risk % times R and the stats then show %.</div>
+<div class="frow two"><div><label for="j-img">Screenshot (optional)</label><input type="file" id="j-img" accept="image/png,image/jpeg,image/webp,image/gif"><div class="jsub" id="j-img-state">You can also paste an image (Ctrl+V) while this form is open.</div></div></div>
+<div class="frow two"><div><label for="j-notes">Notes</label><input type="text" id="j-notes" placeholder="What did you do well or badly?" maxlength="140"></div></div>
+<div class="btnrow">
+<button class="btn" id="j-add" type="button">Log trade</button>
+<button class="btn ghost" id="j-export" type="button">Export CSV</button>
+<button class="btn ghost" id="j-backup" type="button">Backup JSON</button>
+<label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Restore JSON<input type="file" id="j-restore" accept=".json" style="display:none"></label>
+</div>
+<div class="err" id="j-err" style="display:none"></div>
+</div>
+
 <div class="card"><h3 class="jh">Trades</h3><div class="scroll"><table>
 <thead><tr><th>Shot</th><th>Date</th><th>Instrument</th><th>Dir</th><th>Setup</th><th>Grade</th><th>Plan</th><th>Feeling</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
@@ -621,6 +660,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="lbimg" id="lb-imgbox"></div><div class="lbinfo" id="lb-info"></div>
 <div class="btnrow"><label class="btn small ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Attach or replace screenshot<input type="file" id="lb-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none"></label></div></div></div>
 <div class="jsub" id="j-save-status" style="margin:6px 0 0"></div>
+<div id="toasts" aria-live="polite"></div>
 <div class="notice" id="j-storage-note" hidden>This browser is blocking local storage, so trades only last for this session. Use Backup JSON before you close the tab.</div>
 </section>
 
@@ -671,15 +711,18 @@ function setTheme(t){
 $("theme").onclick=function(){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark")};
 setTheme(store("zd.theme")==="light"?"light":"dark");
 
+var TABS=["home","macro","journal","backtest","trades","alerts","connect"];
 function showTab(name){
+  if(TABS.indexOf(name)<0)name="home";
   tabNow=name;
-  ["home","macro","trades","journal"].forEach(function(t){
-    var on=t===name,p=$("tab-"+t);p.hidden=!on;p.classList.toggle("active",on);
-  });
+  var section=name==="backtest"?"journal":name;                         /* Journal and Backtest are the same page over two separate sets of trades */
+  TABS.forEach(function(t){var s=t==="backtest"?"journal":t,p=$("tab-"+s);if(s===section){p.hidden=false;p.classList.add("active")}else{p.hidden=true;p.classList.remove("active")}});
   var bs=$("nav").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
-  if(name==="home"||name==="macro")loadMacro(false);if(name==="trades")propCalc();
+  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jShown=30;jRender()}
+  if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
+  if(name==="alerts")alRender();if(name==="connect")connRender();
   dockChat(name==="home");
 }
 (function(){var bs=$("nav").querySelectorAll("button");
@@ -835,7 +878,7 @@ if(!persistent)$("j-storage-note").hidden=false;
 function today(){var n=new Date();return n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)}
 $("j-date").value=today();
 var jReady=false,jPushT=null;
-function jSave(){jset(JKEY,JSON.stringify(trades));jPush()}
+function jSave(){jset(JKEY,JSON.stringify(trades));jPush();ruleCheck()}
 function jStatus(msg,bad){var e=$("j-save-status");e.textContent=msg||"";e.style.color=bad?"var(--down)":""}
 function jPush(){if(!jReady)return;clearTimeout(jPushT);jPushT=setTimeout(jPushNow,300)}
 function jPushNow(){
@@ -881,10 +924,9 @@ function pl(n,w,p){return n+" "+(n===1?w:(p||w+"s"))}
 function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))+(UNITPCT?"%":"")}
 function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
-var JAKEY="zd.jacct",jAcct=jget(JAKEY)||"live",UNITPCT=false;
-if(["live","backtest","all"].indexOf(jAcct)<0)jAcct="live";
+var jAcct="live",UNITPCT=false;           /* which set the Journal page is showing: live trades on Journal, backtests on Backtest */
 function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"})}          /* a trade with no account set counts as live */
-function jPool(){return jAcct==="all"?trades.slice():jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"}):liveOnly()}
+function jPool(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"}):liveOnly()}
 function setUnit(list){UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"})}
 function jm(x){return money(x)+(UNITPCT?"%":"")}
 function sinceDays(n,pool){var c=dparse(today())-(n-1)*DAY;return(pool||liveOnly()).filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
@@ -979,7 +1021,7 @@ function jGroups(list){
   var box=$("j-groups");box.textContent="";
   var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},
     plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""},
-    zone:function(t){return t.zone||""},bias:function(t){return t.bias?t.bias.charAt(0).toUpperCase()+t.bias.slice(1):""},strategy:function(t){return t.strategy||""},acct:function(t){return t.acct==="backtest"?"Backtest":"Live"},
+    zone:function(t){return t.zone||""},bias:function(t){return t.bias?t.bias.charAt(0).toUpperCase()+t.bias.slice(1):""},strategy:function(t){return t.strategy||""},
     session:function(t){return t.time?jSession(t.time):(t.session||"")},hour:function(t){return t.time?t.time.slice(0,2)+":00":""}}[jBy],
     hint={zone:"Add a zone to your trades (for example 15m demand zone) to see which zones pay.",bias:"Add your bias to your trades to see whether it pays.",strategy:"Add a strategy name to your trades to compare strategies.",tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
       plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are.",
@@ -1040,14 +1082,16 @@ function jReview(){
   box.appendChild(el("div","jsub","Worked out from your journal with fixed rules. It describes the week; it does not predict anything."))}
 function jRender(){
   var list=jView(),st=jStats(list);setUnit(list);
-  Array.prototype.forEach.call($("j-acct").children,function(b){b.className=b.getAttribute("data-a")===jAcct?"on":""});
+  var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
+  $("j-sub").textContent=bt?"Your backtest trades, kept apart from your live journal. They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
+  $("coach").hidden=bt;
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
   Array.prototype.forEach.call($("j-by").children,function(b){b.className=b.getAttribute("data-by")===jBy?"on":""});
-  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(jAcct==="all"?", live and backtest":jAcct==="backtest"?", backtest only":", live only");
+  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(bt?", backtest":"");
   var tot=$("j-total");tot.textContent=st.n?signed(st.net):"-";tot.className="jtotal "+(st.n?cls(st.net):"");
   var wk=jStats(sinceDays(7,jPool()));
   $("j-totsub").textContent=st.n?pl(st.w,"win")+" / "+pl(st.l,"loss","losses")+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+pl(st.n,"trade")+
-    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":".")+(list.some(function(t){return t.unit==="pct"})&&!UNITPCT?" This view mixes trades in money and in %, so the totals are not meaningful. Pick Live or Backtest.":""):trades.length?(jPool().length?"No trades in this period.":"No "+(jAcct==="backtest"?"backtest":"live")+" trades yet. Switch the account filter to see the others."):"Log your first trade below and the numbers fill in.";
+    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":".")+(list.some(function(t){return t.unit==="pct"})&&!UNITPCT?" This view mixes trades in money and in %, so the totals are not meaningful.":""):trades.length?(jPool().length?"No trades in this period.":bt?"No backtest trades yet. Log one below, or import them on the Connections page.":"No live trades yet. Log one below, or import them on the Connections page."):"Log your first trade below and the numbers fill in.";
   var cards=[["Win rate",st.winrate===null?"-":fmt(st.winrate,1)+"%",st.n?st.w+"W / "+st.l+"L":"",null],
     ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+pl(st.rs.length,"trade"),st.avgR===null?null:cls(st.avgR)],
     ["Profit factor",st.pf===null?"-":st.pf===Infinity?"no losses":fmt(st.pf,2),st.avgWinR===null?"":"avg winner "+fmt(st.avgWinR,2)+"R",null],
@@ -1078,7 +1122,6 @@ function jRender(){
   propCalc();
 }
 Array.prototype.forEach.call($("j-range").children,function(b){b.onclick=function(){jRange=b.getAttribute("data-r");jset(JRKEY,jRange);jShown=30;jRender()}});
-Array.prototype.forEach.call($("j-acct").children,function(b){b.onclick=function(){jAcct=b.getAttribute("data-a");jset(JAKEY,jAcct);jShown=30;jRender()}});
 Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function(){jBy=b.getAttribute("data-by");jRender()}});
 $("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}jCal()};
 $("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
@@ -1207,7 +1250,7 @@ function pickImage(file){
   .catch(function(e){pendingImg="";imgState("Could not save the screenshot: "+e.message,true)})}
 $("j-img").onchange=function(ev){pickImage(ev.target.files[0]);ev.target.value=""};
 document.addEventListener("paste",function(ev){
-  if(tabNow!=="journal"||!ev.clipboardData)return;
+  if((tabNow!=="journal"&&tabNow!=="backtest")||!ev.clipboardData)return;
   var items=ev.clipboardData.files;if(items&&items.length&&/^image\//.test(items[0].type)){
     if(!$("lb").hidden)return;ev.preventDefault();pickImage(items[0])}});
 $("j-add").onclick=function(){
@@ -1219,8 +1262,9 @@ $("j-add").onclick=function(){
   var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
     tag:$("j-tag").value.trim(),risk:risk,pl:plv,notes:$("j-notes").value.trim(),
     time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value,
-    acct:$("j-acct-in").value,bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
+    acct:jAcct,bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
   trades.unshift(t);jSave();jRender();
+  if(AL.check&&t.acct!=="backtest"){var ckr=ckRules(),ckd=ckDone(),ckn=ckr.filter(function(r,i){return ckd.indexOf(i)>=0}).length;if(ckn<ckr.length)alFire("Checklist not complete","You logged a trade with "+ckn+" of "+ckr.length+" checklist items ticked.")}
   ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-rp","j-zone","j-bias"].forEach(function(i){$(i).value=""});
   pendingImg="";imgState("You can also paste an image (Ctrl+V) while this form is open.");
 };
@@ -1267,8 +1311,8 @@ $("nt-go").onclick=function(){
     var add=j.trades.map(cleanTrade).filter(function(t){return t&&!have[ntKey(t)]}),skipped=j.trades.length-add.length;
     if(trades.length+add.length>20000){var e=$("nt-err");e.textContent="The journal holds up to 20,000 trades.";e.style.display="";return}
     trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
-    jAcct="all";jset(JAKEY,jAcct);jSave();jRender();
-    $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+". The Journal now shows Live and Backtest together. Use the account buttons at the top to separate them.");m.style.marginTop="8px";$("nt-out").appendChild(m);
+    jSave();jRender();
+    $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+". "+add.filter(function(t){return t.acct==="backtest"}).length+" went to Backtest and "+add.filter(function(t){return t.acct!=="backtest"}).length+" to your live Journal.");m.style.marginTop="8px";$("nt-out").appendChild(m);
     $("nt-go").disabled=true})};
 function coachStatus(){
   var box=$("coach-setup");
@@ -1351,7 +1395,7 @@ function flowRows(box,d,limit){
     r.appendChild(el("span","pct "+(q.pct>0?"pos":q.pct<0?"neg":""),pctText(q.pct)));
     r.lastChild.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";box.appendChild(r)});
   if(!qs.length)box.appendChild(el("div","empty","No prices came back."))}
-function renderAll(d){macroRender(d);homeRender(d)}
+function renderAll(d){macroRender(d);homeRender(d);alertCheck(d);if(tabNow==="connect")connRender()}
 function loadMacro(force){
   if(macroBusy)return;
   if(!force&&macroData&&Date.now()-macroAt<55000){renderAll(macroData);return}
@@ -1364,7 +1408,7 @@ function loadMacro(force){
   .catch(function(e){fail("The dashboard did not answer: "+e)})
   .then(function(){macroBusy=false;$("macro-refresh").disabled=false;$("macro-refresh").textContent="Refresh";$("home-refresh").disabled=false})}
 $("macro-refresh").onclick=function(){loadMacro(true)};
-setInterval(function(){if(document.visibilityState==="visible"&&(tabNow==="home"||tabNow==="macro"))loadMacro(false)},60000);   /* prices follow the market while Home or Macro is open */
+setInterval(function(){loadMacro(false)},60000);   /* prices follow the market while Home or Macro is open */
 function macroRender(d){
   var out=$("macro-out");out.textContent="";$("macro-asof").textContent="As of "+d.as_of+" Dublin";
   if(d.notes.length){var nc=el("div","card");d.notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
@@ -1551,6 +1595,79 @@ $("ck-save").onclick=function(){var r=$("ck-rules").value.split("\n").map(functi
 $("ck-reset").onclick=function(){store("zd.ck.rules","");store("zd.ck.done."+today(),"[]");$("ck-editor").hidden=true;planRender()};
 planRender();
 
+/* ---------------- alerts (checked in this page every minute, live trades only) ---------------- */
+var AL={price:[],news:true,newsMins:15,sess:true,check:true,dayLoss:0,streak:3,sound:true},alLog=[];
+try{var a0=JSON.parse(store("zd.alerts")||"null");
+  if(a0&&typeof a0==="object"){["news","sess","check","sound"].forEach(function(k){if(typeof a0[k]==="boolean")AL[k]=a0[k]});
+    ["newsMins","dayLoss","streak"].forEach(function(k){if(typeof a0[k]==="number"&&isFinite(a0[k])&&a0[k]>=0)AL[k]=a0[k]});
+    if(Array.isArray(a0.price))AL.price=a0.price.filter(function(a){return a&&typeof a.sym==="string"&&(a.dir==="above"||a.dir==="below")&&typeof a.level==="number"&&isFinite(a.level)}).slice(0,30).map(function(a){return{sym:a.sym.slice(0,12),dir:a.dir,level:a.level,done:typeof a.done==="string"?a.done:""}})}}catch(e){}
+try{var l0=JSON.parse(store("zd.alerts.log")||"[]");if(Array.isArray(l0))alLog=l0.filter(function(x){return x&&typeof x.t==="string"&&typeof x.m==="string"}).slice(0,30)}catch(e){}
+function alSave(){store("zd.alerts",JSON.stringify(AL))}
+function alOnce(key){var k="zd.alerts.seen."+today(),seen={};try{seen=JSON.parse(store(k)||"{}")||{}}catch(e){}
+  if(seen[key])return false;seen[key]=1;store(k,JSON.stringify(seen));return true}
+function alBeep(){if(!AL.sound)return;try{var C=window.AudioContext||window.webkitAudioContext,c=new C(),o=c.createOscillator(),g=c.createGain();
+  o.type="sine";o.frequency.value=880;g.gain.value=0.08;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.25);setTimeout(function(){c.close()},600)}catch(e){}}
+function alFire(title,msg){
+  var n=new Date();alLog.unshift({t:("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+" "+n.getDate()+"/"+(n.getMonth()+1),h:title,m:msg});alLog=alLog.slice(0,30);store("zd.alerts.log",JSON.stringify(alLog));
+  var box=$("toasts"),t=el("div","toast"),body=el("div");body.appendChild(el("b",null,title));body.appendChild(document.createTextNode(msg));t.appendChild(body);
+  var x=el("button","tx","\u00d7");x.type="button";x.setAttribute("aria-label","Dismiss");x.onclick=function(){if(t.parentNode)t.parentNode.removeChild(t)};t.appendChild(x);
+  box.appendChild(t);while(box.children.length>4)box.removeChild(box.firstChild);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},30000);
+  try{if(window.Notification&&Notification.permission==="granted")new Notification("RiskDesk: "+title,{body:msg})}catch(e){}
+  alBeep();if(tabNow==="alerts")alRender()}
+function alertCheck(d){
+  var changed=false;
+  AL.price.forEach(function(a){if(a.done)return;var q=quoteBy(d,a.sym);if(!q)return;
+    if(a.dir==="above"?q.price>=a.level:q.price<=a.level){a.done=new Date().toISOString();changed=true;alFire(a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level,"Price is now "+fmt(q.price,q.digits)+".")}});
+  if(changed){alSave();if(tabNow==="alerts")alRender()}
+  if(AL.news)d.events.forEach(function(e){if(e.impact==="High"&&e.minutes>0&&e.minutes<=AL.newsMins&&alOnce("n|"+e.when+"|"+e.title))alFire("High-impact news in "+dur(e.minutes),e.country+" "+e.title+(e.forecast?" (forecast "+e.forecast+")":""))});
+  if(AL.sess)d.sessions.forEach(function(s){if((s.name==="London"||s.name==="New York")&&!s.open&&s.minutes>0&&s.minutes<=15&&alOnce("s|"+s.name))alFire(s.name+" opens in "+dur(s.minutes),"Check your plan and the checklist on Home.")});
+  ruleCheck()}
+function ruleCheck(){
+  var live=liveOnly();setUnit(live);var day=today(),tl=live.filter(function(t){return t.date===day}),net=tl.reduce(function(a,t){return a+t.pl},0);
+  if(AL.dayLoss>0&&net<=-AL.dayLoss&&alOnce("loss"))alFire("Daily loss limit reached","Today is "+signed(net)+" against your limit of "+jm(AL.dayLoss)+". Time to stop?");
+  if(AL.streak>0){var ch=jChron(live),n=0;for(var i=ch.length-1;i>=0&&ch[i].pl<0;i--)n++;
+    if(n>=AL.streak&&alOnce("streak|"+n))alFire(n+" losing trades in a row","Your last "+n+" live trades all lost. Check the plan before the next one.")}}
+function alRender(){
+  var sel=$("al-sym");if(!sel.children.length)MARKETS.concat([["DXY"],["US10Y"],["VIX"],["SPX"],["OIL"]]).forEach(function(m){var o=el("option",null,m[0]);o.value=m[0];sel.appendChild(o)});
+  $("al-news").checked=AL.news;$("al-newsmins").value=String(AL.newsMins);$("al-sess").checked=AL.sess;$("al-check").checked=AL.check;
+  $("al-dayloss").value=AL.dayLoss||"";$("al-streak").value=AL.streak||"";$("al-sound").checked=AL.sound;
+  var p=window.Notification?Notification.permission:"unsupported";
+  $("al-permstate").textContent=p==="granted"?"Desktop notifications are on.":p==="denied"?"Desktop notifications are blocked in this browser. On-screen alerts still work.":p==="unsupported"?"This browser has no desktop notifications. On-screen alerts still work.":"Desktop notifications are off until you allow them.";
+  var list=$("al-list");list.textContent="";
+  if(!AL.price.length)list.appendChild(el("div","empty","No price alerts yet."));
+  AL.price.forEach(function(a,i){var r=el("div","alrow"),q=macroData?quoteBy(macroData,a.sym):null;
+    r.appendChild(el("span",null,a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level+(q?"  (now "+fmt(q.price,q.digits)+")":"")));
+    r.appendChild(el("span","st"+(a.done?" hit":""),a.done?"Fired":"Waiting"));
+    var x=el("button","del","x");x.type="button";x.setAttribute("aria-label","Remove alert");x.onclick=function(){AL.price.splice(i,1);alSave();alRender()};r.appendChild(x);list.appendChild(r)});
+  var lg=$("al-log");lg.textContent="";
+  if(!alLog.length)lg.appendChild(el("div","empty","Nothing has fired yet."));
+  alLog.forEach(function(x){var r=el("div","jfact");r.appendChild(el("b",null,x.t+"  "+(x.h||"")));r.appendChild(el("div","jsub",x.m));lg.appendChild(r)})}
+$("al-add").onclick=function(){
+  var e=$("al-err");e.style.display="none";var lv=parseFloat($("al-level").value);
+  function bad(m){e.textContent=m;e.style.display=""}
+  if(!isFinite(lv)){bad("Enter the price level first.");return}
+  if(AL.price.length>=30){bad("Up to 30 price alerts.");return}
+  var sym=$("al-sym").value,dir=$("al-dir").value,q=macroData?quoteBy(macroData,sym):null;
+  if(q&&(dir==="above"?q.price>=lv:q.price<=lv)){bad(sym+" is already "+(dir==="above"?"above ":"below ")+lv+" (now "+fmt(q.price,q.digits)+"). Pick a level it has not reached yet.");return}
+  AL.price.push({sym:sym,dir:dir,level:lv,done:""});alSave();$("al-level").value="";alRender()};
+[["al-news","news","b"],["al-sess","sess","b"],["al-check","check","b"],["al-sound","sound","b"],["al-newsmins","newsMins","n"],["al-dayloss","dayLoss","n"],["al-streak","streak","n"]].forEach(function(c){
+  $(c[0]).onchange=function(){var v=c[2]==="b"?$(c[0]).checked:parseFloat($(c[0]).value);AL[c[1]]=c[2]==="b"?v:(isFinite(v)&&v>=0?v:0);alSave();if(c[1]==="dayLoss"||c[1]==="streak")ruleCheck()}});
+$("al-perm").onclick=function(){if(!window.Notification){alRender();return}try{Notification.requestPermission().then(alRender)}catch(e){Notification.requestPermission(alRender)}};
+$("al-test").onclick=function(){alFire("Test alert","If you can see this, alerts are working.")};
+$("al-clear").onclick=function(){alLog=[];store("zd.alerts.log","[]");alRender()};
+
+/* ---------------- connections page ---------------- */
+function connRender(){
+  var box=$("conn-status");box.textContent="";
+  function card(k,v,s,c){var d=el("div","hnum");d.style.cursor="default";d.appendChild(el("div","k",k));var x=el("div","v",v);x.style.fontSize="17px";if(c)x.className+=" "+c;d.appendChild(x);d.appendChild(el("div","s",s));box.appendChild(d);return x}
+  var ai=card("AI assistant","Checking...","");
+  fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){ai.textContent=s.ready?"Connected":"No key";ai.className="v "+(s.ready?"up":"down");ai.nextSibling.textContent=s.ready?s.service+", "+s.model:"Save a Gemini or Claude key in the trader folder"}).catch(function(){ai.textContent="Unreachable"});
+  card("Prices","Yahoo (free)",macroData?"Last updated "+macroData.as_of+" Dublin":"Loading...","flat");
+  card("Calendar and news","ForexFactory + Google News",macroData?macroData.events.length+" releases, "+macroData.headlines.length+" headlines":"Loading...","flat");
+  card("Journal storage",jReady?"On this PC":"Browser only",jReady?trades.length+" trades in trader\\journal":"The dashboard did not answer",jReady?"up":"down");
+  card("Notion","File import","Export the database, drop the zip in trader\\import, preview and import below","flat");
+  card("Google sign-in and sync","Not set up","Needs the dashboard hosted online first; the app stays local for now","flat")}
+
 /* ---------------- chat box ---------------- */
 var chatMsgs=[],chatBusy=false;
 try{var cs=JSON.parse(store("zd.chat")||"[]");if(Array.isArray(cs))chatMsgs=cs.filter(function(m){return m&&(m.role==="user"||m.role==="assistant"||m.role==="err")&&typeof m.content==="string"}).slice(-20)}catch(e){}
@@ -1584,7 +1701,7 @@ $("chat-form").onsubmit=function(ev){ev.preventDefault();var v=$("chat-in").valu
 CHIPS.forEach(function(t){var b=el("button",null,t);b.type="button";b.onclick=function(){chatSend(t)};$("chat-chips").appendChild(b)});
 chatRender();
 
-var tab0=store("zd.tab");showTab(["home","macro","trades","journal"].indexOf(tab0)>=0?tab0:"home");
+var tab0=store("zd.tab");showTab(TABS.indexOf(tab0)>=0?tab0:"home");
 jLoad();
 })();
 </script>

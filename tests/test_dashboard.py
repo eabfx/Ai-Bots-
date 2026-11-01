@@ -86,12 +86,27 @@ class Basics(Server):
 
     def test_the_journal_saves_to_the_pc_and_has_screenshots_account_filter_and_notion_import(self):
         _, _, body = self.get("/")
-        for words in ('/api/journal"', "function jLoad", "function jPushNow", 'id="j-acct"', "function liveOnly", 'id="lb"', 'id="nt-card"',
+        for words in ('/api/journal"', "function jLoad", "function jPushNow", "function liveOnly", 'id="lb"', 'id="nt-card"',
                       "/api/import/notion", "/api/journal/image", 'id="j-img"', "UNITPCT"):
             self.assertIn(words, body)
         start, end = body.index("function openLb"), body.index("var ntReady")
         self.assertNotIn("innerHTML", body[start:end])
         self.assertNotIn("innerHTML", body[body.index("function ntShow"):body.index("function ntCall")])
+
+    def test_backtest_alerts_and_connections_are_their_own_pages(self):
+        _, _, body = self.get("/")
+        for tab in ("backtest", "alerts", "connect"):
+            self.assertIn('data-tab="%s"' % tab, body)
+        for words in ('id="tab-alerts"', 'id="tab-connect"', 'id="al-list"', "function alertCheck", "function ruleCheck", "function alFire",
+                      "function connRender", "Notification.permission"):
+            self.assertIn(words, body)
+        connect = body[body.index('id="tab-connect"'):body.index('id="tab-alerts"')]
+        self.assertIn('id="nt-card"', connect)                                        # imports live on Connections, not on the Journal page
+        self.assertIn('id="imp-card"', connect)
+        journal = body[body.index('id="tab-journal"'):]
+        self.assertNotIn('id="nt-card"', journal)
+        self.assertNotIn('id="imp-card"', journal)
+        self.assertNotIn("innerHTML", body[body.index("function alFire"):body.index("function connRender")])
 
     def test_backtests_never_count_in_home_prop_coach_or_chat(self):
         _, _, body = self.get("/")
