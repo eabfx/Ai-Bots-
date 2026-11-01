@@ -27,6 +27,7 @@ sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
+import notion_api     # noqa: E402
 import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
@@ -41,6 +42,7 @@ class Handler(BaseHTTPRequestHandler):
     allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
     auth_settings = None                             # sign in with Google, only when the config has an "auth" section (see signin.py)
     oauth_post = staticmethod(signin.http_post)     # the one call out to Google; the tests swap it
     macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
@@ -159,6 +161,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"saved": store.save_trades(self.data_dir, body.get("trades"))})
             elif path == "/api/import/notion":
                 return self.notion(bool(body.get("apply")))
+            elif path == "/api/notion/refresh":
+                if not self.notion_link:
+                    return self.send_json(200, {"connected": False})
+                return self.send_json(200, self.notion_link.refresh())
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -195,6 +201,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
             self.macro(parse_qs(url.query))
+        elif url.path == "/api/notion/status":
+            self.send_json(200, self.notion_link.state if self.notion_link else {"connected": False})
+        elif url.path == "/api/notion/journal":
+            doc = self.notion_link.journal_doc if self.notion_link else {"at": "", "trades": []}
+            self.send_json(200, {"at": doc.get("at", ""), "trades": doc.get("trades") or []})
+        elif url.path == "/api/notion/hub":
+            self.send_json(200, self.notion_link.hub_doc if self.notion_link else {"at": "", "root": "", "pages": {}})
         elif url.path == "/api/tradezella/summary":
             try:
                 with open(os.path.join(self.data_dir, "tradezella", "summary.json"), encoding="utf-8-sig") as fh:
@@ -279,6 +292,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline, "allowed_hosts": configured_hosts(config_path, allowed_hosts),
                                           "auth_settings": signin.load_settings(config_path),
                                           "data_dir": os.path.dirname(os.path.abspath(config_path))})
+    handler.notion_link = notion_api.Link(handler.data_dir, config_path)
     return DashboardServer(("127.0.0.1", port), handler)
 
 
@@ -339,6 +353,8 @@ def main(argv=None):
     if not args.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
+        if server.RequestHandlerClass.notion_link.token:
+            server.RequestHandlerClass.notion_link.start()
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")

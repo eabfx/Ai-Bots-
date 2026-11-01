@@ -101,3 +101,13 @@ version does not come back healthy it goes back to the one that was running. Rel
 ## Import from TradeZella
 
 Connections page, "Import from TradeZella". It reads `backtest.csv` and `demo.csv` from `trader\tradezella` (copied from TradeZella through its Claude connection, so they are not in git). Backtest trades become a percent of the practice balance with the R TradeZella worked out, and go to the Backtest page as "TradeZella Backtest". Demo-account trades are kept as "TradeZella Demo" but never counted. Preview first; Import skips anything already in the journal.
+
+## Notion live link and Second Brain
+
+Connections page, "Notion live link". It reads your Notion, never writes to it: every call goes through one gate that only allows reading a page, its blocks and a database, and querying a database; anything else raises before it is sent.
+
+Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart RiskDesk. The page called "Thoughts + Emotions" is never read, even though the integration can reach it.
+
+- **Journal rows:** the Trade Journal 2026 database is read every 5 minutes and merged into the journal by Trade No. and date. A row you add or fill in later in Notion becomes or updates the trade; notes and screenshots you added on the dashboard are kept.
+- **Second Brain tab:** the Trade Journal page and the pages under it (checklists, risk protocol, prop firm rules, funding tables, goals, inline databases), laid out in the same order with their tables, columns and lists, refreshed every 20 minutes or with "Refresh from Notion".
+- Copies are kept in `trader\notion` (not in git), so the tab still shows the last copy if Notion is unreachable. The database and page ids can be changed in config.json under "notion": {"journal_db": "...", "hub_page": "..."}.

@@ -464,6 +464,17 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
   .hhead h2{font-size:26px}
   .jhead .btnrow{margin-bottom:12px!important}
 }
+
+.sb-h1{font-size:26px;font-weight:700;margin:22px 0 8px}.sb-h2{font-size:20px;font-weight:700;margin:18px 0 6px}.sb-h3{font-size:16px;font-weight:700;margin:14px 0 4px}
+.sb-p{margin:4px 0;line-height:1.5;white-space:pre-wrap}.sb-li,.sb-todo{margin:3px 0;line-height:1.5;display:flex;gap:8px}.sb-li>.sb-b{flex:none;color:var(--muted);min-width:16px}
+.sb-kids{margin-left:22px}.sb-quote{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin:8px 0;color:var(--muted);font-style:italic}
+.sb-callout{display:flex;gap:10px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0;background:var(--panel2)}
+.sb-cols{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin:6px 0}.sb-col{flex:1 1 220px;min-width:0}
+.sb-table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13.5px}.sb-table td,.sb-table th{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;white-space:pre-wrap}.sb-table .hd{font-weight:700;background:var(--panel2)}
+.sb-wrap{overflow-x:auto}.sb-page{display:inline-block;margin:4px 8px 4px 0}.sb-img{max-width:100%;border-radius:8px;margin:6px 0;display:block}
+.sb-db{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}.sb-db h4{margin:0 0 6px;font-size:14px}
+.sb-file{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:4px 9px;margin:3px 6px 3px 0;font-size:13px;color:var(--muted)}
+#sb-nav{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -475,6 +486,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <button role="tab" aria-selected="false" data-tab="macro">Macro</button>
 <button role="tab" aria-selected="false" data-tab="journal">Journal</button>
 <button role="tab" aria-selected="false" data-tab="backtest">Backtest</button>
+<button role="tab" aria-selected="false" data-tab="brain">Second Brain</button>
 <button role="tab" aria-selected="false" data-tab="trades">Trades</button>
 <button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
 <button role="tab" aria-selected="false" data-tab="connect">Connections</button>
@@ -610,10 +622,24 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div id="macro-out"><div class="empty">Loading the macro desk...</div></div>
 </section>
 
+<section class="tool" id="tab-brain" role="tabpanel" hidden>
+<h2>Second Brain</h2>
+<p class="sub">Your Notion Trade Journal page and the pages under it, laid out the way they are in Notion, with their tables and lists. It is a read-only copy: what you change in Notion shows up here by itself, and nothing here can change Notion.</p>
+<div class="btnrow" style="margin-bottom:12px"><button class="btn small" id="sb-refresh" type="button">Refresh from Notion</button><span class="mute" id="sb-asof" style="align-self:center;font-size:13px"></span></div>
+<div id="sb-nav"></div>
+<div id="sb-out"></div>
+</section>
+
 <section class="tool" id="tab-connect" role="tabpanel" hidden>
 <h2>Connections</h2>
 <p class="sub">Where RiskDesk gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
 <div class="hnums" id="conn-status"></div>
+<div class="card" id="nl-card">
+<h3 class="jh">Notion live link</h3>
+<p class="sub" style="margin-bottom:10px" id="nl-text">Checking...</p>
+<div class="btnrow"><button class="btn small" id="nl-sync" type="button">Sync now</button></div>
+<div class="err" id="nl-err" style="display:none"></div>
+</div>
 <div class="card" id="nt-card">
 <h3 class="jh">Import from Notion</h3>
 <p class="sub" style="margin-bottom:10px">In Notion open your Trade Journey database, choose Export, format Markdown &amp; CSV (include subpages), then put the downloaded .zip in the <b>trader\import</b> folder next to your keys. Press Preview to see what it would add. Nothing is saved until you press Import. Screenshots are copied to your PC with the trades, and trades already in the journal are skipped.</p>
@@ -851,7 +877,7 @@ function setTheme(t){
 $("theme").onclick=function(){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark")};
 setTheme(store("zd.theme")==="light"?"light":"dark");
 
-var TABS=["home","macro","journal","backtest","trades","alerts","connect"];
+var TABS=["home","macro","journal","backtest","brain","trades","alerts","connect"];
 function showTab(name){
   if(TABS.indexOf(name)<0)name="home";
   tabNow=name;
@@ -862,7 +888,7 @@ function showTab(name){
   store("zd.tab",name);window.scrollTo(0,0);
   if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
-  if(name==="alerts")alRender();if(name==="connect")connRender();
+  if(name==="alerts")alRender();if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
   dockChat(name==="home");
 }
 (function(){var bs=$("nav").querySelectorAll("button");
@@ -1795,6 +1821,112 @@ function tzPanel(){
   var row=el("div","btnrow");row.style.marginTop="10px";
   (tzSum.links||[]).forEach(function(l){if(!/^https:\/\/app\.tradezella\.com\//.test(l.url))return;var a=el("a","btn small",l.label);a.href=l.url;a.target="_blank";a.rel="noopener noreferrer";row.appendChild(a)});
   out.appendChild(row)}
+/* Notion live link and Second Brain: the server keeps a read-only copy of your Notion (notion_api.py); this page draws it and merges new journal rows */
+var SBC={red:"#e5484d",green:"#30a46c",blue:"#3e8fd6",yellow:"#d6a800",orange:"#e5833a",purple:"#8e4ec6",pink:"#d6409f",brown:"#a2745a",gray:"#9c9c98"};
+function sbTint(co){var m=/^([a-z]+?)(_background)?$/.exec(co||"");if(!m||!SBC[m[1]])return null;return{c:SBC[m[1]],bg:!!m[2]}}
+var sbDoc=null,sbNow="",sbBack=[],sbBusy=false;
+function sbRuns(rs,box){
+  (rs||[]).forEach(function(r){
+    var s=el(r.a&&/^https?:\/\//.test(r.a)?"a":"span",null,r.x);
+    if(s.tagName==="A"){s.href=r.a;s.target="_blank";s.rel="noopener noreferrer"}
+    if(r.b)s.style.fontWeight="700";if(r.i)s.style.fontStyle="italic";
+    var td=[];if(r.u)td.push("underline");if(r.s)td.push("line-through");if(td.length)s.style.textDecoration=td.join(" ");
+    if(r.c){s.style.fontFamily="monospace";s.style.background="var(--panel2)";s.style.padding="0 4px"}
+    var t=sbTint(r.co);if(t){if(t.bg){s.style.background=t.c+"33"}else s.style.color=t.c}
+    box.appendChild(s)})}
+function sbBlock(n,cls,extra){
+  var d=el("div",cls);sbRuns(n.r,d);var t=sbTint(n.co);
+  if(t&&t.bg){d.style.background=t.c+"26";d.style.borderLeft="3px solid "+t.c;d.style.padding="6px 10px";d.style.borderRadius="6px"}else if(t)d.style.color=t.c;
+  return d}
+function sbKids(box,n){if(n.k&&n.k.length){var k=el("div","sb-kids");sbNodes(n.k,k);box.appendChild(k)}}
+function sbNodes(list,box){
+  var num=0;
+  (list||[]).forEach(function(n){
+    if(n.t!=="ol")num=0;
+    var d;
+    switch(n.t){
+      case"h1":box.appendChild(sbBlock(n,"sb-h1"));sbKids(box,n);break;
+      case"h2":box.appendChild(sbBlock(n,"sb-h2"));sbKids(box,n);break;
+      case"h3":box.appendChild(sbBlock(n,"sb-h3"));sbKids(box,n);break;
+      case"paragraph":d=sbBlock(n,"sb-p");if(!n.r||!n.r.length)d.style.minHeight="10px";box.appendChild(d);sbKids(box,n);break;
+      case"li":d=el("div","sb-li");d.appendChild(el("span","sb-b","•"));d.appendChild(sbBlock(n,""));box.appendChild(d);sbKids(box,n);break;
+      case"ol":num++;d=el("div","sb-li");d.appendChild(el("span","sb-b",num+"."));d.appendChild(sbBlock(n,""));box.appendChild(d);sbKids(box,n);break;
+      case"todo":d=el("div","sb-todo");d.appendChild(el("span","sb-b",n.done?"☑":"☐"));var tb=sbBlock(n,"");if(n.done)tb.style.color="var(--muted)";d.appendChild(tb);box.appendChild(d);sbKids(box,n);break;
+      case"quote":box.appendChild(sbBlock(n,"sb-quote"));sbKids(box,n);break;
+      case"callout":d=el("div","sb-callout");var t=sbTint(n.co);if(t&&t.bg){d.style.background=t.c+"26";d.style.borderColor=t.c}
+        if(n.ic)d.appendChild(el("span",null,n.ic));var b=el("div");b.style.flex="1";sbRuns(n.r,b);sbKids(b,n);d.appendChild(b);box.appendChild(d);break;
+      case"hr":box.appendChild(el("hr"));break;
+      case"code":d=el("pre",null,n.x);d.style.cssText="overflow-x:auto;background:var(--panel2);padding:10px;border-radius:8px;font-size:13px";box.appendChild(d);break;
+      case"toggle":d=el("details");var sm=el("summary");sbRuns(n.r,sm);d.appendChild(sm);sbKids(d,n);box.appendChild(d);break;
+      case"table":var wrap=el("div","sb-wrap"),tb2=el("table","sb-table");
+        (n.rows||[]).forEach(function(r,ri){var tr=el("tr");r.forEach(function(c,ci){var hd=(n.head&&ri===0)||(n.rowhead&&ci===0);var td=el(hd?"th":"td",hd?"hd":null);sbRuns(c,td);tr.appendChild(td)});tb2.appendChild(tr)});
+        wrap.appendChild(tb2);box.appendChild(wrap);break;
+      case"cols":d=el("div","sb-cols");(n.cols||[]).forEach(function(c){var cc=el("div","sb-col");sbNodes(c.k,cc);d.appendChild(cc)});box.appendChild(d);break;
+      case"group":sbNodes(n.k,box);break;
+      case"page":
+        if(n.locked||!n.id){box.appendChild(el("span","sb-file","\u{1F512} "+n.title+" (private, never read)"))}
+        else{var bt=el("button","btn small sb-page","\u{1F4C4} "+n.title);bt.type="button";bt.onclick=function(){sbOpen(n.id,true)};box.appendChild(bt)}break;
+      case"db":d=el("div","sb-db");d.appendChild(el("h4",null,n.title||"Table"));
+        if(n.error)d.appendChild(el("div","jsub",n.error));
+        else if(n.cols&&n.cols.length){var w2=el("div","sb-wrap");w2.appendChild(table(n.cols,n.rows||[]));d.appendChild(w2);if(n.more)d.appendChild(el("div","jsub","Showing the first rows only."))}
+        box.appendChild(d);break;
+      case"img":d=el("img","sb-img");d.src="/api/img/"+n.img;d.alt="";d.loading="lazy";box.appendChild(d);break;
+      case"file":box.appendChild(el("span","sb-file","\u{1F4CE} "+n.name));break;
+      case"link":d=el("a",null,n.url);if(/^https?:\/\//.test(n.url)){d.href=n.url;d.target="_blank";d.rel="noopener noreferrer"}box.appendChild(el("div","sb-p")).appendChild(d);break;
+    }})}
+function sbOpen(id,push){
+  if(push&&sbNow)sbBack.push(sbNow);sbNow=id;sbDraw();window.scrollTo(0,0)}
+function sbDraw(){
+  var out=$("sb-out"),nav=$("sb-nav");out.textContent="";nav.textContent="";
+  if(!sbDoc||!sbDoc.pages||!Object.keys(sbDoc.pages).length){
+    var d=el("div","empty","Not linked to Notion yet. Open the Connections page and follow the Notion live link steps (about two minutes). Until then this page stays empty.");out.appendChild(d);$("sb-asof").textContent="";return}
+  if(!sbDoc.pages[sbNow])sbNow=sbDoc.root;
+  var pg=sbDoc.pages[sbNow];
+  if(sbBack.length){var bk=el("button","btn small","← Back");bk.type="button";bk.onclick=function(){sbNow=sbBack.pop();sbDraw()};nav.appendChild(bk)}
+  var card=el("div","card");card.appendChild(el("h3","jh",pg.title||"Page"));sbNodes(pg.nodes,card);out.appendChild(card);
+  $("sb-asof").textContent="Copied from Notion "+(sbDoc.at||"")+"."}
+function sbLoad(){
+  return fetch("/api/notion/hub").then(function(r){return r.json()}).then(function(j){sbDoc=j;sbDraw()}).catch(function(){})}
+function sbShow(){sbLoad()}
+$("sb-refresh").onclick=function(){
+  var b=$("sb-refresh");b.disabled=true;b.textContent="Reading Notion...";
+  fetch("/api/notion/refresh",{method:"POST",headers:HDRS,body:"{}"}).then(function(r){return r.json()}).then(function(st){
+    if(st.error)$("sb-asof").textContent=st.error;return sbLoad().then(nsSync)}).catch(function(){}).then(function(){b.disabled=false;b.textContent="Refresh from Notion"})};
+function nlStatus(){
+  fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){
+    var t=$("nl-text"),e=$("nl-err");e.style.display="none";
+    if(!s.connected){
+      t.textContent="Not linked yet. 1) In Notion go to notion.so/profile/integrations, press New integration, name it RiskDesk and tick ONLY Read content. 2) Copy its secret into a plain text file called notion_key.txt in your trader folder, with nothing else in it. 3) Open your Trade Journal page in Notion, press the ... menu, Connections, and add RiskDesk. 4) Restart RiskDesk. After that new journal rows and your pages appear here by themselves. The link can only read: it is not able to change anything in Notion, and it never opens your Thoughts + Emotions page.";
+      $("nl-sync").disabled=true;return}
+    $("nl-sync").disabled=false;
+    t.textContent="Linked, read-only. Journal rows checked "+(s.at||"not yet")+" ("+(s.journal_rows||0)+" rows), pages copied "+(s.hub_at||"not yet")+" ("+(s.hub_pages||0)+" pages). It checks every few minutes while RiskDesk is running.";
+    if(s.error){e.textContent=s.error;e.style.display=""}}).catch(function(){})}
+$("nl-sync").onclick=function(){
+  var b=$("nl-sync");b.disabled=true;b.textContent="Reading Notion...";
+  fetch("/api/notion/refresh",{method:"POST",headers:HDRS,body:"{}"}).then(function(r){return r.json()}).then(function(){nsSync();nlStatus()}).catch(function(){}).then(function(){b.disabled=false;b.textContent="Sync now"})};
+/* merge rule: a Notion row is the same trade as one with its Trade No. on its date. A row you filled in later updates the trade; what you wrote here (notes, screenshot) is kept */
+var NSF=["inst","dir","tag","risk","pl","r","riskPct","zone","strategy","session","partials","bias","acct","skip","unit"],nsAt="";
+function nsSync(){
+  if(dormant||!jReady)return Promise.resolve();
+  return fetch("/api/notion/journal").then(function(r){return r.json()}).then(function(j){
+    if(!j||!j.at||j.at===nsAt)return;nsAt=j.at;
+    var fresh=(j.trades||[]).map(cleanTrade).filter(function(t){return t}),byNo={},have={};
+    trades.forEach(function(t){have[ntKey(t)]=1;if(t.no!==undefined)(byNo[t.no+"|"+t.date]=byNo[t.no+"|"+t.date]||[]).push(t)});
+    var add=[],upd=0;
+    fresh.forEach(function(n){
+      var ex=n.no!==undefined?byNo[n.no+"|"+n.date]:null;
+      if(!ex){if(!have[ntKey(n)])add.push(n);return}
+      var o=ex[0],ch=false;
+      NSF.forEach(function(f){var a=o[f]===undefined?"":String(o[f]),b=n[f]===undefined?"":String(n[f]);if(a!==b){if(n[f]===undefined)delete o[f];else o[f]=n[f];ch=true}});
+      if(!o.acctType&&n.acctType){o.acctType=n.acctType;ch=true}
+      if(!o.notes&&n.notes){o.notes=n.notes;ch=true}
+      if(!o.img&&n.img){o.img=n.img;ch=true}
+      if(ch)upd++});
+    if(!add.length&&!upd)return;
+    if(trades.length+add.length>20000)return;
+    trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
+    jSave();jRender();jStatus("From Notion: "+add.length+" new, "+upd+" updated.")}).catch(function(){})}
+setInterval(function(){if(!document.hidden)nsSync()},60000);setTimeout(nsSync,4000);
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){

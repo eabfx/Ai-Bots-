@@ -182,13 +182,19 @@ def find_image(src, cell):
 def convert(src):
     """-> (trades, report). A trade's "image" is the export path of its screenshot; the server swaps it for a stored name."""
     path, rows = pick_table(src)
+    return convert_table(path, rows, src)
+
+
+def convert_table(path, rows, src=None):
+    """The same conversion for any table whose first row is the column names. Without a source (the live Notion link) there
+    are no screenshots to look up, and each trade carries "row": its position in the table, so the caller can attach them."""
     head = rows[0]
     ix = {k: column(head, *v) for k, v in {
         "date": ("date",), "acct": ("account type", "account"), "bias": ("bias",), "pair": ("pair", "instrument"),
         "session": ("session",), "dir": ("long / short", "long/short", "direction"), "risk": ("risk", "risk %"),
         "wl": ("win / loss", "win/loss", "result"), "rr": ("r/r", "rr", "r:r"), "partials": ("partials",),
         "strategy": ("strategy",), "zone": ("zone",), "setup": ("setup", "setups"), "ss": ("trade ss", "screenshot", "image"),
-        "notes": ("trade breakdown", "breakdown", "notes"), "no": ("trade no.", "trade no", "no.", "#")}.items()}
+        "notes": ("trade breakdown", "breakdown", "notes"), "no": ("trade no.", "trade no", "no.", "#"), "profit": ("profit",)}.items()}
 
     def get(row, key):
         i = ix[key]
@@ -200,7 +206,7 @@ def convert(src):
     def skip(why):
         skipped[why] = skipped.get(why, 0) + 1
 
-    for row in rows[1:]:
+    for ridx, row in enumerate(rows[1:]):
         if not any(c.strip() for c in row):
             continue
         wlt, acct_t = tokens(get(row, "wl")), tokens(get(row, "acct"))
@@ -266,7 +272,12 @@ def convert(src):
         n = num(get(row, "no"))
         if n is not None:
             t["no"] = int(n)
-        cell = get(row, "ss")
+        profit = num(get(row, "profit"))
+        if profit is not None and why == "":
+            t["notes"] = ("Profit %s$%g. " % ("+" if profit >= 0 else "-", abs(profit)) + t["notes"])[:500]
+        if src is None:
+            t["row"] = ridx
+        cell = get(row, "ss") if src is not None else ""
         if cell:
             found = find_image(src, cell)
             if found:
