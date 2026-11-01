@@ -318,6 +318,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .flat{color:var(--flat)}.flowbar i.flat{background:var(--flat);left:calc(50% - 1px);width:2px!important}.hm .px.flat,.hm .t .flat,.hticker em.flat,.hmood b.flat,.mbig.flat{color:var(--flat)}
 .hpanel textarea{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:14px/1.5 var(--sans);resize:vertical}
 #pl-text{min-height:260px}
+.jfact{font-size:14px;line-height:1.5;padding:9px 0;border-bottom:1px solid var(--line)}
+#j-review .jfact:last-of-type{border-bottom:0}
 .ckrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
 .ckrow:last-of-type{border-bottom:0}.ckrow input{width:18px;height:18px;accent-color:var(--up);flex:none}
 .ckrow.done span{color:var(--muted);text-decoration:line-through}
@@ -502,6 +504,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 
 <div class="stats" id="j-stats"></div>
+
+<div class="card" id="j-review"></div>
 
 <div class="jgrid">
 <div class="card" id="j-score"></div>
@@ -929,6 +933,46 @@ function jGroups(list){
   if(unset)box.appendChild(el("div","jsub",unset+" trade"+(unset===1?"":"s")+" without this set are left out."))}
 var SESSION_NAMES=["Asia (00:00-07:00)","London (07:00-13:00)","New York (13:00-21:00)","Late (21:00-24:00)"];
 function jSession(time){var h=parseInt(time.slice(0,2),10);return h<7?SESSION_NAMES[0]:h<13?SESSION_NAMES[1]:h<21?SESSION_NAMES[2]:SESSION_NAMES[3]}
+/* weekly review: Monday to Sunday, worked out from the trades with fixed rules (no AI) */
+var jWk=0;
+function dshort(ms){var d=new Date(ms);return WDAYS[wdOf(ms)]+" "+d.getUTCDate()+" "+MONTHS[d.getUTCMonth()].slice(0,3)}
+function jReview(){
+  var box=$("j-review");box.textContent="";
+  var start=dparse(today())-wdOf(dparse(today()))*DAY-jWk*7*DAY,end=start+6*DAY;
+  function inWeek(s,e){return trades.filter(function(t){var d=dparse(t.date);return d!==null&&d>=s&&d<=e})}
+  var list=inWeek(start,end),st=jStats(list),prev=jStats(inWeek(start-7*DAY,end-7*DAY));
+  var head=el("div","jcalhead"),pv=el("button","btn ghost small","\u2039"),nx=el("button","btn ghost small","\u203a");
+  pv.type=nx.type="button";pv.setAttribute("aria-label","Earlier week");nx.setAttribute("aria-label","Later week");nx.disabled=jWk===0;
+  pv.onclick=function(){jWk++;jReview()};nx.onclick=function(){if(jWk>0){jWk--;jReview()}};
+  var mid=el("div");mid.appendChild(el("h3","jh","Weekly review"));mid.appendChild(el("div","jsub",dshort(start)+" to "+dshort(end)+(jWk===0?" (this week)":"")));
+  head.appendChild(pv);head.appendChild(mid);head.appendChild(nx);box.appendChild(head);
+  if(!st.n){box.appendChild(el("div","empty","No trades logged in this week."));return}
+  var sum=el("div","jtotal "+cls(st.net),signed(st.net));sum.style.fontSize="30px";box.appendChild(sum);
+  box.appendChild(el("div","jsub",pl(st.n,"trade")+", "+st.w+"W / "+st.l+"L, "+fmt(st.winrate,0)+"% won"+(st.avgR===null?"":", "+fmt(st.avgR,2)+"R average")+
+    (prev.n?". Week before: "+signed(prev.net)+" ("+signed(st.net-prev.net)+" difference).":".")));
+  var days={};list.forEach(function(t){(days[t.date]=days[t.date]||[]).push(t)});
+  var dk=Object.keys(days).sort(),dn=dk.map(function(k){return{k:k,n:days[k].length,net:jStats(days[k]).net}});
+  var facts=[];
+  if(dn.length>1){var b=dn.slice().sort(function(a,c){return c.net-a.net})[0],w=dn.slice().sort(function(a,c){return a.net-c.net})[0];
+    facts.push("Best day "+dshort(dparse(b.k))+" "+signed(b.net)+", worst day "+dshort(dparse(w.k))+" "+signed(w.net)+".")}
+  var gi={};list.forEach(function(t){(gi[t.inst||"-"]=gi[t.inst||"-"]||[]).push(t)});
+  var ik=Object.keys(gi).map(function(k){return{k:k,net:jStats(gi[k]).net,n:gi[k].length}}).sort(function(a,c){return c.net-a.net});
+  if(ik.length>1)facts.push("Best market "+ik[0].k+" "+signed(ik[0].net)+", weakest "+ik[ik.length-1].k+" "+signed(ik[ik.length-1].net)+".");
+  var fo=jStats(list.filter(function(t){return t.plan==="followed"})),de=jStats(list.filter(function(t){return t.plan==="deviated"}));
+  if(fo.n&&de.n)facts.push("Plan followed "+signed(fo.net)+" over "+pl(fo.n,"trade")+"; deviated "+signed(de.net)+" over "+pl(de.n,"trade")+".");
+  facts.forEach(function(s){var p=el("div","jfact",s);box.appendChild(p)});
+  var fix=[];
+  if(de.n&&de.net<0)fix.push("Trades where you deviated from the plan lost "+money(-de.net)+". Following the plan is the first thing to protect.");
+  var heavy=dn.filter(function(d){return d.n>=3&&d.net<0}).sort(function(a,c){return a.net-c.net})[0];
+  if(heavy)fix.push(dshort(dparse(heavy.k))+" had "+heavy.n+" trades and lost "+money(-heavy.net)+". Check whether you kept trading after the day had gone wrong; a stop-after-losses rule can cap this.");
+  if(st.avgW!==null&&st.avgL!==null&&-st.avgL>st.avgW)fix.push("Your average loss ("+money(-st.avgL)+") is bigger than your average win ("+money(st.avgW)+"). Look at whether stops are moved or winners cut short.");
+  var ses={};list.forEach(function(t){if(t.time)(ses[jSession(t.time)]=ses[jSession(t.time)]||[]).push(t)});
+  var sk=Object.keys(ses).map(function(k){return{k:k,net:jStats(ses[k]).net,n:ses[k].length}}).filter(function(s){return s.n>=2&&s.net<0}).sort(function(a,c){return a.net-c.net})[0];
+  if(sk)fix.push("Your "+sk.k.split(" (")[0]+" session trades lost "+money(-sk.net)+" over "+pl(sk.n,"trade")+". Check whether that session suits your setup.");
+  var h=el("h3","jh","Check next");h.style.marginTop="14px";box.appendChild(h);
+  if(!fix.length)box.appendChild(el("div","jsub","Nothing stands out this week. Keep logging so the review has more to work with."));
+  fix.slice(0,3).forEach(function(s){var p=el("div","jfact",s);box.appendChild(p)});
+  box.appendChild(el("div","jsub","Worked out from your journal with fixed rules. It describes the week; it does not predict anything."))}
 function jRender(){
   var list=jView(),st=jStats(list);
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
@@ -946,7 +990,7 @@ function jRender(){
   var box=$("j-stats");box.textContent="";
   cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
     if(s[2])c.appendChild(el("div","jsub",s[2]));box.appendChild(c)});
-  jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jGroups(list);
+  jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jGroups(list);
   var tb=$("j-rows");tb.textContent="";
   $("j-empty").style.display=list.length?"none":"block";
   $("j-empty").textContent=trades.length?"No trades in this period.":"No trades logged yet. Log your first one above.";

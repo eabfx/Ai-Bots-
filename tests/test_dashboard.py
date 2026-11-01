@@ -77,6 +77,13 @@ class Basics(Server):
         start = body.index("function planRender")
         self.assertNotIn("innerHTML", body[start:body.index("/* ---------------- chat box")])
 
+    def test_the_journal_has_a_weekly_review_built_without_innerhtml(self):
+        _, _, body = self.get("/")
+        for words in ('id="j-review"', "function jReview", "Check next", "does not predict anything"):
+            self.assertIn(words, body)
+        start = body.index("function jReview")
+        self.assertNotIn("innerHTML", body[start:body.index("function jRender")])
+
     def test_outside_text_on_home_is_never_put_in_through_innerhtml(self):
         _, _, body = self.get("/")
         start = body.index("function homeRender")
