@@ -246,6 +246,16 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .t-det{padding:10px 8px 14px 64px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);background:var(--panel2)}
 .t-det .kv{display:flex;gap:6px 16px;flex-wrap:wrap;margin-bottom:8px;font:500 12px var(--mono)}.t-det .kv span b{color:var(--text);font-weight:600}
 .t-det p{margin:0 0 8px;color:var(--text);white-space:pre-wrap}
+.ac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}
+.ac-t{appearance:none;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:inherit;font:inherit;cursor:pointer}
+.ac-t:hover{border-color:var(--hover)}.ac-t.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.ac-t .n{font:600 12px var(--mono);color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ac-t .v{font:600 20px var(--mono);margin:6px 0 4px}.ac-t .v.up{color:var(--up)}.ac-t .v.down{color:var(--down)}
+.ac-t .m{font:500 11.5px var(--mono);color:var(--muted)}
+.ac-t .b{height:4px;border-radius:99px;background:var(--line);margin-top:9px;overflow:hidden}.ac-t .b i{display:block;height:100%;background:var(--muted)}
+.ac-t.empty{border-style:dashed}
+.ac-new[hidden]{display:none}
+.ac-new{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ac-new input{flex:1 1 200px;background:var(--input);border:1px solid var(--line);border-radius:99px;color:var(--text);padding:8px 14px;font:13px var(--sans,inherit)}
 .t-gal .h-tr{flex:none;width:auto}
 .t-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:4px}
 .hcard{padding:20px 22px 22px}
@@ -640,10 +650,14 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="h-lw" id="h-lw" hidden></div>
 <div class="h-main"><svg class="h-spark" id="h-spark" viewBox="0 0 600 140" preserveAspectRatio="none" aria-hidden="true"></svg>
 <div class="eyebrow" id="h-eyebrow">Net P&amp;L</div><div class="h-num" id="h-num">-</div><div class="h-sub" id="h-sub"></div></div>
-<div class="h-accts" id="h-accts"></div>
+<div class="h-accts" id="h-accts" hidden></div>
 <div class="eyebrow h-sec">Performance</div><div class="stats" id="h-stats"></div>
 <div class="eyebrow h-sec">Recent trades <span id="h-lastn"></span></div><div class="h-strip" id="h-strip"></div>
 </div>
+
+<div class="card" id="j-acctcard"><div class="t-head"><h3 class="jh" style="margin:0">Accounts</h3><button class="btn ghost small" id="ac-add" type="button">Add account</button></div>
+<div class="ac-new" id="ac-new" hidden><input type="text" id="ac-name" placeholder="Account name, e.g. Funded 100k" maxlength="24" aria-label="New account name"><button class="btn small" id="ac-save" type="button">Add</button><button class="btn ghost small" id="ac-cancel" type="button">Cancel</button></div>
+<div class="ac-grid" id="j-accts"></div><div class="jsub" id="ac-note"></div></div>
 
 <div hidden><span id="j-rangename"></span><div id="j-total"></div><div id="j-totsub"></div></div>
 <div class="stats" id="j-stats" hidden></div>
@@ -675,6 +689,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="j-dir">Direction</label><select id="j-dir"><option value="long">Long</option><option value="short">Short</option></select></div>
 <div><label for="j-tag">Setup / strategy tag</label><input type="text" id="j-tag" placeholder="e.g. 30m demand, London" maxlength="30"></div>
 </div>
+<div class="frow two"><div><label for="j-at">Account (optional)</label><input type="text" id="j-at" list="j-atlist" placeholder="e.g. Funded Account" maxlength="24" autocomplete="off"><datalist id="j-atlist"></datalist></div></div>
 <div class="frow two">
 <div><label for="j-risk">Risk on the trade</label><input type="number" id="j-risk" placeholder="100" min="0" step="any"></div>
 <div><label for="j-pl">Result P/L (losses negative)</label><input type="number" id="j-pl" placeholder="-100 or 250" step="any"></div>
@@ -792,7 +807,7 @@ function showTab(name){
   var bs=$("nav").querySelectorAll("button");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
-  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jShown=30;jRender()}
+  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
   if(name==="alerts")alRender();if(name==="connect")connRender();
   dockChat(name==="home");
@@ -1001,7 +1016,10 @@ function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
 var jAcct="live",UNITPCT=false;           /* which set the Journal page is showing: live trades on Journal, backtests on Backtest */
 function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"&&!t.skip})}          /* a trade with no account set counts as live */
-function jPool(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"&&!t.skip}):liveOnly()}
+function jBase(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"&&!t.skip}):liveOnly()}
+var jAT="";                                                                    /* the account chosen in the accounts panel, "" = all of them */
+function atName(t){return t.acctType||(t.acct==="backtest"?"Backtest":"Live")}
+function jPool(){return jAT?jBase().filter(function(t){return atName(t)===jAT}):jBase()}
 var SKIPNAME={none:"No trade",invalid:"Invalid",test:"Test, no result"};
 function jSkipped(){return trades.filter(function(t){return t.skip&&(jAcct==="backtest"?t.acct==="backtest":t.acct!=="backtest")})}
 function setUnit(list){UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"})}
@@ -1210,11 +1228,6 @@ function jHero(){
       sub.appendChild(document.createTextNode(" - "));
       var v=el("span",cls(diff),(rel===null?signed(diff):(rel>=0?"+":"")+fmt(rel,1)+"%")+" vs previous "+R.name);sub.appendChild(v)}}
   hSpark(list);
-  /* accounts */
-  var ac=$("h-accts");ac.textContent="";var by={};
-  list.forEach(function(t){var k=t.acctType||(bt?"Backtest":"Live");(by[k]=by[k]||[]).push(t)});
-  Object.keys(by).sort(function(a,b){return by[b].length-by[a].length}).forEach(function(k){var s=jStats(by[k]),c=el("span","h-chip");
-    c.appendChild(document.createTextNode(k+" "));c.appendChild(el("b",cls(s.net),signed(s.net)));c.appendChild(document.createTextNode("  "+s.n));ac.appendChild(c)});
   /* last week */
   var lw=$("h-lw");lw.hidden=true;lw.textContent="";
   var now=dparse(today()),thisMon=now-wdOf(now)*DAY,wk=hBetween(pool,thisMon-7*DAY,thisMon-DAY);
@@ -1241,6 +1254,31 @@ function jHero(){
     bd.appendChild(el("div","dt",t.date+(t.tag?" - "+t.tag:"")));b.appendChild(bd);b.onclick=function(){openLb(t)};strip.appendChild(b)})}
 Array.prototype.forEach.call($("h-per").children,function(b){b.onclick=function(){hPer=b.getAttribute("data-p");hOff=0;hAuto=true;jHero()}});
 $("h-prev").onclick=function(){hOff++;hAuto=false;jHero()};$("h-next").onclick=function(){if(hOff>0){hOff--;hAuto=false;jHero()}};
+/* accounts panel: every account's own result, click one to look at only that account */
+var ACKEY="zd.accts";
+function acExtra(){try{var a=JSON.parse(jget(ACKEY)||"[]");return Array.isArray(a)?a.filter(function(s){return typeof s==="string"}).slice(0,12):[]}catch(e){return[]}}
+function acAdd(name){name=String(name||"").trim().slice(0,24);if(!name)return;var a=acExtra();if(a.indexOf(name)<0){a.push(name);jset(ACKEY,JSON.stringify(a))}}
+function jAccts(){
+  var box=$("j-accts");box.textContent="";var base=jBase(),by={},names=[];
+  base.forEach(function(t){var k=atName(t);if(!by[k]){by[k]=[];names.push(k)}by[k].push(t)});
+  acExtra().forEach(function(k){if(!by[k]){by[k]=[];names.push(k)}});
+  names.sort(function(a,b){return by[b].length-by[a].length||(a<b?-1:1)});
+  if(jAT&&!by[jAT])jAT="";
+  var tot=jStats(base),most=Math.max(1,base.length);
+  function tile(label,list,on,key){
+    var s=jStats(list),b=el("button","ac-t"+(on?" on":"")+(list.length?"":" empty"));b.type="button";b.setAttribute("aria-pressed",on?"true":"false");
+    var n=el("div","n");n.appendChild(el("span",null,label));n.appendChild(el("span",null,pl(s.n,"trade")));b.appendChild(n);
+    UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"});
+    b.appendChild(el("div","v "+(s.n?cls(s.net):""),s.n?signed(s.net):"No trades yet"));
+    b.appendChild(el("div","m",s.n?s.w+"W "+s.l+"L - "+Math.round(s.w/Math.max(1,s.w+s.l)*100)+"% wins":"Log one with this account"));
+    var bar=el("div","b"),i=el("i");i.style.width=Math.round(list.length/most*100)+"%";bar.appendChild(i);b.appendChild(bar);
+    b.onclick=function(){jAT=on?"":key;jShown=30;jRender()};return b}
+  if(names.length>1||jAT)box.appendChild(tile("All accounts",base,!jAT,""));
+  names.forEach(function(k){box.appendChild(tile(k,by[k],jAT===k,k))});
+  if(!names.length){box.appendChild(el("div","jsub","No accounts yet. Log a trade or add one."))}
+  $("ac-note").textContent=jAT?"Showing only "+jAT+". Click it again to see every account.":"";
+  var dl=$("j-atlist");dl.textContent="";names.forEach(function(k){var o=el("option");o.value=k;dl.appendChild(o)});
+  if(jAT&&!$("j-at").value)$("j-at").value=jAT}
 /* trades: grouped by day, with a day total, a day filter, search, and a gallery layout */
 var tView="list",tDay="all",tPick="",tQ="",tOpen={};
 function tid(t){return t.date+"|"+(t.time||"")+"|"+t.inst+"|"+t.dir+"|"+t.pl+"|"+(t.no||"")}
@@ -1292,7 +1330,7 @@ function tRender(list){
     if(tDay!=="pick"||tPick!==dk){var v=el("button","v","View day \u203a");v.type="button";v.onclick=function(){tDay="pick";tPick=dk;jShown=30;jRender()};r.appendChild(v)}
     h.appendChild(r);sec.appendChild(h);ts.forEach(function(t){tRow(t,sec)});box.appendChild(sec)})}
 function jRender(){
-  var list=jView(),st=jStats(list);jHero();setUnit(list);
+  var list=jView(),st=jStats(list);jHero();jAccts();setUnit(list);
   var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
   $("j-sub").textContent=bt?"Your backtest trades, kept apart from your live journal. They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
   $("coach").hidden=bt;
@@ -1325,6 +1363,10 @@ Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function()
 $("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}jCal()};
 $("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
 $("j-more").onclick=function(){jShown+=50;jRender()};
+$("ac-add").onclick=function(){$("ac-new").hidden=false;$("ac-name").focus()};
+$("ac-cancel").onclick=function(){$("ac-new").hidden=true;$("ac-name").value=""};
+function acSave(){var n=$("ac-name").value.trim();if(!n)return;acAdd(n);$("ac-name").value="";$("ac-new").hidden=true;jAT=n;$("j-at").value=n;jRender()}
+$("ac-save").onclick=acSave;$("ac-name").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();acSave()}};
 Array.prototype.forEach.call($("t-view").children,function(b){b.onclick=function(){tView=b.getAttribute("data-v");jShown=30;jRender()}});
 Array.prototype.forEach.call($("t-day").children,function(b){b.onclick=function(){tDay=b.getAttribute("data-d");if(tDay==="pick"&&!tPick)tPick=today();jShown=30;jRender()}});
 $("t-pick").onchange=function(){tPick=this.value;jShown=30;jRender()};
@@ -1465,7 +1507,7 @@ $("j-add").onclick=function(){
   var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
     tag:$("j-tag").value.trim(),risk:risk,pl:plv,notes:$("j-notes").value.trim(),
     time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value,
-    acct:jAcct,bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
+    acct:jAcct,acctType:$("j-at").value.trim(),bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
   trades.unshift(t);jSave();jRender();
   if(AL.check&&t.acct!=="backtest"){var ckr=ckRules(),ckd=ckDone(),ckn=ckr.filter(function(r,i){return ckd.indexOf(i)>=0}).length;if(ckn<ckr.length)alFire("Checklist not complete","You logged a trade with "+ckn+" of "+ckr.length+" checklist items ticked.")}
   ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-rp","j-zone","j-bias"].forEach(function(i){$(i).value=""});

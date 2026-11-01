@@ -444,7 +444,7 @@ class KeptButNotCounted(unittest.TestCase):
     def test_the_pnl_hero_has_period_navigation_accounts_and_a_recent_trades_strip(self):
         for s in ('id="h-card"', 'id="h-per"', 'id="h-strip"', 'id="h-accts"', "function jHero()", "function hCount(", "hAuto", "vs previous "):
             self.assertIn(s, self.PAGE)
-        self.assertIn("jHero();setUnit(list);", self.PAGE)                    # the hero runs first, then the sections below use the page's unit
+        self.assertIn("jHero();jAccts();setUnit(list);", self.PAGE)                    # the hero runs first, then the sections below use the page's unit
         self.assertIn("var at=String(t.acctType", self.PAGE)                    # the account type survives load and save
 
     def test_a_second_import_adds_screenshots_to_trades_already_there(self):
@@ -454,6 +454,11 @@ class KeptButNotCounted(unittest.TestCase):
         for s in ('id="j-days"', 'id="t-q"', 'id="t-day"', 'id="t-view"', 'id="t-pick"', "function tRender(", "function tFilter(", "function tGallery(", "View day"):
             self.assertIn(s, self.PAGE)
         self.assertNotIn('id="j-rows"', self.PAGE)                              # the flat table is gone
+
+    def test_accounts_panel_filters_the_whole_journal_by_account(self):
+        for s in ('id="j-accts"', 'id="ac-add"', 'id="j-at"', "function jAccts()", "function jBase()", "function atName(", "acctType:$(\"j-at\").value.trim()"):
+            self.assertIn(s, self.PAGE)
+        self.assertIn("jAT?jBase().filter(", self.PAGE)                          # the hero, stats and trades all read the filtered pool
 
 
 class AllowedHosts(unittest.TestCase):
