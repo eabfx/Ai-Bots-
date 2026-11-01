@@ -183,6 +183,9 @@ class Handler(BaseHTTPRequestHandler):
         if not self.host_ok():
             return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
         url = urlparse(self.path)
+        if url.path in APP_FILES:                       # what the browser needs to install RiskDesk as an app: the icon, not your data
+            data, kind = APP_FILES[url.path]
+            return self.send_bytes(200, data, kind, "no-store" if url.path == "/sw.js" else "public, max-age=3600")
         if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
             return
         if url.path == "/":
@@ -267,6 +270,21 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
 
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html"), encoding="utf-8") as _fh:
     PAGE = _fh.read()
+
+
+def _app_files():
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    kinds = {"manifest.webmanifest": "application/manifest+json", "sw.js": "application/javascript; charset=utf-8",
+             "icon-192.png": "image/png", "icon-512.png": "image/png", "icon-maskable-512.png": "image/png",
+             "apple-touch-icon.png": "image/png"}
+    out = {}
+    for name, kind in kinds.items():
+        with open(os.path.join(here, name), "rb") as fh:
+            out["/" + name] = (fh.read(), kind)
+    return out
+
+
+APP_FILES = _app_files()
 
 
 def already_running(port):

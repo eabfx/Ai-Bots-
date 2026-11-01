@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RiskDesk">
 <title>RiskDesk.ai</title>
 <style>
 :root{
@@ -802,6 +808,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <script>
 (function(){
 "use strict";
+/* lets the browser offer "Install app"; the worker caches nothing */
+try{if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){})}catch(e){}
 /* on a hosted copy, a request that comes back "sign in required" sends the browser to the Google sign-in */
 var _fetch=window.fetch;window.fetch=function(){return _fetch.apply(this,arguments).then(function(r){if(r.status===401)location.href="/auth/login";return r})};
 var timer=null,busy=false,tabNow="home";

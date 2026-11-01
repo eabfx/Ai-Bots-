@@ -109,6 +109,28 @@ cat > /etc/cron.d/riskdesk-backup <<CRON
 30 3 * * * root tar -czf /var/backups/riskdesk/journal-\$(date +\%F).tgz -C $TRADER journal && find /var/backups/riskdesk -name 'journal-*.tgz' -mtime +14 -delete
 CRON
 
+# the newest version from GitHub every hour, with a way back if it does not start
+cat > /etc/systemd/system/riskdesk-update.service <<UNIT
+[Unit]
+Description=Update RiskDesk from GitHub
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP/riskdesk/deploy/update-server.sh
+UNIT
+cat > /etc/systemd/system/riskdesk-update.timer <<UNIT
+[Unit]
+Description=Update RiskDesk every hour
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+
 # only ssh and the web are reachable from outside
 ufw allow OpenSSH
 ufw allow 80/tcp
@@ -118,6 +140,7 @@ ufw --force enable
 systemctl daemon-reload
 systemctl enable --now riskdesk
 systemctl restart riskdesk
+systemctl enable --now riskdesk-update.timer
 systemctl enable --now caddy
 systemctl reload caddy || systemctl restart caddy
 

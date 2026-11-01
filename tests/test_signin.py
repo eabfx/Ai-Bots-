@@ -163,7 +163,7 @@ class HostedServer(unittest.TestCase):
             body = json.dumps(body or {})
         c.request(method, path, body=body, headers=h)
         r = c.getresponse()
-        data = r.read().decode("utf-8")
+        data = r.read().decode("utf-8", "replace")
         c.close()
         return r.status, r, data
 
@@ -206,6 +206,11 @@ class HostedServer(unittest.TestCase):
         self.assertEqual(st, 403)
         self.assertIn("not on the list", body)
         self.assertIsNone(r.getheader("Set-Cookie"))
+
+    def test_the_app_install_files_are_open_but_nothing_with_data_is(self):
+        for path in ("/manifest.webmanifest", "/sw.js", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png"):
+            self.assertEqual(self.req("GET", path)[0], 200, path)
+        self.assertEqual(self.req("GET", "/manifest.webmanifest.bak")[0], 302)
 
     def test_a_forged_session_cookie_is_refused(self):
         forged = signin.SESSION_COOKIE + "=" + signin.sign(b"guess" * 8, {"e": "me@gmail.com", "x": 9999999999})
@@ -251,6 +256,14 @@ class DeployFiles(unittest.TestCase):
                      "reverse_proxy 127.0.0.1:8765", 'cfg["auth"]', "journal-"):
             self.assertIn(part, s)
         self.assertNotRegex(s, r"GOCSPX|AIza|sk-ant|\.apps\.googleusercontent\.com")      # no real secret or client id pasted in
+
+    def test_the_server_updates_itself_hourly_and_can_go_back(self):
+        s = self.read("setup-server.sh")
+        for part in ("riskdesk-update.timer", "OnCalendar=hourly", "update-server.sh"):
+            self.assertIn(part, s)
+        u = self.read("update-server.sh")
+        for part in ("merge --ff-only", "healthy", "git reset --hard", "systemctl restart riskdesk"):
+            self.assertIn(part, u)
 
     def test_the_copy_script_does_not_take_a_password(self):
         s = self.read("copy-journal-to-server.ps1")

@@ -88,3 +88,12 @@ Get newer versions with `bash /opt/riskdesk/riskdesk/deploy/update-server.sh`. O
 `auth.emails` can get in; every page and every data route needs the sign-in cookie, and it is signed so it cannot be
 forged. The Google secret, your AI keys and the journal live in `/opt/riskdesk/trader`, which is never in git.
 The journal on the server and the one on your PC are separate copies: they do not sync.
+
+### Install it as an app, and updates
+
+Open the https address in Chrome, Edge or Safari and use **Install app** (on a phone: Share, then **Add to Home Screen**).
+RiskDesk then opens in its own window with its own icon. It works the same on your PC at http://127.0.0.1:8765.
+The app keeps no copy of your data on the device: your journal stays on the server (or PC) it came from.
+
+The server checks GitHub every hour. When there is a newer version it installs it and restarts RiskDesk, and if the new
+version does not come back healthy it goes back to the one that was running. Reload the page to get the new version.
