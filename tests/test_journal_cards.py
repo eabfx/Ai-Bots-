@@ -23,3 +23,13 @@ class TradeCards(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TileWallAndRing(unittest.TestCase):
+    def test_gallery_has_three_tile_sizes_and_remembers_the_choice(self):
+        for needle in ('id="t-size"', 'data-s="sm"', 'data-s="lg"', '"zd.gsize"', '.t-gal.sm{', 'el("div","t-gal "+tSize)'):
+            self.assertIn(needle, PAGE)
+
+    def test_edge_score_is_a_ring(self):
+        for needle in ('"jring ', "stroke-dashoffset", '"EDGE"'):
+            self.assertIn(needle, PAGE)

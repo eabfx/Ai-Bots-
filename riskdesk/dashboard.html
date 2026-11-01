@@ -293,6 +293,14 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .ac-new{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ac-new input{flex:1 1 200px;background:var(--input);border:1px solid var(--line);border-radius:99px;color:var(--text);padding:8px 14px;font:13px var(--sans,inherit)}
 .t-gal .h-tr{flex:none;width:auto}
 .t-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:4px}
+.t-gal.sm{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px}
+.t-gal.lg{grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px}
+.t-gal.sm .h-tr{border-radius:11px}
+.t-gal.sm .chip{font-size:10.5px;padding:2px 7px}.t-gal.sm .chip.pl{font-size:11.5px;top:6px;left:6px;bottom:auto}.t-gal.sm .chip.dir{top:6px;right:6px;font-size:9.5px}.t-gal.sm .chip.rr{bottom:6px;left:6px;font-size:10px}
+.t-gal.sm .bd{padding:6px 9px 8px}.t-gal.sm .nm{font-size:12px}.t-gal.sm .nm span{display:none}.t-gal.sm .dt{font-size:10.5px;margin-top:1px}
+.t-gal.sm .ph{font-size:11px}.t-gal.sm .ph small{display:none}
+.t-gal.lg .chip.pl{font-size:17px;padding:4px 13px}
+#t-size[hidden]{display:none}
 .hcard{padding:20px 22px 22px}
 .h-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .h-greet{font:600 20px var(--sans,inherit);letter-spacing:-.01em}
@@ -346,6 +354,11 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .jgrid>.card{margin-bottom:0;min-width:0}
 .jscoretop{display:flex;align-items:center;gap:16px;margin-bottom:10px}
 .jscore{font:600 46px var(--mono);letter-spacing:-.02em;line-height:1}
+.jring{width:112px;height:112px;flex:none;position:relative}.jring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.jring circle{fill:none;stroke-width:8;stroke-linecap:round}.jring .tr{stroke:var(--line)}.jring .pg{stroke:var(--text);transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
+.jring.up .pg{stroke:var(--up)}.jring.down .pg{stroke:var(--down)}
+.jring b{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:600 34px var(--mono);letter-spacing:-.02em;line-height:1}
+.jring b small{font:600 9.5px var(--mono);letter-spacing:.12em;color:var(--muted);margin-top:4px}
 .jrow{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;padding:6px 0;font-size:13px}
 .jrow .nm small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
 .jv{font:600 12.5px var(--mono);text-align:right;white-space:nowrap}
@@ -793,7 +806,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 
 <div class="card" id="j-trades">
 <div class="t-head"><h3 class="jh" style="margin:0">Trades</h3>
-<div class="t-ctl"><div class="seg" id="t-view" role="group" aria-label="Layout"><button type="button" data-v="list">List</button><button type="button" data-v="gallery">Gallery</button></div></div></div>
+<div class="t-ctl"><div class="seg" id="t-size" role="group" aria-label="Tile size" hidden><button type="button" data-s="sm">Small</button><button type="button" data-s="md">Medium</button><button type="button" data-s="lg">Large</button></div><div class="seg" id="t-view" role="group" aria-label="Layout"><button type="button" data-v="list">List</button><button type="button" data-v="gallery">Gallery</button></div></div></div>
 <div class="t-bar"><input type="search" id="t-q" placeholder="Search pair, setup, zone, notes" aria-label="Search trades" maxlength="60">
 <div class="seg" id="t-day" role="group" aria-label="Day"><button type="button" data-d="all">All days</button><button type="button" data-d="today">Today</button><button type="button" data-d="yesterday">Yesterday</button><button type="button" data-d="pick">Pick a day</button></div>
 <input type="date" id="t-pick" aria-label="Choose a day" hidden></div>
@@ -1144,7 +1157,12 @@ function jScoreCard(st,list){
   if(st.planned>=3)parts.push(["Discipline",st.followed/st.planned*100,st.followed+" of "+st.planned,"share of trades where you followed the plan"]);
   if(!parts.length||st.n<5){box.appendChild(el("div","empty",(st.n?"Only "+pl(st.n,"trade")+" in this period. ":"")+"The score needs at least 5 trades, otherwise it says more than the data can."));return}
   var score=Math.round(parts.reduce(function(a,p){return a+p[1]},0)/parts.length),weak=parts.slice().sort(function(a,b){return a[1]-b[1]})[0];
-  var top=el("div","jscoretop");top.appendChild(el("div","jscore",String(score)));
+  var top=el("div","jscoretop"),ring=el("div","jring "+(score>=65?"up":score<40?"down":"")),ns="http://www.w3.org/2000/svg",sv=document.createElementNS(ns,"svg");
+  sv.setAttribute("viewBox","0 0 100 100");sv.setAttribute("aria-hidden","true");
+  function rc(c){var k=document.createElementNS(ns,"circle");k.setAttribute("cx",50);k.setAttribute("cy",50);k.setAttribute("r",42);k.setAttribute("class",c);sv.appendChild(k);return k}
+  rc("tr");var pg=rc("pg"),CIRC=2*Math.PI*42;pg.setAttribute("stroke-dasharray",CIRC.toFixed(1));pg.setAttribute("stroke-dashoffset",CIRC.toFixed(1));
+  setTimeout(function(){pg.setAttribute("stroke-dashoffset",(CIRC*(1-score/100)).toFixed(1))},40);
+  ring.appendChild(sv);var rb=el("b",null,String(score));rb.appendChild(el("small",null,"EDGE"));ring.appendChild(rb);ring.setAttribute("role","img");ring.setAttribute("aria-label","Edge score "+score+" out of 100");top.appendChild(ring);
   var side=el("div",null);side.appendChild(el("div","jsub","out of 100, from "+parts.length+" parts"));
   side.appendChild(el("div","jsub","Weakest part: "+weak[0]));top.appendChild(side);box.appendChild(top);
   parts.forEach(function(p){
@@ -1157,7 +1175,7 @@ function jCurve(list){
   if(ch.length<2){box.appendChild(el("div","empty","Log at least two trades to draw the curve."));return}
   var pts=[0],s=0,peak=0,dd=0;
   ch.forEach(function(t){s+=t.pl;pts.push(s);if(s>peak)peak=s;if(peak-s>dd)dd=peak-s});
-  var lo=Math.min.apply(null,pts),hi=Math.max.apply(null,pts),span=(hi-lo)||1,W=600,H=170;
+  var lo=Math.min.apply(null,pts),hi=Math.max.apply(null,pts),span=(hi-lo)||1,W=600,H=290;
   function X(i){return i/(pts.length-1)*W}function Y(v){return H-8-(v-lo)/span*(H-16)}
   var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
   svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("class","jcurve "+cls(s));svg.setAttribute("role","img");
@@ -1362,7 +1380,8 @@ function jAccts(){
   var dl=$("j-atlist");dl.textContent="";names.forEach(function(k){var o=el("option");o.value=k;dl.appendChild(o)});
   if(jAT&&!$("j-at").value)$("j-at").value=jAT}
 /* trades: grouped by day, with a day total, a day filter, search, and a gallery layout */
-var tView="list",tDay="all",tPick="",tQ="",tOpen={},tShown=[];
+var tView="list",tDay="all",tPick="",tQ="",tOpen={},tShown=[],tSize=jget("zd.gsize")||"sm";
+if(["sm","md","lg"].indexOf(tSize)<0)tSize="sm";
 function tid(t){return t.date+"|"+(t.time||"")+"|"+t.inst+"|"+t.dir+"|"+t.pl+"|"+(t.no||"")}
 function ymd(ms){var d=new Date(ms);return d.getUTCFullYear()+"-"+("0"+(d.getUTCMonth()+1)).slice(-2)+"-"+("0"+d.getUTCDate()).slice(-2)}
 function tFilter(list){
@@ -1404,10 +1423,11 @@ function tCard(t,list){
   bd.appendChild(el("div","dt",t.date+(t.time?" "+t.time:"")+(t.acctType?" - "+t.acctType:"")));b.appendChild(bd);
   b.onclick=function(){openLb(t,list)};return b}
 function tGallery(list,box){
-  var g=el("div","t-gal");list.forEach(function(t){g.appendChild(tCard(t,tShown))});box.appendChild(g)}
+  var g=el("div","t-gal "+tSize);list.forEach(function(t){g.appendChild(tCard(t,tShown))});box.appendChild(g)}
 function tRender(list){
   var box=$("j-days");box.textContent="";var shown=tFilter(list),all=jChron(shown).reverse();tShown=all;
   Array.prototype.forEach.call($("t-view").children,function(b){b.className=b.getAttribute("data-v")===tView?"on":""});
+  $("t-size").hidden=tView!=="gallery";Array.prototype.forEach.call($("t-size").children,function(b){b.className=b.getAttribute("data-s")===tSize?"on":""});
   Array.prototype.forEach.call($("t-day").children,function(b){b.className=b.getAttribute("data-d")===tDay?"on":""});
   $("t-pick").hidden=tDay!=="pick";$("t-pick").value=tPick;
   $("j-empty").style.display=all.length?"none":"block";
@@ -1461,6 +1481,7 @@ $("ac-cancel").onclick=function(){$("ac-new").hidden=true;$("ac-name").value=""}
 function acSave(){var n=$("ac-name").value.trim();if(!n)return;acAdd(n);$("ac-name").value="";$("ac-new").hidden=true;jAT=n;$("j-at").value=n;jRender()}
 $("ac-save").onclick=acSave;$("ac-name").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();acSave()}};
 Array.prototype.forEach.call($("t-view").children,function(b){b.onclick=function(){tView=b.getAttribute("data-v");jShown=30;jRender()}});
+Array.prototype.forEach.call($("t-size").children,function(b){b.onclick=function(){tSize=b.getAttribute("data-s");jset("zd.gsize",tSize);jRender()}});
 Array.prototype.forEach.call($("t-day").children,function(b){b.onclick=function(){tDay=b.getAttribute("data-d");if(tDay==="pick"&&!tPick)tPick=today();jShown=30;jRender()}});
 $("t-pick").onchange=function(){tPick=this.value;jShown=30;jRender()};
 var tQT=null;$("t-q").oninput=function(){var v=this.value;clearTimeout(tQT);tQT=setTimeout(function(){tQ=v;jShown=30;jRender();var q=$("t-q");q.focus();q.setSelectionRange(q.value.length,q.value.length)},180)};
@@ -1756,7 +1777,7 @@ $("lb-x").onclick=closeLb;
 $("lb").onclick=function(ev){if(ev.target===$("lb"))closeLb()};
 document.addEventListener("keydown",function(ev){if($("lb").hidden)return;if(ev.key==="Escape")closeLb();else if(ev.key==="ArrowLeft")lbStep(-1);else if(ev.key==="ArrowRight")lbStep(1)});
 $("lb-prev").onclick=function(){lbStep(-1)};$("lb-next").onclick=function(){lbStep(1)};
-$("h-gal").onclick=function(){tView="gallery";jShown=30;jRender();$("j-trades").scrollIntoView({behavior:"smooth",block:"start"})};
+$("h-gal").onclick=function(){tView="gallery";jShown=60;jRender();$("j-trades").scrollIntoView({behavior:"smooth",block:"start"})};
 $("lb-file").onchange=function(ev){
   var f=ev.target.files[0];ev.target.value="";if(!f||!lbTrade)return;var t=lbTrade;
   uploadImage(f).then(function(n){t.img=n;jSave();jRender();openLb(t)}).catch(function(e){jError("Could not save the screenshot: "+e.message)})};
