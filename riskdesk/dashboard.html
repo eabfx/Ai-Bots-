@@ -802,6 +802,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <script>
 (function(){
 "use strict";
+/* on a hosted copy, a request that comes back "sign in required" sends the browser to the Google sign-in */
+var _fetch=window.fetch;window.fetch=function(){return _fetch.apply(this,arguments).then(function(r){if(r.status===401)location.href="/auth/login";return r})};
 var timer=null,busy=false,tabNow="home";
 var $=function(id){return document.getElementById(id)};
 function store(k,v){try{if(v===undefined){return localStorage.getItem(k)}localStorage.setItem(k,v)}catch(e){return null}}

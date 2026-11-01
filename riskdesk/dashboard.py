@@ -10,10 +10,12 @@ Standard library only. The Zones project is separate (zones-app, port 8766). The
 """
 
 import argparse
+import html
 import json
 import os
 import sys
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -26,6 +28,7 @@ import zones as z    # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_import  # noqa: E402
+import signin        # noqa: E402
 import store         # noqa: E402
 
 PORT = 8765
@@ -37,6 +40,8 @@ class Handler(BaseHTTPRequestHandler):
     allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    auth_settings = None                             # sign in with Google, only when the config has an "auth" section (see signin.py)
+    oauth_post = staticmethod(signin.http_post)     # the one call out to Google; the tests swap it
     macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
 
     def log_message(self, fmt, *args):        # keep the console quiet
@@ -73,9 +78,58 @@ class Handler(BaseHTTPRequestHandler):
         name = host.rsplit(":", 1)[0] if host.count(":") == 1 else host            # a proxy such as tailscale serve sends the name without the port
         return bool(name) and name.lower() in self.allowed_hosts
 
+    def redirect(self, location, cookies=()):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        for c in cookies:
+            self.send_header("Set-Cookie", c)
+        self.end_headers()
+
+    def blocked(self, api):
+        """True when sign-in is on and this request has no valid session; the answer has then been sent."""
+        s = self.auth_settings
+        if not s or signin.current_user(s, self.headers.get("Cookie"), time.time()):
+            return False
+        if api:
+            self.send_json(401, {"error": "sign in required", "signin": "/auth/login"})
+        else:
+            self.redirect("/auth/login")
+        return True
+
+    def auth_route(self, url):
+        """The sign-in routes. True when this request was one of them."""
+        s = self.auth_settings
+        if not s or not url.path.startswith("/auth/"):
+            return False
+        now = time.time()
+        if url.path == "/auth/login":
+            where, state = signin.login_url(s, now)
+            self.redirect(where, [signin.make_cookie(signin.STATE_COOKIE, state, s["secure"], signin.STATE_SECONDS)])
+        elif url.path == "/auth/callback":
+            gone = signin.make_cookie(signin.STATE_COOKIE, "", s["secure"], 0)
+            try:
+                state = signin.parse_cookies(self.headers.get("Cookie")).get(signin.STATE_COOKIE)
+                email = signin.finish_login(s, parse_qs(url.query), state, now, self.oauth_post)
+            except signin.AuthError as e:
+                msg = html.escape(str(e))
+                page = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+                        "<title>RiskDesk sign-in</title><body style='font:16px system-ui;background:#0a0a0a;color:#f2f2f0;padding:40px'>"
+                        "<h2>Could not sign you in</h2><p>%s.</p><p><a style='color:#fff' href='/auth/login'>Try again</a></p>" % msg)
+                return self.send(403, page, "text/html; charset=utf-8")
+            self.redirect("/", [signin.session_cookie(s, email, now), gone])
+        elif url.path == "/auth/logout":
+            self.redirect("/auth/login", [signin.make_cookie(signin.SESSION_COOKIE, "", s["secure"], 0)])
+        else:
+            self.send_json(404, {"error": "not found"})
+        return True
+
     def do_POST(self):
         if not self.host_ok():
             return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
+        if self.blocked(True):
+            return
         if self.headers.get("X-Requested-With") != "zones-dashboard":
             return self.send_json(403, {"error": "missing X-Requested-With header"})
         try:
@@ -129,6 +183,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self.host_ok():
             return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
         url = urlparse(self.path)
+        if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
+            return
         if url.path == "/":
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
@@ -204,6 +260,7 @@ def configured_hosts(config_path, extra=()):
 
 def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offline=None, allowed_hosts=()):
     handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline, "allowed_hosts": configured_hosts(config_path, allowed_hosts),
+                                          "auth_settings": signin.load_settings(config_path),
                                           "data_dir": os.path.dirname(os.path.abspath(config_path))})
     return DashboardServer(("127.0.0.1", port), handler)
 
@@ -233,6 +290,9 @@ def main(argv=None):
     args = p.parse_args(argv)
     try:
         server = make_server(args.port, args.config, args.offline, args.allow_host)
+    except signin.AuthError as e:                                       # sign-in was asked for but is not complete: never serve unlocked
+        print("error: sign-in is not set up correctly: %s" % e, file=sys.stderr)
+        return 2
     except OSError as e:
         url = "http://127.0.0.1:%d" % args.port
         if already_running(args.port):                                  # a second double-click just opens the one that is running

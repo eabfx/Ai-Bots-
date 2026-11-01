@@ -65,3 +65,26 @@ Twelve Data instead, and the Macro page says which prices came from the backup. 
 The free plan covers gold and the currency pairs, not the indices (Nasdaq, VIX, S&P, the dollar index, yields and
 oil), so those stay Yahoo only. The backup is asked only when Yahoo has failed, so it uses very few of the free requests.
 It gives the last price and the change since the previous close, with no small chart.
+
+## Running it online with Google sign-in
+
+This is optional. The copy on your PC does not change: sign-in only switches on when `config.json` has an `"auth"`
+section, and RiskDesk refuses to start if that section is there but anything it needs is missing.
+
+What you need: a small Ubuntu server (for example Hetzner Cloud), a free name that points at it (for example
+DuckDNS, which gives `something.duckdns.org`), and a Google OAuth client of type "Web application".
+
+1. Create the server with Ubuntu and note its IP address. In DuckDNS, make a name and point it at that address.
+2. In Google Cloud Console, create the OAuth client. Add this as its authorised redirect address, with your own name:
+   `https://something.duckdns.org/auth/callback`. Put your Google address on the consent screen's test users.
+3. On the server, as root: `git clone https://github.com/eabfx/Ai-Bots-.git /opt/riskdesk`, then
+   `DOMAIN=something.duckdns.org EMAIL=you@gmail.com bash /opt/riskdesk/riskdesk/deploy/setup-server.sh`.
+   It asks for the Google client id and secret without showing them. It installs the https front door (Caddy),
+   starts RiskDesk as a service, closes every port except ssh and the web, and backs the journal up nightly.
+4. On your PC, copy the journal over once: `.\riskdesk\deploy\copy-journal-to-server.ps1 -Server <the server IP>`.
+5. Open `https://something.duckdns.org` and sign in. `/auth/logout` signs you out.
+
+Get newer versions with `bash /opt/riskdesk/riskdesk/deploy/update-server.sh`. Only the addresses listed under
+`auth.emails` can get in; every page and every data route needs the sign-in cookie, and it is signed so it cannot be
+forged. The Google secret, your AI keys and the journal live in `/opt/riskdesk/trader`, which is never in git.
+The journal on the server and the one on your PC are separate copies: they do not sync.
