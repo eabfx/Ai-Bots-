@@ -159,3 +159,8 @@
 .sb-tab.on{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
 .sb-tab.add{background:none;border-style:dashed;color:var(--muted);font-weight:500}
 .sb-tab.add:hover{color:var(--text)}
+
+.sb-tab.lock{border-style:solid;font-weight:700}.sb-tab.ctl{background:none;color:var(--muted);font-weight:500}.sb-tab.ctl:hover{color:var(--text)}.sb-tab.ctl.lock{color:var(--text);border-color:var(--text)}
+.sb-lock{max-width:420px;margin:50px auto;text-align:center;border:1px solid var(--line);border-radius:16px;padding:30px 26px;background:var(--panel)}
+.sb-lockic{font-size:42px}.sb-lock h2{margin:6px 0 8px}.sb-locknote{color:var(--muted);font-size:13.5px;margin-bottom:16px;line-height:1.5}
+.sb-lock .sb-seli{text-align:center;margin-bottom:10px}.sb-lock .sb-new{width:100%;padding:10px}.sb-lockerr{color:var(--errtext);font-size:13px;margin-top:10px;min-height:18px}

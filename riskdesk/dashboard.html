@@ -871,6 +871,7 @@ var TABS=["home","macro","journal","backtest","brain","trades","alerts","connect
 function showTab(name){
   if(TABS.indexOf(name)<0)name="home";
   tabNow=name;
+  if(name!=="brain"&&window.SecondBrain)window.SecondBrain.leave();                /* leaving Second Brain locks the password section */
   var section=name==="backtest"?"journal":name;                         /* Journal and Backtest are the same page over two separate sets of trades */
   TABS.forEach(function(t){var s=t==="backtest"?"journal":t,p=$("tab-"+s);if(s===section){p.hidden=false;p.classList.add("active")}else{p.hidden=true;p.classList.remove("active")}});
   var bs=document.querySelectorAll("#nav button,.brainbtn");

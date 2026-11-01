@@ -33,6 +33,7 @@ import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
 import tradezella_import  # noqa: E402
+import vault         # noqa: E402
 
 PORT = 8765
 
@@ -143,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 < size <= store.MAX_IMAGE:
                     raise store.StoreError("the image is empty or larger than %d MB" % (store.MAX_IMAGE // 1024 // 1024))
                 return self.send_json(200, {"name": store.save_image(self.data_dir, self.rfile.read(size))})
-            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route in ("/api/journal", "/api/brain") else 20000
+            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route in ("/api/journal", "/api/brain", "/api/vault/doc") else 20000
             if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
@@ -160,6 +161,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": answer})
             elif path == "/api/journal":
                 return self.send_json(200, {"saved": store.save_trades(self.data_dir, body.get("trades"))})
+            elif path.startswith("/api/vault/"):
+                return self.vault_post(path, body)
             elif path == "/api/brain":
                 try:
                     return self.send_json(200, {"rev": brain.save(self.data_dir, body)})
@@ -189,7 +192,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, vault.VaultError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -212,6 +215,13 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/notion/journal":
             doc = self.notion_link.journal_doc if self.notion_link else {"at": "", "trades": []}
             self.send_json(200, {"at": doc.get("at", ""), "trades": doc.get("trades") or []})
+        elif url.path == "/api/vault/status":
+            self.send_json(200, self.vault.status(self.headers.get("X-Vault-Token")))
+        elif url.path == "/api/vault/doc":
+            try:
+                self.send_json(200, {"doc": self.vault.load(self.headers.get("X-Vault-Token"))})
+            except vault.Locked:
+                self.send_json(401, {"error": "locked"})
         elif url.path == "/api/brain":
             try:
                 doc = brain.load(self.data_dir)
@@ -246,6 +256,39 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"ready": bool(pv["key"]), "service": pv["name"], "model": pv["model"]})
         else:
             self.send_json(404, {"error": "not found"})
+
+    def vault_post(self, path, body):
+        """The password-locked pages. The password is only ever read from the request, never kept or logged."""
+        token = self.headers.get("X-Vault-Token")
+        try:
+            if path == "/api/vault/setup":
+                return self.send_json(200, {"token": self.vault.setup(str(body.get("password") or ""))})
+            if path == "/api/vault/unlock":
+                return self.send_json(200, {"token": self.vault.unlock(str(body.get("password") or ""))})
+            if path == "/api/vault/lock":
+                self.vault.lock(token)
+                return self.send_json(200, {"locked": True})
+            if path == "/api/vault/password":
+                return self.send_json(200, {"token": self.vault.change_password(token, str(body.get("password") or ""))})
+            if path == "/api/vault/doc":
+                try:
+                    return self.send_json(200, {"rev": self.vault.save(token, body)})
+                except brain.Conflict as e:
+                    return self.send_json(409, {"error": str(e)})
+            if path == "/api/vault/import":
+                self.vault._check(token)                                          # must be unlocked before Notion is read at all
+                link = self.notion_link
+                if not (link and link.token):
+                    raise vault.VaultError("No Notion key yet (trader\\notion_key.txt)")
+                cfg = notion_api.settings(self.config_path)
+                try:
+                    hub = notion_api.private_hub(notion_api.Client(link.token, link.opener, link.pause), self.data_dir, cfg["hub_page"])
+                except notion_api.NotionError as e:
+                    raise vault.VaultError(str(e))
+                return self.send_json(200, {"doc": self.vault.import_hub(token, hub)})
+        except vault.Locked:
+            return self.send_json(401, {"error": "locked"})
+        self.send_json(404, {"error": "not found"})
 
     def notion(self, apply):
         """Read the Notion export in trader/import. Preview only reads; apply also keeps the screenshots and returns the trades."""
@@ -308,6 +351,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
                                           "auth_settings": signin.load_settings(config_path),
                                           "data_dir": os.path.dirname(os.path.abspath(config_path))})
     handler.notion_link = notion_api.Link(handler.data_dir, config_path)
+    handler.vault = vault.Vault(handler.data_dir)
     return DashboardServer(("127.0.0.1", port), handler)
 
 

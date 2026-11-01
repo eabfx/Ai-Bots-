@@ -214,18 +214,33 @@ def icon(b):
 
 
 class Hub:
-    def __init__(self, client, data_dir, fetch=fetch_bytes, cache=None):
+    """Walks the hub page and its sub-pages. With private=True it does the opposite: it only reads the private page
+    (Thoughts + Emotions) and what is under it, for the password-locked vault, and nothing else is copied."""
+
+    def __init__(self, client, data_dir, fetch=fetch_bytes, cache=None, private=False):
         self.c, self.dir, self.fetch, self.cache = client, data_dir, fetch, cache if cache is not None else {}
         self.pages, self.todo, self.blocks, self.images = {}, [], 0, 0
+        self.private, self.allowed, self.cur, self.found = private, set(), "", ""
 
     def run(self, root_id):
         root = root_id.replace("-", "")
         self.todo = [(root, "Trade Journal", 0)]
         while self.todo and len(self.pages) < MAX_PAGES:
             pid, title, depth = self.todo.pop(0)
-            if pid in self.pages or title.strip().lower() in NEVER_READ:
+            if pid in self.pages:
                 continue
+            if self.private:
+                if pid != root and pid not in self.allowed:
+                    continue
+            elif title.strip().lower() in NEVER_READ:
+                continue
+            self.cur = pid
             self.pages[pid] = {"title": title, "nodes": self.children(pid, depth)}
+        if self.private:
+            if not self.found or self.found not in self.pages:
+                raise NotionError("The page Thoughts + Emotions was not found under your Trade Journal page, or the Notion connection cannot see it.")
+            keep = {k: v for k, v in self.pages.items() if k in self.allowed}
+            return {"root": self.found, "pages": keep}
         return {"root": root, "pages": self.pages}
 
     def children(self, block_id, depth):
@@ -245,6 +260,9 @@ class Hub:
     def node(self, b, depth):
         t = b.get("type")
         v = b.get(t) or {}
+        if self.private and self.cur not in self.allowed and t != "child_page":
+            if t in ("child_database", "image", "file", "pdf"):
+                return None                                 # looking for the private page only: copy nothing else
         co = v.get("color") if isinstance(v, dict) and v.get("color") not in (None, "default") else ""
         if t in ("paragraph", "heading_1", "heading_2", "heading_3", "quote", "bulleted_list_item", "numbered_list_item", "toggle"):
             short = {"heading_1": "h1", "heading_2": "h2", "heading_3": "h3", "bulleted_list_item": "li", "numbered_list_item": "ol"}.get(t, t)
@@ -270,9 +288,19 @@ class Hub:
             return {"t": "group", "k": k} if k else None
         if t == "child_page":
             title = str(v.get("title") or "")
-            if title.strip().lower() in NEVER_READ:
-                return {"t": "page", "title": title, "id": "", "locked": True}
             pid = b["id"].replace("-", "")
+            if title.strip().lower() in NEVER_READ:
+                if self.private and not self.found:
+                    self.found = pid
+                    self.allowed.add(pid)
+                    self.todo.insert(0, (pid, title, 0))
+                return {"t": "page", "title": title, "id": "", "locked": True}
+            if self.private:
+                if self.cur in self.allowed and depth < 2:
+                    self.allowed.add(pid)
+                    self.todo.append((pid, title, depth + 1))
+                    return {"t": "page", "title": title, "id": pid}
+                return None
             if depth < 2:
                 self.todo.append((pid, title, depth + 1))
             return {"t": "page", "title": title, "id": pid}
@@ -287,6 +315,8 @@ class Hub:
     def file(self, b, t, v):
         src = (v.get("file") or {}).get("url") or (v.get("external") or {}).get("url") or ""
         name = v.get("name") or os.path.basename(src.split("?")[0])
+        if self.private:                                    # pictures would be saved as ordinary files, outside the lock
+            return {"t": "file", "name": "picture not copied: keeps this page fully locked" if t == "image" else (name or "file"), "r": []}
         if t == "image" and src and self.images < MAX_IMAGES:
             key = "%s|img" % b["id"]
             if key not in self.cache:
@@ -314,6 +344,11 @@ class Hub:
 
 def hub(client, data_dir, root_id, fetch=fetch_bytes, cache=None):
     return Hub(client, data_dir, fetch, cache).run(root_id)
+
+
+def private_hub(client, data_dir, root_id):
+    """Thoughts + Emotions and what is under it, read-only, for the password-locked vault. Never written to disk here."""
+    return Hub(client, data_dir, private=True).run(root_id)
 
 
 class Link:

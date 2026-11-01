@@ -159,7 +159,7 @@ class Wiring(unittest.TestCase):
     def test_server_serves_the_editor_and_the_document(self):
         for needle in ('"/api/brain"', "brain.save(", "brain.seed(", '"brain.js"', '"brain.css"', "brain.Conflict"):
             self.assertIn(needle, SERVER)
-        self.assertIn("12000000 if route in (\"/api/journal\", \"/api/brain\")", SERVER)
+        self.assertIn("12000000 if route in (\"/api/journal\", \"/api/brain\", \"/api/vault/doc\")", SERVER)
 
     def test_the_page_uses_the_editor_and_the_button_is_white_and_black(self):
         for needle in ('<div id="sb-root">', '<script src="/brain.js">', "SecondBrain.show", ".brainbtn{appearance:none;border:2px solid var(--accent)"):

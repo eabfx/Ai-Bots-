@@ -413,7 +413,7 @@ def db_from_table(rows, data_dir=None, src=None, title="Trade Journal 2026"):
 
 # ---------------------------------------------------------------- the first copy
 
-def _convert(nodes, pages, dbs, parent, used):
+def _convert(nodes, pages, dbs, parent, used, placeholders=True):
     """Hub blocks -> editable blocks. A placeholder for a page that was never read becomes a new empty page you can write in."""
     out = []
     for n in nodes or []:
@@ -421,15 +421,15 @@ def _convert(nodes, pages, dbs, parent, used):
             continue
         t = n.get("t")
         if t == "group":
-            out.extend(_convert(n.get("k"), pages, dbs, parent, used))
+            out.extend(_convert(n.get("k"), pages, dbs, parent, used, placeholders))
             continue
         n = dict(n)
-        if t == "file" and parent == "main" and n.get("name") and not re.search(r"\.(png|jpe?g|gif|webp|pdf|zip)$", n["name"], re.I):
+        if placeholders and t == "file" and parent == "main" and n.get("name") and not re.search(r"\.(png|jpe?g|gif|webp|pdf|zip)$", n["name"], re.I):
             pid = _slug(n["name"], used)
             pages[pid] = {"title": n["name"], "icon": "", "parent": parent, "nodes": [{"t": "paragraph", "r": []}]}
             out.append({"t": "page", "title": n["name"], "id": pid, "ic": ""})
             continue
-        if t == "paragraph" and parent == "main" and "live Notion link is set up" in "".join(r.get("x", "") for r in n.get("r") or []):
+        if placeholders and t == "paragraph" and parent == "main" and "live Notion link is set up" in "".join(r.get("x", "") for r in n.get("r") or []):
             continue                                       # the note that only made sense while the pages were placeholders
         if t == "db":
             did = _slug("db_" + (n.get("title") or "table"), used)
@@ -450,11 +450,33 @@ def _convert(nodes, pages, dbs, parent, used):
             n["id"] = _slug(n["id"], used) if not ID.match(n["id"]) else n["id"]
         for key in ("k",):
             if n.get(key):
-                n[key] = _convert(n[key], pages, dbs, parent, used)
+                n[key] = _convert(n[key], pages, dbs, parent, used, placeholders)
         if n.get("cols"):
-            n["cols"] = [{"k": _convert(c.get("k"), pages, dbs, parent, used)} for c in n["cols"] if isinstance(c, dict)]
+            n["cols"] = [{"k": _convert(c.get("k"), pages, dbs, parent, used, placeholders)} for c in n["cols"] if isinstance(c, dict)]
         out.append(n)
     return out
+
+
+def pages_from_hub(hub, root_name, taken=(), placeholders=False):
+    """Pages copied from Notion (the hub layout) -> editable pages and databases. The hub's root page becomes root_name."""
+    pages, dbs, used = {}, {}, set(taken) | {root_name}
+    hub_root = hub.get("root") if hub.get("root") in hub["pages"] else next(iter(hub["pages"]))
+    ids = {hub_root: root_name}
+    for pid in hub["pages"]:
+        if pid != hub_root:
+            ids[pid] = _slug(pid, used)
+            used.add(ids[pid])
+    for pid, p in hub["pages"].items():
+        new = ids[pid]
+        pages[new] = {"title": str(p.get("title") or "Page"), "icon": str(p.get("icon") or ""), "parent": "" if new == root_name else root_name, "nodes": []}
+    for pid, p in hub["pages"].items():
+        new = ids[pid]
+        nodes = _convert(p.get("nodes"), pages, dbs, new, used, placeholders)
+        for n in _walk(nodes):
+            if n.get("t") == "page" and n.get("id") in ids:
+                n["id"] = ids[n["id"]]
+        pages[new]["nodes"] = nodes
+    return pages, dbs
 
 
 def seed(data_dir, log=None):
@@ -470,22 +492,7 @@ def seed(data_dir, log=None):
     pages, dbs, used = {}, {}, {"main", TJ_PAGE}
     root = "main"
     if isinstance(hub, dict) and isinstance(hub.get("pages"), dict) and hub["pages"]:
-        hub_root = hub.get("root") if hub.get("root") in hub["pages"] else next(iter(hub["pages"]))
-        ids = {hub_root: "main"}
-        for pid in hub["pages"]:
-            if pid != hub_root:
-                ids[pid] = _slug(pid, used) if not ID.match(pid) else pid
-                used.add(ids[pid])
-        for pid, p in hub["pages"].items():
-            new = ids[pid]
-            pages[new] = {"title": str(p.get("title") or "Page"), "icon": str(p.get("icon") or ""), "parent": "" if new == "main" else "main", "nodes": []}
-        for pid, p in hub["pages"].items():
-            new = ids[pid]
-            nodes = _convert(p.get("nodes"), pages, dbs, new, used)
-            for n in _walk(nodes):
-                if n.get("t") == "page" and n.get("id") in ids:
-                    n["id"] = ids[n["id"]]
-            pages[new]["nodes"] = nodes
+        pages, dbs = pages_from_hub(hub, "main", {TJ_PAGE}, True)
     else:
         pages["main"] = {"title": "Trade Journal", "icon": "", "parent": "",
                          "nodes": [{"t": "h1", "r": [{"x": "Trade Journal"}]}, {"t": "paragraph", "r": []}]}

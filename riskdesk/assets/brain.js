@@ -9,7 +9,7 @@ var TEXTT={h1:1,h2:1,h3:1,paragraph:1,li:1,ol:1,todo:1,quote:1,callout:1,toggle:
 var EMOJI=["\u{1F4A1}","\u{1F4CC}","⚠️","✅","❗","\u{1F525}","\u{1F4C8}","\u{1F4C9}","\u{1F3AF}","\u{1F4B0}","\u{1F9E0}","⭐","\u{1F4DD}","\u{1F6AB}","\u{1F512}","\u{1F4CA}","⏰","\u{1F4D2}"];
 var TYPES={title:"Title",text:"Text",number:"Number",select:"Select",multi_select:"Multi-select",date:"Date",checkbox:"Checkbox",url:"URL",files:"Files & images"};
 var TICON={title:"Aa",text:"≡",number:"#",select:"▾",multi_select:"☰",date:"\u{1F4C5}",checkbox:"☑",url:"\u{1F517}",files:"\u{1F4CE}"};
-var S={doc:null,rev:0,loc:null,trail:[],dirty:false,saving:false,timer:null,mount:null,dbSt:{},open:new WeakSet(),conflict:false};
+var S={space:"brain",api:"/api/brain",tok:"",home:null,doc:null,rev:0,loc:null,trail:[],dirty:false,saving:false,timer:null,mount:null,dbSt:{},open:new WeakSet(),conflict:false};
 var ELS=new Map(),POP=null,SM=null,DRAG=null,STATUS=null,SELTB=null;
 
 /* ---------- small helpers ---------- */
@@ -36,9 +36,11 @@ function flush(){
   if(!S.dirty)return Promise.resolve();
   if(S.saving){S.timer=setTimeout(flush,300);return Promise.resolve()}
   S.saving=true;S.dirty=false;S.doc.rev=S.rev;
-  return fetch("/api/brain",{method:"POST",headers:HDRS,body:JSON.stringify(S.doc)}).then(function(r){
+  var hd={"X-Requested-With":HDRS["X-Requested-With"],"Content-Type":HDRS["Content-Type"]};if(S.tok)hd["X-Vault-Token"]=S.tok;
+  return fetch(S.api,{method:"POST",headers:hd,body:JSON.stringify(S.doc)}).then(function(r){
     return r.json().then(function(j){
       S.saving=false;
+      if(r.status===401&&S.space==="vault"){lockedOut();return}
       if(r.status===409){S.conflict=true;S.dirty=false;setStatus(j.error||"Changed somewhere else. Reload this page.",true);return}
       if(!r.ok)throw new Error(j.error||"save failed");
       S.rev=j.rev;if(S.dirty)flush();else setStatus("Saved")})
@@ -145,11 +147,59 @@ function sectionBar(){
   var at=S.loc.row?(S.loc.from||root):S.loc.page,top=root,id=at,guard=0;
   while(id&&id!==root&&guard++<20){top=id;id=S.doc.pages[id]&&S.doc.pages[id].parent;if(!S.doc.pages[id]&&id!==root){top=root;break}}
   function tab(label,target,on){var b=h("button","sb-tab"+(on?" on":""),label);b.type="button";b.onclick=function(){go({page:target})};bar.appendChild(b)}
-  tab("\u{1F3E0} "+(S.doc.pages[root].title||"Home"),root,top===root&&!S.loc.row&&at===root);
+  tab((S.space==="vault"?"\u{1F512} ":"\u{1F3E0} ")+(S.doc.pages[root].title||"Home"),root,top===root&&!S.loc.row&&at===root);
   sectionIds().forEach(function(k){var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k)});
   var add=h("button","sb-tab add","+ New section");add.type="button";
   add.onclick=function(){var id2=newPage(root,"Untitled");S.doc.pages[root].nodes.push({t:"page",id:id2,title:"Untitled"});touch();go({page:id2})};
-  bar.appendChild(add);return bar}
+  bar.appendChild(add);
+  if(S.space==="brain"){var lk=h("button","sb-tab lock","\u{1F512} Thoughts + Emotions");lk.type="button";lk.onclick=openVault;bar.appendChild(lk)}
+  else{
+    function ctl(label,fn,cls){var b=h("button","sb-tab ctl"+(cls?" "+cls:""),label);b.type="button";b.onclick=fn;bar.appendChild(b)}
+    ctl("Copy from Notion (read only)",importPrivate);ctl("Change password",changePassword);ctl("\u{1F512} Lock and leave",function(){leaveVault()},"lock")}
+  return bar}
+/* ---------- the password-locked section ---------- */
+function settle(){return new Promise(function(res){var n=0;(function tick(){if((!S.dirty&&!S.saving)||n++>40)return res();flush();setTimeout(tick,150)})()})}
+function vaultFetch(path,method,body,tok){
+  var hd={"X-Requested-With":HDRS["X-Requested-With"],"Content-Type":HDRS["Content-Type"]};if(tok)hd["X-Vault-Token"]=tok;
+  return fetch(path,{method:method,headers:hd,body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(j){if(!r.ok){var e=new Error(j.error||"failed");e.status=r.status;throw e}return j})})}
+function openVault(){
+  flush();vaultFetch("/api/vault/status","GET").then(function(j){lockScreen(!j.set,"")}).catch(function(e){say("Could not reach the locked section: "+e.message)})}
+function lockScreen(setMode,msg){
+  var m=S.mount;m.textContent="";m.appendChild(sectionBar());
+  var card=h("div","sb-lock");card.appendChild(h("div","sb-lockic","\u{1F512}"));card.appendChild(h("h2",null,"Thoughts + Emotions"));
+  card.appendChild(h("p","sb-locknote",setMode?"Choose a password for this private section. It is kept nowhere, so if you forget it these pages cannot be recovered. Once it is set, your Thoughts + Emotions page is copied here from Notion (read only, Notion is never changed) and locked.":"This section is locked. Enter your password to open it. It locks again when you leave Second Brain, and after 20 minutes of no use."));
+  var pw=h("input","sb-seli");pw.type="password";pw.placeholder=setMode?"New password (8 or more characters)":"Password";pw.setAttribute("autocomplete",setMode?"new-password":"current-password");card.appendChild(pw);
+  var pw2=null;if(setMode){pw2=h("input","sb-seli");pw2.type="password";pw2.placeholder="Type it again";pw2.setAttribute("autocomplete","new-password");card.appendChild(pw2)}
+  var err=h("div","sb-lockerr",msg||"");var btn=h("button","sb-new",setMode?"Set password and open":"Unlock");btn.type="button";
+  function go(){
+    err.textContent="";
+    if(setMode&&pw.value!==pw2.value){err.textContent="The two passwords are not the same.";return}
+    btn.disabled=true;
+    vaultFetch(setMode?"/api/vault/setup":"/api/vault/unlock","POST",{password:pw.value}).then(function(j){pw.value="";if(pw2)pw2.value="";return enterVault(j.token,setMode)})
+      .catch(function(e){btn.disabled=false;err.textContent=e.message;pw.select()})}
+  btn.onclick=go;[pw,pw2].forEach(function(x){if(x)x.onkeydown=function(e){if(e.key==="Enter")go()}});
+  card.appendChild(btn);card.appendChild(err);m.appendChild(card);setTimeout(function(){pw.focus()},0)}
+function enterVault(token,first){
+  return vaultFetch("/api/vault/doc","GET",null,token).then(function(j){
+    S.home={doc:S.doc,rev:S.rev,loc:S.loc};S.space="vault";S.api="/api/vault/doc";S.tok=token;S.doc=j.doc;S.rev=j.doc.rev||0;S.loc={page:S.doc.root};S.conflict=false;S.dirty=false;
+    render();if(first)importPrivate(true)})}
+function restoreHome(){
+  if(!S.home)return;S.space="brain";S.api="/api/brain";S.tok="";S.doc=S.home.doc;S.rev=S.home.rev;S.loc=S.home.loc;S.home=null;S.dirty=false;S.conflict=false}
+function leaveVault(quiet){
+  if(S.space!=="vault")return Promise.resolve();
+  var tok=S.tok;return settle().then(function(){return vaultFetch("/api/vault/lock","POST",{}, tok).catch(function(){})}).then(function(){restoreHome();if(!quiet&&S.mount&&S.mount.isConnected)render()})}
+function lockedOut(){restoreHome();render();say("The locked section locked itself. Open it with your password again.")}
+function importPrivate(auto){
+  if(S.space!=="vault")return;
+  if(!auto&&!confirm("Copy Thoughts + Emotions from Notion into this locked section? Notion is only read. Anything already here stays, and the copy arrives as a new sub-page."))return;
+  say("Copying from Notion (read only). This can take a minute...");
+  settle().then(function(){return vaultFetch("/api/vault/import","POST",{},S.tok)}).then(function(j){
+    S.doc=j.doc;S.rev=j.doc.rev;S.loc={page:S.doc.root};render();say("Copied "+Object.keys(S.doc.pages).length+" page(s) from Notion into the locked section.")})
+  .catch(function(e){if(e.status===401)return lockedOut();say("Could not copy from Notion: "+e.message)})}
+function changePassword(){
+  var a=prompt("New password (8 or more characters). Do not forget it, it cannot be recovered:");if(!a)return;
+  var b=prompt("Type the new password again:");if(a!==b){say("The two passwords were not the same. Nothing changed.");return}
+  settle().then(function(){return vaultFetch("/api/vault/password","POST",{password:a},S.tok)}).then(function(j){S.tok=j.token;say("Password changed.")}).catch(function(e){say("Could not change it: "+e.message)})}
 function pageView(body){
   var id=S.loc.page;if(!S.doc.pages[id]){S.loc={page:S.doc.root};id=S.doc.root}
   var pg=S.doc.pages[id];
@@ -301,7 +351,8 @@ function blockEl(node,list,i,up,ctx,num){
     main.appendChild(cw)}
   else if(t==="page"){
     var pg=node.id&&S.doc.pages[node.id];
-    if(node.locked||!pg){main.appendChild(h("div","bk-pagelink locked","\u{1F512} "+(node.title||"Private page")+" (private, not copied)"))}
+    if(node.locked&&S.space==="brain"){var lb=h("button","bk-pagelink","\u{1F512} "+(node.title||"Private page")+"  (password)");lb.type="button";lb.onclick=openVault;main.appendChild(lb)}
+    else if(node.locked||!pg){main.appendChild(h("div","bk-pagelink locked","\u{1F512} "+(node.title||"Private page")))}
     else{var pl=h("button","bk-pagelink",(pg.icon||node.ic||"\u{1F4C4}")+"  "+(pg.title||"Untitled"));pl.type="button";pl.onclick=function(){go({page:node.id})};main.appendChild(pl)}}
   else if(t==="db"){main.appendChild(dbBox(node.id))}
   else if(t==="img"){
@@ -872,5 +923,5 @@ function show(mount){
 function css(){
   if(document.getElementById("sb-style"))return;
   var l=h("link");l.id="sb-style";l.rel="stylesheet";l.href="/brain.css";document.head.appendChild(l)}
-window.SecondBrain={show:function(m){css();show(m)},flush:flush,state:S};
+window.SecondBrain={show:function(m){css();show(m)},flush:flush,leave:function(){return leaveVault(true)},state:S};
 })();

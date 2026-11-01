@@ -106,7 +106,7 @@ Connections page, "Import from TradeZella". It reads `backtest.csv` and `demo.cs
 
 Connections page, "Notion live link". It reads your Notion, never writes to it: every call goes through one gate that only allows reading a page, its blocks and a database, and querying a database; anything else raises before it is sent.
 
-Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart RiskDesk. The page called "Thoughts + Emotions" is never read, even though the integration can reach it.
+Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart RiskDesk. The page called "Thoughts + Emotions" is never read by the automatic refresh, even though the integration can reach it. The one exception is the locked section below, and only when you ask for it.
 
 - **Journal rows:** the Trade Journal 2026 database is read every 5 minutes and merged into the journal by Trade No. and date. A row you add or fill in later in Notion becomes or updates the trade; notes and screenshots you added on the dashboard are kept.
 - **Second Brain tab:** your own editable, Notion-style workspace (see below). The live link keeps `trader\notion\hub.json` as a read-only snapshot of the Notion pages, which is only used for the first copy.
@@ -120,3 +120,13 @@ The Second Brain button (bottom left, white and black) opens a Notion-style work
 - **Pages:** click anywhere to write. Type `/` (or press the + beside a block) for text, headings, bulleted/numbered lists, to-dos, toggles, quotes, callouts, dividers, code, tables, 2 or 3 columns, sub-pages, databases and images. Markdown shortcuts work (`# `, `- `, `1. `, `[] `, `> `, `---`). Select text for bold, italic, underline, strikethrough, code, links and colours. Drag the dotted handle to move a block, or click it to delete, duplicate, turn into another type or colour it. Tab / Shift+Tab indent lists. Tables have + / - rows and columns and header toggles.
 - **Databases:** property chips for select and multi-select (create, rename, recolour, delete options), date, number, checkbox, URL and screenshots; Filter, Sort, Search, show or hide and reorder properties, add, rename, retype and delete properties, add, duplicate and delete rows (with Undo), and OPEN a row as a page with its own notes and images.
 - **Nothing here is ever sent to Notion.** The editor has no Notion code at all; edits live only in your copy, and saving is automatic (the status at the top right says Saving / Saved). An old tab cannot overwrite newer work.
+
+### Thoughts + Emotions (password locked)
+
+Second Brain has a lock button, **Thoughts + Emotions**. The first time you open it you choose a password (at least 8 characters). RiskDesk then copies that page from Notion once, read only (nothing in Notion is changed), and keeps it in `trader\brain\vault.json`, encrypted with a key made from your password (PBKDF2-SHA256, 600,000 rounds, and an authenticated stream cipher built from HMAC-SHA256). The password is never stored. Wrong guesses are slowed down: after 5 wrong tries it waits 2 minutes.
+
+- It locks again when you leave Second Brain, press Lock, or after 20 minutes of no use. The key only ever lives in memory.
+- **If you forget the password, the pages cannot be recovered.** Keep the password somewhere safe.
+- Pictures on that Notion page are not copied (they would sit outside the lock). Text, tables, lists and sub-pages are.
+- "Copy from Notion (read only)" inside the lock never replaces what you wrote: a second copy arrives as a new sub-page.
+- You can write and edit in it exactly like the rest of Second Brain, and change the password from inside.
