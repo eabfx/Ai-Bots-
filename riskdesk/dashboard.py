@@ -193,7 +193,7 @@ def configured_hosts(config_path, extra=()):
     """Names from "allowed_hosts" in the config file plus any given on the command line, lower case, plain host names only."""
     names = list(extra or ())
     try:
-        with open(config_path, encoding="utf-8") as fh:
+        with open(config_path, encoding="utf-8-sig") as fh:
             cfg = json.load(fh)
         if isinstance(cfg, dict) and isinstance(cfg.get("allowed_hosts"), list):
             names += [n for n in cfg["allowed_hosts"] if isinstance(n, str)]

@@ -462,6 +462,14 @@ class AllowedHosts(unittest.TestCase):
         for host in ("other.tail1234.ts.net", "tail1234.ts.net", "pc.tail1234.ts.net.evil.com"):
             self.assertEqual(self.status(port, host), 403, host)
 
+    def test_a_config_saved_with_a_byte_order_mark_still_works(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        config = os.path.join(tmp.name, "config.json")
+        with open(config, "w", encoding="utf-8-sig") as fh:
+            json.dump({"allowed_hosts": ["pc.tail1234.ts.net"]}, fh)
+        self.assertEqual(dash.configured_hosts(config), frozenset({"pc.tail1234.ts.net"}))
+
     def test_odd_entries_in_the_config_are_ignored(self):
         port = self.start(cfg={"allowed_hosts": ["", "a b", "x/y", 5, None, "ok.example"]})
         self.assertEqual(self.status(port, "ok.example"), 200)
