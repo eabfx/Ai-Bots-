@@ -1320,12 +1320,14 @@ function ntCall(apply){
 $("nt-prev").onclick=function(){ntCall(false).then(function(j){if(!j)return;ntShow(j);$("nt-go").disabled=!(j.report.live+j.report.backtest)})};
 $("nt-go").onclick=function(){
   ntCall(true).then(function(j){
-    if(!j)return;var have={};trades.forEach(function(t){have[ntKey(t)]=true});
-    var add=j.trades.map(cleanTrade).filter(function(t){return t&&!have[ntKey(t)]}),skipped=j.trades.length-add.length;
+    if(!j)return;var have={};trades.forEach(function(t){have[ntKey(t)]=t});
+    var fresh=j.trades.map(cleanTrade).filter(function(t){return t}),pics=0;
+    fresh.forEach(function(t){var o=have[ntKey(t)];if(o&&!o.img&&t.img){o.img=t.img;pics++}});          /* a trade imported earlier without its screenshot gets it now */
+    var add=fresh.filter(function(t){return !have[ntKey(t)]}),skipped=fresh.length-add.length;
     if(trades.length+add.length>20000){var e=$("nt-err");e.textContent="The journal holds up to 20,000 trades.";e.style.display="";return}
     trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
     jSave();jRender();
-    $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+". "+add.filter(function(t){return t.acct==="backtest"}).length+" went to Backtest and "+add.filter(function(t){return t.acct!=="backtest"}).length+" to your live Journal.");m.style.marginTop="8px";$("nt-out").appendChild(m);
+    $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+(pics?". Added "+pics+" screenshots to trades you imported earlier":"")+". "+add.filter(function(t){return t.acct==="backtest"}).length+" went to Backtest and "+add.filter(function(t){return t.acct!=="backtest"}).length+" to your live Journal.");m.style.marginTop="8px";$("nt-out").appendChild(m);
     $("nt-go").disabled=true})};
 function coachStatus(){
   var box=$("coach-setup");

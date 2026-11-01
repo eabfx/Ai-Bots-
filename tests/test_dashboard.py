@@ -436,6 +436,9 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn('id="j-skipcard"', self.PAGE)
         self.assertIn('t.skip==="none"||t.skip==="invalid"||t.skip==="test"', self.PAGE)       # survives load and save
 
+    def test_a_second_import_adds_screenshots_to_trades_already_there(self):
+        self.assertIn("a trade imported earlier without its screenshot gets it now", self.PAGE)
+
 
 class AllowedHosts(unittest.TestCase):
     """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""

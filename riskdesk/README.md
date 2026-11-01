@@ -41,3 +41,13 @@ On a narrow screen (a phone, or a small window) the pages move to a bar along th
 4. Open the address on your phone. Only devices signed in to your Tailscale account can reach it, and your data stays on the PC, which has to be on. Alerts only fire while the page is open in a browser tab.
 
 The Zones app (zones, entries, Indicator Stats, the TradingView indicator) is described in `../zones-app/README.md`.
+
+## Notion import: no-trade days, tests and screenshots
+
+Every row of the Trade Journey table is imported. Rows that are not a counted result (no-trade days, INVALID, trades marked
+only TEST, wins with no risk percent) are stored with a tag and shown in "Kept but not counted" on the Journal or Backtest page.
+They never reach the win rate, P/L, charts, alerts or the coach.
+
+If the trades were copied without screenshots, export the database from Notion (Markdown & CSV), put the .zip in
+`trader\import`, then press Preview and Import again: trades already there are not duplicated, and each one that is
+missing its screenshot gets it. Exporting only reads your Notion; it changes nothing there.
