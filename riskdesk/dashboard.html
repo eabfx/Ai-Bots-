@@ -52,6 +52,9 @@ nav button{appearance:none;background:none;border:0;border-radius:99px;color:var
   padding:8px 15px;cursor:pointer;white-space:nowrap}
 nav button:hover{color:var(--text)}
 nav button[aria-selected="true"]{color:var(--onaccent);background:var(--accent);font-weight:600}
+.brainbtn{appearance:none;border:0;border-radius:99px;color:#0b0b0b;font-weight:600;font-size:13.5px;padding:8px 15px;cursor:pointer;white-space:nowrap;
+  background:linear-gradient(135deg,#9a92ff 0%,#4fd6cf 100%);box-shadow:0 2px 10px rgba(80,110,230,.35);transition:filter .15s,box-shadow .15s}
+.brainbtn:hover{filter:brightness(1.1)}.brainbtn[aria-selected="true"]{box-shadow:0 0 0 2px var(--bgc),0 0 0 4px #6d5efc,0 4px 16px rgba(80,110,230,.5)}
 .themebtn{appearance:none;background:none;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:12.5px;
   padding:6px 13px;cursor:pointer;white-space:nowrap}
 .themebtn:hover{color:var(--text);border-color:var(--hover)}
@@ -367,6 +370,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
   .bar nav{flex:1;flex-direction:column;gap:4px;overflow:visible}
   .bar nav button{text-align:left;padding:11px 14px;border-radius:10px;font-size:14px}
   .logo{padding:0 8px}
+  .brainbtn{align-self:stretch;margin:0 4px 2px;padding:11px 14px;font-size:14px;border-radius:12px;text-align:left}
   .themebtn{align-self:flex-start;margin-left:8px}
   main{max-width:1240px}
   .foot{max-width:1240px}
@@ -486,11 +490,11 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <button role="tab" aria-selected="false" data-tab="macro">Macro</button>
 <button role="tab" aria-selected="false" data-tab="journal">Journal</button>
 <button role="tab" aria-selected="false" data-tab="backtest">Backtest</button>
-<button role="tab" aria-selected="false" data-tab="brain">Second Brain</button>
 <button role="tab" aria-selected="false" data-tab="trades">Trades</button>
 <button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
 <button role="tab" aria-selected="false" data-tab="connect">Connections</button>
 </nav>
+<button class="brainbtn" type="button" aria-selected="false" data-tab="brain">Second Brain</button>
 <button class="themebtn" id="theme" type="button">Light mode</button>
 </div>
 </header>
@@ -883,7 +887,7 @@ function showTab(name){
   tabNow=name;
   var section=name==="backtest"?"journal":name;                         /* Journal and Backtest are the same page over two separate sets of trades */
   TABS.forEach(function(t){var s=t==="backtest"?"journal":t,p=$("tab-"+s);if(s===section){p.hidden=false;p.classList.add("active")}else{p.hidden=true;p.classList.remove("active")}});
-  var bs=$("nav").querySelectorAll("button");
+  var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
   if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jRender()}
@@ -891,7 +895,7 @@ function showTab(name){
   if(name==="alerts")alRender();if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
   dockChat(name==="home");
 }
-(function(){var bs=$("nav").querySelectorAll("button");
+(function(){var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){showTab(b.getAttribute("data-tab"))}})(bs[i])})();
 
 /* ---------------- trades: position size and risk/reward (from RiskDesk) ---------------- */
