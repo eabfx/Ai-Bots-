@@ -153,6 +153,8 @@ class Import(unittest.TestCase):
         test = next(t for t in trades if t.get("skip") == "test")
         self.assertEqual((test["pl"], test["r"], test["acct"]), (0.0, 0.0, "backtest"))
         self.assertIn("Planned 3.0R", test["notes"])
+        self.assertEqual(sorted({t.get("acctType") for t in trades if t["acct"] == "live" and not t.get("skip")}), ["Funded Account"])
+        self.assertEqual(test["acctType"], "Forward-Test")
         norisk = next(t for t in trades if t.get("skip") == "invalid")
         self.assertEqual((norisk["pl"], norisk["inst"]), (0.0, "NAS100"))
         self.assertIn("No risk %", norisk["notes"])

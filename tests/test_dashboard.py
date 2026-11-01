@@ -441,6 +441,12 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn("if(dormant)return;                                   /* an old tab must never overwrite", self.PAGE)
         self.assertIn("if(macroBusy||dormant)return;", self.PAGE)
 
+    def test_the_pnl_hero_has_period_navigation_accounts_and_a_recent_trades_strip(self):
+        for s in ('id="h-card"', 'id="h-per"', 'id="h-strip"', 'id="h-accts"', "function jHero()", "function hCount(", "hAuto", "vs previous "):
+            self.assertIn(s, self.PAGE)
+        self.assertIn("jHero();setUnit(list);", self.PAGE)                    # the hero runs first, then the sections below use the page's unit
+        self.assertIn("var at=String(t.acctType", self.PAGE)                    # the account type survives load and save
+
     def test_a_second_import_adds_screenshots_to_trades_already_there(self):
         self.assertIn("a trade imported earlier without its screenshot gets it now", self.PAGE)
 

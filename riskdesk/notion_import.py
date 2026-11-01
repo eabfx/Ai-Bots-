@@ -247,6 +247,10 @@ def convert(src):
              "risk": round(risk, 4), "pl": round(risk * r, 4), "unit": "pct", "r": round(r, 4), "riskPct": round(risk, 4),
              "notes": notes[:500], "acct": kind, "zone": get(row, "zone")[:40], "strategy": get(row, "strategy")[:30],
              "session": get(row, "session")[:20], "partials": (tokens(get(row, "partials")) or [""])[0].lower() if (tokens(get(row, "partials")) or [""])[0].lower() in ("yes", "no") else ""}
+        real = [a for a in acct_t if a not in SKIP_ACCOUNTS]
+        if real:
+            pick = next((a for a in ("LIVE ACCOUNT", "FUNDED ACCOUNT") if a in real), real[0])
+            t["acctType"] = "-".join(w.capitalize() for w in pick.split("-")).title() if "-" not in pick else pick.title()
         if why:
             t["skip"] = why
             if why == "none":
