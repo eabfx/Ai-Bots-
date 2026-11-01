@@ -469,6 +469,11 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn(".h-num.up{color:var(--up)", self.PAGE)
         self.assertIn(".h-num.down{color:var(--down)", self.PAGE)
 
+    def test_a_trade_row_opens_to_editable_notes_and_account(self):
+        self.assertIn('ta.setAttribute("aria-label","Notes")', self.PAGE)
+        self.assertIn('Save changes', self.PAGE)
+        self.assertIn("if(at)t.acctType=at;else delete t.acctType;jSave();jRender()", self.PAGE)
+
     def test_share_card_is_drawn_on_a_canvas_and_can_be_saved_or_copied(self):
         for s in ('id="sh-cv"', 'id="h-share"', 'id="sh-dl"', 'id="sh-cp"', "function shDraw()", "function shOpen(", 'toBlob(cb,"image/png")', "Share this month"):
             self.assertIn(s, self.PAGE)

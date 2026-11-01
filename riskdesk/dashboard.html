@@ -246,6 +246,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .t-det{padding:10px 8px 14px 64px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);background:var(--panel2)}
 .t-det .kv{display:flex;gap:6px 16px;flex-wrap:wrap;margin-bottom:8px;font:500 12px var(--mono)}.t-det .kv span b{color:var(--text);font-weight:600}
 .t-det p{margin:0 0 8px;color:var(--text);white-space:pre-wrap}
+.t-det textarea{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:13px/1.5 var(--sans,inherit);resize:vertical}
+.t-det input[type=text]{background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:99px;padding:7px 13px;font:13px var(--sans,inherit);min-width:0}
 .ac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}
 .ac-t{appearance:none;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:inherit;font:inherit;cursor:pointer}
 .ac-t:hover{border-color:var(--hover)}.ac-t.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
@@ -1337,8 +1339,13 @@ function tRow(t,box){
   if(open){var d=el("div","t-det"),kv=el("div","kv");
     [["Zone",t.zone],["Strategy",t.strategy],["Bias",t.bias],["Grade",t.grade],["Plan",t.plan],["Feeling",t.emotion],["Partials",t.partials],["Risk",t.risk?jm(t.risk):""],["Trade no.",t.no]].forEach(function(p){
       if(p[1]===undefined||p[1]==="")return;var s=el("span");s.appendChild(document.createTextNode(p[0]+" "));s.appendChild(el("b",null,String(p[1])));kv.appendChild(s)});
-    d.appendChild(kv);if(t.notes)d.appendChild(el("p",null,t.notes));
-    var del=el("button","btn ghost small","Delete trade");del.type="button";del.onclick=function(e){e.stopPropagation();tDelete(t)};d.appendChild(del);box.appendChild(d)}}
+    d.appendChild(kv);
+    var ta=el("textarea");ta.value=t.notes||"";ta.maxLength=500;ta.rows=3;ta.placeholder="Notes on this trade";ta.setAttribute("aria-label","Notes");ta.onclick=function(e){e.stopPropagation()};d.appendChild(ta);
+    var ai=el("input");ai.type="text";ai.value=t.acctType||"";ai.maxLength=24;ai.placeholder="Account";ai.setAttribute("aria-label","Account");ai.setAttribute("list","j-atlist");ai.style.marginLeft="8px";ai.onclick=function(e){e.stopPropagation()};
+    var sv=el("button","btn small","Save changes");sv.type="button";sv.style.margin="8px 0 0";
+    sv.onclick=function(e){e.stopPropagation();t.notes=ta.value.trim().slice(0,500);var at=ai.value.trim().slice(0,24);if(at)t.acctType=at;else delete t.acctType;jSave();jRender()};
+    var row2=el("div");row2.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px";row2.appendChild(ai);row2.appendChild(sv);d.appendChild(row2);
+    var del=el("button","btn ghost small","Delete trade");del.type="button";del.style.marginTop="10px";del.onclick=function(e){e.stopPropagation();tDelete(t)};d.appendChild(del);box.appendChild(d)}}
 function tGallery(list,box){
   var g=el("div","t-gal");
   list.forEach(function(t){var b=el("button","h-tr "+cls(t.pl));b.type="button";
