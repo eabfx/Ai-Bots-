@@ -436,6 +436,11 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn('id="j-skipcard"', self.PAGE)
         self.assertIn('t.skip==="none"||t.skip==="invalid"||t.skip==="test"', self.PAGE)       # survives load and save
 
+    def test_an_older_tab_goes_dormant_and_cannot_overwrite_the_journal(self):
+        self.assertIn('new BroadcastChannel("riskdesk-one-tab")', self.PAGE)
+        self.assertIn("if(dormant)return;                                   /* an old tab must never overwrite", self.PAGE)
+        self.assertIn("if(macroBusy||dormant)return;", self.PAGE)
+
     def test_a_second_import_adds_screenshots_to_trades_already_there(self):
         self.assertIn("a trade imported earlier without its screenshot gets it now", self.PAGE)
 

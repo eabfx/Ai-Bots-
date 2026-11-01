@@ -882,11 +882,12 @@ try{trades=JSON.parse(jget(JKEY)||"[]");if(!Array.isArray(trades))trades=[]}catc
 if(!persistent)$("j-storage-note").hidden=false;
 function today(){var n=new Date();return n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)}
 $("j-date").value=today();
-var jReady=false,jPushT=null;
+var jReady=false,jPushT=null,dormant=false;
 function jSave(){jset(JKEY,JSON.stringify(trades));jPush();ruleCheck()}
 function jStatus(msg,bad){var e=$("j-save-status");e.textContent=msg||"";e.style.color=bad?"var(--down)":""}
 function jPush(){if(!jReady)return;clearTimeout(jPushT);jPushT=setTimeout(jPushNow,300)}
 function jPushNow(){
+  if(dormant)return;                                   /* an old tab must never overwrite the journal with its stale copy */
   fetch("/api/journal",{method:"POST",headers:HDRS,body:JSON.stringify({trades:trades})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
   .then(function(x){var n=new Date();jStatus(x.ok?"Saved to your PC ("+trades.length+" trades) at "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+".":"Could not save to your PC: "+(x.j.error||"unknown error"),!x.ok)})
@@ -1412,7 +1413,7 @@ function flowRows(box,d,limit){
   if(!qs.length)box.appendChild(el("div","empty","No prices came back."))}
 function renderAll(d){macroRender(d);homeRender(d);alertCheck(d);if(tabNow==="connect")connRender()}
 function loadMacro(force){
-  if(macroBusy)return;
+  if(macroBusy||dormant)return;
   if(!force&&macroData&&Date.now()-macroAt<55000){renderAll(macroData);return}
   macroBusy=true;$("macro-refresh").disabled=true;$("macro-refresh").textContent="Loading...";$("home-refresh").disabled=true;
   function fail(msg){$("macro-out").textContent="";$("macro-out").appendChild(el("div","err",msg));$("h-err").textContent=msg;$("h-err").style.display=""}
@@ -1630,6 +1631,7 @@ function alFire(title,msg){
   try{if(window.Notification&&Notification.permission==="granted")new Notification("RiskDesk: "+title,{body:msg})}catch(e){}
   alBeep();if(tabNow==="alerts")alRender()}
 function alertCheck(d){
+  if(dormant)return;
   var changed=false;
   AL.price.forEach(function(a){if(a.done)return;var q=quoteBy(d,a.sym);if(!q)return;
     if(a.dir==="above"?q.price>=a.level:q.price<=a.level){a.done=new Date().toISOString();changed=true;alFire(a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level,"Price is now "+fmt(q.price,q.digits)+".")}});
@@ -1718,6 +1720,22 @@ chatRender();
 
 var tab0=store("zd.tab");showTab(TABS.indexOf(tab0)>=0?tab0:"home");
 jLoad();
+/* one RiskDesk tab at a time: when a newer tab opens in this browser, older ones stop (no double alerts, no stale saves) and say so */
+(function(){
+  if(typeof BroadcastChannel==="undefined")return;
+  var me=String(Date.now())+"-"+Math.random().toString(36).slice(2),born=Date.now(),bc;
+  try{bc=new BroadcastChannel("riskdesk-one-tab")}catch(e){return}
+  function sleep(){
+    if(dormant)return;dormant=true;
+    var o=el("div",null);o.id="oldtab";o.setAttribute("role","alert");
+    o.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;background:var(--bg,#000);color:var(--fg,#fff);font:16px/1.5 system-ui,sans-serif";
+    o.appendChild(el("h2",null,"RiskDesk is open in a newer tab"));
+    o.appendChild(el("div",null,"This tab has stopped so nothing is saved or alerted twice. You can close it."));
+    var b=el("button","btn","Use this tab instead");b.type="button";b.onclick=function(){location.reload()};o.appendChild(b);
+    document.body.appendChild(o);document.title="(closed) RiskDesk.ai";
+    try{window.close()}catch(e){}}
+  bc.onmessage=function(e){var m=e.data;if(m&&m.id!==me&&m.born>=born&&!(m.born===born&&m.id<me))sleep()};
+  bc.postMessage({id:me,born:born})})();
 })();
 </script>
 </body>
