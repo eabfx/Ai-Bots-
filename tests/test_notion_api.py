@@ -175,9 +175,10 @@ class Wiring(unittest.TestCase):
         self.assertIn("notion_link.start()", SERVER)
 
     def test_the_second_brain_tab_and_the_journal_merge_are_in_the_page(self):
-        for needle in ('data-tab="brain">Second Brain<', 'class="brainbtn"', "linear-gradient(135deg,#9a92ff", "color:#0b0b0b", 'id="tab-brain"', "function sbDraw()", "function sbNodes(", "function nsSync()", "/api/notion/journal",
-                       "/api/notion/hub", "/api/notion/refresh", 'id="nl-card"', "Read content", "Thoughts + Emotions"):
+        for needle in ('data-tab="brain">Second Brain<', 'class="brainbtn"', "background:var(--accent);color:var(--onaccent)", 'id="tab-brain"', 'id="sb-root"', 'src="/brain.js"', "function nsSync()", "/api/notion/journal",
+                       "/api/notion/refresh", 'id="nl-card"', "Read content", "Thoughts + Emotions"):
             self.assertIn(needle, PAGE)
+        self.assertNotIn("#9a92ff", PAGE)                            # the button is plain white and black now
         self.assertIn('"home","macro","journal","backtest","brain"', PAGE)
 
     def test_a_row_filled_in_later_updates_the_trade_but_keeps_what_you_wrote_here(self):

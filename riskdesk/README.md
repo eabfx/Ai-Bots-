@@ -109,5 +109,14 @@ Connections page, "Notion live link". It reads your Notion, never writes to it: 
 Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart RiskDesk. The page called "Thoughts + Emotions" is never read, even though the integration can reach it.
 
 - **Journal rows:** the Trade Journal 2026 database is read every 5 minutes and merged into the journal by Trade No. and date. A row you add or fill in later in Notion becomes or updates the trade; notes and screenshots you added on the dashboard are kept.
-- **Second Brain tab:** the Trade Journal page and the pages under it (checklists, risk protocol, prop firm rules, funding tables, goals, inline databases), laid out in the same order with their tables, columns and lists, refreshed every 20 minutes or with "Refresh from Notion".
+- **Second Brain tab:** your own editable, Notion-style workspace (see below). The live link keeps `trader\notion\hub.json` as a read-only snapshot of the Notion pages, which is only used for the first copy.
 - Copies are kept in `trader\notion` (not in git), so the tab still shows the last copy if Notion is unreachable. The database and page ids can be changed in config.json under "notion": {"journal_db": "...", "hub_page": "..."}.
+
+
+## Second Brain (editable)
+
+The Second Brain button (bottom left, white and black) opens a Notion-style workspace that is stored on your PC in `trader\brain\brain.json` (not in git; a `brain.bak.json` copy is refreshed every 30 minutes). The first time it opens it copies your Notion Trade Journal: the pages from `trader\notion\hub.json`, with each checklist page turned into a real empty page you can write in, and the **Trade Journal 2026** table from the Notion export in `trader\import-done` (or `trader\import`), with its screenshots.
+
+- **Pages:** click anywhere to write. Type `/` (or press the + beside a block) for text, headings, bulleted/numbered lists, to-dos, toggles, quotes, callouts, dividers, code, tables, 2 or 3 columns, sub-pages, databases and images. Markdown shortcuts work (`# `, `- `, `1. `, `[] `, `> `, `---`). Select text for bold, italic, underline, strikethrough, code, links and colours. Drag the dotted handle to move a block, or click it to delete, duplicate, turn into another type or colour it. Tab / Shift+Tab indent lists. Tables have + / - rows and columns and header toggles.
+- **Databases:** property chips for select and multi-select (create, rename, recolour, delete options), date, number, checkbox, URL and screenshots; Filter, Sort, Search, show or hide and reorder properties, add, rename, retype and delete properties, add, duplicate and delete rows (with Undo), and OPEN a row as a page with its own notes and images.
+- **Nothing here is ever sent to Notion.** The editor has no Notion code at all; edits live only in your copy, and saving is automatic (the status at the top right says Saving / Saved). An old tab cannot overwrite newer work.

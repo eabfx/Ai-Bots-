@@ -25,6 +25,7 @@ TRADER = os.path.join(os.path.dirname(HERE), "trader")          # your settings 
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zones.py, the zone finder this dashboard shows
 sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
+import brain         # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_api     # noqa: E402
@@ -142,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 < size <= store.MAX_IMAGE:
                     raise store.StoreError("the image is empty or larger than %d MB" % (store.MAX_IMAGE // 1024 // 1024))
                 return self.send_json(200, {"name": store.save_image(self.data_dir, self.rfile.read(size))})
-            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route == "/api/journal" else 20000
+            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route in ("/api/journal", "/api/brain") else 20000
             if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
@@ -159,6 +160,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": answer})
             elif path == "/api/journal":
                 return self.send_json(200, {"saved": store.save_trades(self.data_dir, body.get("trades"))})
+            elif path == "/api/brain":
+                try:
+                    return self.send_json(200, {"rev": brain.save(self.data_dir, body)})
+                except brain.Conflict as e:
+                    return self.send_json(409, {"error": str(e)})
             elif path == "/api/import/notion":
                 return self.notion(bool(body.get("apply")))
             elif path == "/api/notion/refresh":
@@ -183,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError, store.StoreError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -194,7 +200,7 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in APP_FILES:                       # what the browser needs to install RiskDesk as an app: the icon, not your data
             data, kind = APP_FILES[url.path]
-            return self.send_bytes(200, data, kind, "no-store" if url.path == "/sw.js" else "public, max-age=3600")
+            return self.send_bytes(200, data, kind, "no-store" if url.path in ("/sw.js", "/brain.js", "/brain.css") else "public, max-age=3600")
         if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
             return
         if url.path == "/":
@@ -206,6 +212,15 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/notion/journal":
             doc = self.notion_link.journal_doc if self.notion_link else {"at": "", "trades": []}
             self.send_json(200, {"at": doc.get("at", ""), "trades": doc.get("trades") or []})
+        elif url.path == "/api/brain":
+            try:
+                doc = brain.load(self.data_dir)
+                seeded = doc is None
+                if seeded:
+                    doc = brain.seed(self.data_dir)
+            except brain.BrainError as e:
+                return self.send_json(500, {"error": str(e)})
+            self.send_json(200, {"doc": doc, "seeded": seeded})
         elif url.path == "/api/notion/hub":
             self.send_json(200, self.notion_link.hub_doc if self.notion_link else {"at": "", "root": "", "pages": {}})
         elif url.path == "/api/tradezella/summary":
@@ -303,6 +318,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.ht
 def _app_files():
     here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
     kinds = {"manifest.webmanifest": "application/manifest+json", "sw.js": "application/javascript; charset=utf-8",
+             "brain.js": "application/javascript; charset=utf-8", "brain.css": "text/css; charset=utf-8",
              "icon-192.png": "image/png", "icon-512.png": "image/png", "icon-maskable-512.png": "image/png",
              "apple-touch-icon.png": "image/png"}
     out = {}
