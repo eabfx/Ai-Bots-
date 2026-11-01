@@ -97,3 +97,16 @@ class Wiring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Panel(unittest.TestCase):
+    def test_the_backtest_page_has_a_tradezella_panel_fed_by_a_summary_file(self):
+        self.assertIn("/api/tradezella/summary", SERVER)
+        self.assertIn('"summary.json"', SERVER)
+        for needle in ('id="tz-panel"', "function tzPanel()", "tzPanel();", "https:\\/\\/app\\.tradezella\\.com\\/", "noopener noreferrer"):
+            self.assertIn(needle, PAGE)
+
+    def test_nothing_waiting_in_the_notion_folder_is_a_calm_note_not_a_failure(self):
+        notion = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "notion_import.py"), encoding="utf-8").read()
+        self.assertIn("Nothing waiting to import", notion)
+        self.assertIn("/^Nothing waiting/", PAGE)

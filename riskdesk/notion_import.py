@@ -81,7 +81,7 @@ def open_source(import_dir):
             src.add_folder(full)
     if not src.files:
         src.close()
-        raise ImportError_("The folder  %s  has no export in it yet. Put the Notion .zip (or its unzipped folder) there." % import_dir)
+        raise ImportError_("Nothing waiting to import. Your earlier Notion export is already in the journal (the used files are in import-done). To bring in newer trades, export Notion again and put the new .zip in  %s" % import_dir)
     return src
 
 

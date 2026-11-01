@@ -770,6 +770,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div id="j-days"></div>
 <div class="empty" id="j-empty">No trades logged yet. Log your first one above.</div>
 <div class="btnrow"><button class="btn ghost small" id="j-more" type="button" hidden>Show more</button></div></div>
+<div class="card" id="tz-panel" hidden><h3 class="jh">TradeZella backtesting</h3><div id="tz-panel-out"></div></div>
 <div class="card" id="j-skipcard" hidden><h3 class="jh" id="j-skiptitle">Kept but not counted</h3>
 <div class="jsub">No-trade days, invalid trades and tests with no result. They stay in your journal so nothing is lost, but they are left out of the win rate, the P/L, the charts and the coach.</div>
 <details style="margin-top:8px"><summary>Show them</summary><div class="scroll"><table>
@@ -1391,6 +1392,7 @@ function jRender(){
   var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
   $("j-sub").textContent=bt?"Your backtest trades, kept apart from your live journal. They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
   $("coach").hidden=bt;
+  tzPanel();
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
   Array.prototype.forEach.call($("j-by").children,function(b){b.className=b.getAttribute("data-by")===jBy?"on":""});
   $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(bt?", backtest":"");
@@ -1731,7 +1733,7 @@ function ntCall(apply){
   var e=$("nt-err");e.style.display="none";$("nt-prev").disabled=true;$("nt-go").disabled=true;
   return fetch("/api/import/notion",{method:"POST",headers:HDRS,body:JSON.stringify({apply:apply})})
     .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"import failed");return j})})
-    .catch(function(er){e.textContent=er.message;e.style.display="";return null})
+    .catch(function(er){var calm=/^Nothing waiting/.test(er.message);e.textContent=er.message;e.style.display="";e.style.background=calm?"var(--panel2)":"";e.style.color=calm?"var(--muted)":"";return null})
     .then(function(j){$("nt-prev").disabled=false;return j})}
 $("nt-prev").onclick=function(){ntCall(false).then(function(j){if(!j)return;ntShow(j);$("nt-go").disabled=!(j.report.live+j.report.backtest)})};
 $("nt-go").onclick=function(){
@@ -1773,6 +1775,26 @@ $("tz-go").onclick=function(){
     jSave();jRender();
     $("tz-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+": "+add.filter(function(t){return !t.skip}).length+" counted in Backtest and "+add.filter(function(t){return t.skip}).length+" kept, not counted.");m.style.marginTop="8px";$("tz-out").appendChild(m);
     $("tz-go").disabled=true})};
+/* TradeZella summary on the Backtest page: the strategy numbers and sessions copied into trader/tradezella/summary.json */
+var tzSum=null,tzTried=false;
+function money0(n){return (n<0?"-":"")+"$"+Math.abs(Math.round(n)).toLocaleString()}
+function tzPanel(){
+  var box=$("tz-panel");if(!box)return;
+  if(jAcct!=="backtest"){box.hidden=true;return}
+  if(!tzSum){box.hidden=true;if(!tzTried){tzTried=true;fetch("/api/tradezella/summary").then(function(r){return r.json()}).then(function(j){if(j&&j.exists){tzSum=j.summary;tzPanel()}}).catch(function(){})}return}
+  var out=$("tz-panel-out"),S=tzSum.strategy||{};out.textContent="";box.hidden=false;
+  out.appendChild(el("div","jsub",(S.name||"Strategy")+": the numbers TradeZella works out from its own "+pl(S.trades||0,"backtest trade")+", in the practice account's dollars. Copied from TradeZella on "+(tzSum.pulled||"")+"."));
+  var st=el("div","ntstat");
+  [["Win rate",S.win_rate+"%"],["Profit factor",S.profit_factor],["Expectancy",money0(S.expectancy)],["Net P&L",money0(S.pl)],["Average win",money0(S.avg_win)],["Average loss",money0(S.avg_loss)],
+   ["Largest win",money0(S.largest_win)],["Largest loss",money0(S.largest_loss)],["Average R",S.avg_r],["Longest losing run",S.max_loss_streak]].forEach(function(p){
+    var d=el("div");d.appendChild(el("div","k",p[0]));d.appendChild(el("div","v",String(p[1])));st.appendChild(d)});
+  out.appendChild(st);
+  var ss=tzSum.sessions||[];
+  if(ss.length){var h=el("div","jsub","Backtesting sessions");h.style.marginTop="10px";out.appendChild(h);
+    out.appendChild(table(["Session","Pair","Period","Balance","P&L","Trades","Done"],ss.map(function(x){return[x.name,x.symbol,x.start+" to "+x.end,money0(x.start_balance)+" to "+money0(x.balance),(x.pl<0?"":"+")+money0(x.pl),String(x.trades),x.completion]})))}
+  var row=el("div","btnrow");row.style.marginTop="10px";
+  (tzSum.links||[]).forEach(function(l){if(!/^https:\/\/app\.tradezella\.com\//.test(l.url))return;var a=el("a","btn small",l.label);a.href=l.url;a.target="_blank";a.rel="noopener noreferrer";row.appendChild(a)});
+  out.appendChild(row)}
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){

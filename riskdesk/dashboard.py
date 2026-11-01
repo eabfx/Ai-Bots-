@@ -195,6 +195,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
             self.macro(parse_qs(url.query))
+        elif url.path == "/api/tradezella/summary":
+            try:
+                with open(os.path.join(self.data_dir, "tradezella", "summary.json"), encoding="utf-8-sig") as fh:
+                    self.send_json(200, {"exists": True, "summary": json.load(fh)})
+            except (OSError, ValueError):
+                self.send_json(200, {"exists": False})
         elif url.path == "/api/journal":
             try:
                 saved = store.load_trades(self.data_dir)
