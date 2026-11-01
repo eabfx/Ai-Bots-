@@ -460,6 +460,11 @@ class KeptButNotCounted(unittest.TestCase):
             self.assertIn(s, self.PAGE)
         self.assertIn("jAT?jBase().filter(", self.PAGE)                          # the hero, stats and trades all read the filtered pool
 
+    def test_monthly_wrapped_is_a_fixed_rule_story_and_the_hero_greeting_has_its_own_id(self):
+        for s in ('id="wrap"', 'id="h-wrap"', "function wSlides()", "function wShow(", "function wCount(", "Best trade", "Hardest trade", "How you traded"):
+            self.assertIn(s, self.PAGE)
+        self.assertEqual(self.PAGE.count('id="h-greet"'), 1)                    # the Home greeting; the hero's is h-hello
+
 
 class AllowedHosts(unittest.TestCase):
     """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""
