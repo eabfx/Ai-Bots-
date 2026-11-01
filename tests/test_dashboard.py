@@ -1027,6 +1027,16 @@ class JournalImport(Server):
         self.assertNotIn("fetch(", journal.split("/* import from a broker CSV")[1].split("function jError(")[0])
 
 
+class PhoneLayout(Server):
+    def test_the_page_has_a_phone_layout_with_a_bottom_tab_bar(self):
+        _, _, body = self.get("/")
+        self.assertIn("viewport-fit=cover", body)
+        phone = body.split("/* phone:")[1].split("</style>")[0]
+        for needle in ("@media(max-width:640px)", ".bar nav{position:fixed", "bottom:0", "env(safe-area-inset-bottom)",
+                       "font-size:16px", ".chatbtn{bottom:"):
+            self.assertIn(needle, phone)
+
+
 class EntryStyle(Server):
     def test_the_page_names_the_results_card_indicator_stats(self):
         _, _, body = self.get("/")

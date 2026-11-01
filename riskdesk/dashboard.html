@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RiskDesk.ai</title>
 <style>
 :root{
@@ -257,6 +257,28 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .jcal .cd.blank{border:0}.jcal .cd.today{border-color:var(--text)}
 .frow.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
 @media(max-width:520px){.jcal .cd{min-height:40px;padding:3px}.jcal .cd span{font-size:10px}.jrow{grid-template-columns:minmax(80px,34%) 1fr auto}}
+
+/* phone: the section tabs move to a bar along the bottom, and everything you tap gets bigger */
+@media(max-width:640px){
+  header{backdrop-filter:none;background:var(--bgc)}
+  .bar{height:52px;gap:10px}
+  .bar nav{position:fixed;left:0;right:0;bottom:0;z-index:70;flex:none;justify-content:space-around;gap:4px;overflow:visible;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--header);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+  .bar nav button{flex:1;min-height:46px;padding:8px 2px;font-size:13px;border-radius:12px}
+  .logo{flex:1}
+  body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  .chatbtn{bottom:calc(78px + env(safe-area-inset-bottom));right:14px}
+  .chat{right:10px;left:10px;width:auto;bottom:calc(128px + env(safe-area-inset-bottom));height:min(520px,calc(100vh - 190px))}
+  .btn,.btn.small,.seg button,.tab,.themebtn{min-height:42px}
+  .btn.small{padding:8px 14px}
+  .del{min-width:42px;min-height:42px}
+  input,select{font-size:16px;min-height:44px}
+  input[type="checkbox"]{min-height:0}
+  .hero{padding:22px 16px 0}.hero h1{font-size:28px}
+  .card{padding:16px}
+  .hero p,.hero .eyebrow{display:none}
+  .jhead .btnrow{margin-bottom:12px!important}
+}
 </style>
 </head>
 <body>

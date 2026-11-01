@@ -27,6 +27,6 @@ out: `config.json`, `my_zones.json`, `my_levels.json`, `gemini_key.txt` or `anth
 - **Journal**: a total P/L, an edge score, win rate, average R, profit factor, plan followed, a cumulative curve, a month calendar, results by weekday, and results grouped by instrument, setup, emotion, plan or grade. Each trade can carry an optional time, grade (A to D), plan followed or deviated, and how you felt. Results can be grouped by session (Asia, London, New York, Late, on the Dublin clock) or by hour. **Import from a broker CSV** reads a trade history file in the browser (nothing is uploaded), guesses the columns, shows a preview you can correct, skips trades already in the journal and adds the rest. Everything is worked out in the browser from your trades.
 - **Chat box** (the button at the bottom right): ask about what is on screen. It sends only the visible zones, entries, levels, your journal totals and the macro numbers, never your keys.
 
-Later ideas: a phone layout with a bottom navigation bar (Dashboard, Journal, Analytics, More).
+On a narrow screen (a phone, or a small window) the four tabs move to a bar along the bottom and buttons and fields get bigger. The dashboard still runs on your PC and listens only on that computer, so a phone cannot reach it yet.
 
 How the zones, the fib entry and the coach work is written up in `../trader-zones/SKILL.md`.
