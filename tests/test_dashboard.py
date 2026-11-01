@@ -70,6 +70,13 @@ class Basics(Server):
             self.assertIn(words, body)
         self.assertLess(body.index('data-tab="home"'), body.index('data-tab="macro"'))
 
+    def test_home_has_a_daily_plan_and_a_pre_trade_checklist_kept_in_the_browser(self):
+        _, _, body = self.get("/")
+        for words in ('id="pl-text"', 'id="ck-list"', 'id="ck-rules"', 'store("zd.plan."', "zd.ck.rules", "zd.ck.done.", "function planRender"):
+            self.assertIn(words, body)
+        start = body.index("function planRender")
+        self.assertNotIn("innerHTML", body[start:body.index("/* ---------------- chat box")])
+
     def test_outside_text_on_home_is_never_put_in_through_innerhtml(self):
         _, _, body = self.get("/")
         start = body.index("function homeRender")

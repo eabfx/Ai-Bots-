@@ -316,6 +316,14 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .chat.docked .log{padding:4px 0 10px}.chat.docked .chips{padding:0 0 10px}.chat.docked form{padding:10px 0 0}.chat.docked .cnote{padding:0 0 4px}
 
 .flat{color:var(--flat)}.flowbar i.flat{background:var(--flat);left:calc(50% - 1px);width:2px!important}.hm .px.flat,.hm .t .flat,.hticker em.flat,.hmood b.flat,.mbig.flat{color:var(--flat)}
+.hpanel textarea{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:14px/1.5 var(--sans);resize:vertical}
+#pl-text{min-height:260px}
+.ckrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
+.ckrow:last-of-type{border-bottom:0}.ckrow input{width:18px;height:18px;accent-color:var(--up);flex:none}
+.ckrow.done span{color:var(--muted);text-decoration:line-through}
+.ckstate{margin-top:10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.ckstate.up{color:var(--up)}.ckstate.flat{color:var(--flat)}
+#ck-editor{margin-top:10px}#ck-editor .btnrow{margin-top:8px}
 /* phone: the section tabs move to a bar along the bottom, and everything you tap gets bigger */
 @media(max-width:640px){
   header{backdrop-filter:none;background:var(--bgc)}
@@ -363,6 +371,14 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="err" id="h-err" style="display:none"></div>
 <div id="h-sessions"></div>
 <div class="hnums" id="h-nums"></div>
+<div class="hgrid2">
+<div class="hpanel"><div class="hp-h"><h3>Today's plan</h3><span class="mute" id="pl-saved" style="font-size:12px"></span></div>
+<textarea id="pl-text" maxlength="800" rows="6" placeholder="What are you trading today, which levels matter, what would make you stand aside? (kept in this browser, one plan per day)"></textarea></div>
+<div class="hpanel"><div class="hp-h"><h3>Pre-trade checklist</h3><button class="btn small ghost" id="ck-edit" type="button">Edit rules</button></div>
+<div id="ck-list"></div><div class="ckstate" id="ck-state"></div>
+<div id="ck-editor" hidden><textarea id="ck-rules" maxlength="1200" rows="7" aria-label="Checklist rules, one per line"></textarea>
+<div class="btnrow"><button class="btn small" id="ck-save" type="button">Save rules</button><button class="btn small ghost" id="ck-reset" type="button">Reset to default</button></div></div></div>
+</div>
 <div class="hgrid">
 <div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button">Write today's brief</button></div>
 <div class="err" id="h-brief-err" style="display:none"></div><div class="hmk" id="h-mkts"></div></div>
@@ -1325,6 +1341,27 @@ function dockChat(on){                                       /* on Home the assi
   var c=$("chat"),b=$("chat-btn");
   if(on){$("h-assist-box").appendChild(c);c.classList.add("docked");c.hidden=false;b.style.display="none";chatRender()}
   else{document.body.insertBefore(c,b.nextSibling);c.classList.remove("docked");c.hidden=true;b.style.display="";b.setAttribute("aria-expanded","false")}}
+
+
+/* ---------------- daily plan and pre-trade checklist (kept in this browser, per day) ---------------- */
+var CK_DEFAULT=["Higher timeframe bias is clear","Price is at a level I marked","No high-impact news in the next 30 minutes","Stop is set and the size is calculated","Risk is within my daily limit","I would take this trade again if the last one had been a win"];
+function ckRules(){try{var r=JSON.parse(store("zd.ck.rules")||"null");if(Array.isArray(r)&&r.length)return r.filter(function(s){return typeof s==="string"&&s.trim()}).slice(0,12).map(function(s){return s.trim().slice(0,120)})}catch(e){}return CK_DEFAULT.slice()}
+function ckDone(){try{var o=JSON.parse(store("zd.ck.done."+today())||"[]");return Array.isArray(o)?o:[]}catch(e){return[]}}
+function planRender(){
+  var pt=$("pl-text");if(document.activeElement!==pt)pt.value=store("zd.plan."+today())||"";
+  var rules=ckRules(),done=ckDone(),box=$("ck-list");box.textContent="";
+  rules.forEach(function(r,i){var row=el("label","ckrow"+(done.indexOf(i)>=0?" done":"")),c=el("input");c.type="checkbox";c.checked=done.indexOf(i)>=0;
+    c.onchange=function(){var d=ckDone().filter(function(x){return x!==i});if(c.checked)d.push(i);store("zd.ck.done."+today(),JSON.stringify(d));planRender()};
+    row.appendChild(c);row.appendChild(el("span",null,r));box.appendChild(row)});
+  var n=rules.filter(function(r,i){return done.indexOf(i)>=0}).length,st=$("ck-state");
+  st.className="ckstate "+(n===rules.length?"up":"flat");
+  st.textContent=n===rules.length?"All "+n+" ticked. Ready if the setup is there.":n+" of "+rules.length+" ticked. Not ready yet."}
+$("pl-text").oninput=function(){store("zd.plan."+today(),$("pl-text").value);$("pl-saved").textContent="Saved"};
+$("ck-edit").onclick=function(){var e=$("ck-editor");e.hidden=!e.hidden;if(!e.hidden)$("ck-rules").value=ckRules().join("\n")};
+$("ck-save").onclick=function(){var r=$("ck-rules").value.split("\n").map(function(s){return s.trim()}).filter(Boolean).slice(0,12);
+  if(r.length){store("zd.ck.rules",JSON.stringify(r));store("zd.ck.done."+today(),"[]")}$("ck-editor").hidden=true;planRender()};
+$("ck-reset").onclick=function(){store("zd.ck.rules","");store("zd.ck.done."+today(),"[]");$("ck-editor").hidden=true;planRender()};
+planRender();
 
 /* ---------------- chat box ---------------- */
 var chatMsgs=[],chatBusy=false;
