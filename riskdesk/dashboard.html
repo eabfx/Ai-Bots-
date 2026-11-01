@@ -1150,7 +1150,7 @@ function flowRows(box,d,limit){
 function renderAll(d){macroRender(d);homeRender(d)}
 function loadMacro(force){
   if(macroBusy)return;
-  if(!force&&macroData&&Date.now()-macroAt<120000){renderAll(macroData);return}
+  if(!force&&macroData&&Date.now()-macroAt<55000){renderAll(macroData);return}
   macroBusy=true;$("macro-refresh").disabled=true;$("macro-refresh").textContent="Loading...";$("home-refresh").disabled=true;
   function fail(msg){$("macro-out").textContent="";$("macro-out").appendChild(el("div","err",msg));$("h-err").textContent=msg;$("h-err").style.display=""}
   fetch("/api/macro"+(force?"?refresh=1":"")).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
@@ -1160,6 +1160,7 @@ function loadMacro(force){
   .catch(function(e){fail("The dashboard did not answer: "+e)})
   .then(function(){macroBusy=false;$("macro-refresh").disabled=false;$("macro-refresh").textContent="Refresh";$("home-refresh").disabled=false})}
 $("macro-refresh").onclick=function(){loadMacro(true)};
+setInterval(function(){if(document.visibilityState==="visible"&&(tabNow==="home"||tabNow==="macro"))loadMacro(false)},60000);   /* prices follow the market while Home or Macro is open */
 function macroRender(d){
   var out=$("macro-out");out.textContent="";$("macro-asof").textContent="As of "+d.as_of+" Dublin";
   if(d.notes.length){var nc=el("div","card");d.notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
