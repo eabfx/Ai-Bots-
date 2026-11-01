@@ -450,6 +450,11 @@ class KeptButNotCounted(unittest.TestCase):
     def test_a_second_import_adds_screenshots_to_trades_already_there(self):
         self.assertIn("a trade imported earlier without its screenshot gets it now", self.PAGE)
 
+    def test_trades_are_grouped_by_day_with_filters_search_and_a_gallery(self):
+        for s in ('id="j-days"', 'id="t-q"', 'id="t-day"', 'id="t-view"', 'id="t-pick"', "function tRender(", "function tFilter(", "function tGallery(", "View day"):
+            self.assertIn(s, self.PAGE)
+        self.assertNotIn('id="j-rows"', self.PAGE)                              # the flat table is gone
+
 
 class AllowedHosts(unittest.TestCase):
     """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""

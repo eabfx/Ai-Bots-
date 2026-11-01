@@ -224,6 +224,30 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .jhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 20px;flex-wrap:wrap}
 .jh{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
 .jhero{text-align:center;padding:26px 20px 22px}
+.t-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.t-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.t-bar input[type=search],.t-bar input[type=date]{background:var(--input);border:1px solid var(--line);border-radius:99px;color:var(--text);padding:8px 14px;font:13px var(--sans,inherit);min-width:0;flex:1 1 220px}
+.t-bar input[type=date]{flex:0 0 auto}
+.t-day{margin-top:6px}
+.t-dh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:14px 4px 7px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.t-dh .d{font:600 13px var(--mono)}.t-dh .m{font:500 11.5px var(--mono);color:var(--muted);margin-left:8px}
+.t-dh .s{font:600 15px var(--mono)}.t-dh button.v{appearance:none;background:none;border:0;color:var(--muted);font:600 11.5px var(--mono);cursor:pointer;margin-left:10px;padding:0}
+.t-dh button.v:hover{color:var(--text)}
+.t-r{display:grid;grid-template-columns:52px 1fr auto auto 22px;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.t-r:hover{background:var(--panel2)}
+.t-th{width:52px;height:40px;border-radius:8px;object-fit:cover;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--muted);font:600 11px var(--mono);border:1px solid var(--line);cursor:pointer;padding:0}
+.t-n{min-width:0}.t-n b{font-weight:600;font-size:13.5px}
+.t-n i{font-style:normal;font:600 10.5px var(--mono);padding:1px 7px;border-radius:99px;border:1px solid var(--line);margin-left:7px}
+.t-n i.L{color:var(--up)}.t-n i.S{color:var(--down)}
+.t-n small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-rr{font:600 12px var(--mono);color:var(--muted)}.t-rr.up{color:var(--up)}.t-rr.down{color:var(--down)}
+.t-pl{font:600 15px var(--mono);min-width:78px;text-align:right}.t-pl.up{color:var(--up)}.t-pl.down{color:var(--down)}
+.t-ch{color:var(--muted);transition:transform .15s}.t-open .t-ch{transform:rotate(180deg)}
+.t-det{padding:10px 8px 14px 64px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);background:var(--panel2)}
+.t-det .kv{display:flex;gap:6px 16px;flex-wrap:wrap;margin-bottom:8px;font:500 12px var(--mono)}.t-det .kv span b{color:var(--text);font-weight:600}
+.t-det p{margin:0 0 8px;color:var(--text);white-space:pre-wrap}
+.t-gal .h-tr{flex:none;width:auto}
+.t-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:4px}
 .hcard{padding:20px 22px 22px}
 .h-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .h-greet{font:600 20px var(--sans,inherit);letter-spacing:-.01em}
@@ -680,9 +704,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="err" id="j-err" style="display:none"></div>
 </div>
 
-<div class="card"><h3 class="jh">Trades</h3><div class="scroll"><table>
-<thead><tr><th>Shot</th><th>Date</th><th>Instrument</th><th>Dir</th><th>Setup</th><th>Grade</th><th>Plan</th><th>Feeling</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
-<tbody id="j-rows"></tbody></table></div>
+<div class="card" id="j-trades">
+<div class="t-head"><h3 class="jh" style="margin:0">Trades</h3>
+<div class="t-ctl"><div class="seg" id="t-view" role="group" aria-label="Layout"><button type="button" data-v="list">List</button><button type="button" data-v="gallery">Gallery</button></div></div></div>
+<div class="t-bar"><input type="search" id="t-q" placeholder="Search pair, setup, zone, notes" aria-label="Search trades" maxlength="60">
+<div class="seg" id="t-day" role="group" aria-label="Day"><button type="button" data-d="all">All days</button><button type="button" data-d="today">Today</button><button type="button" data-d="yesterday">Yesterday</button><button type="button" data-d="pick">Pick a day</button></div>
+<input type="date" id="t-pick" aria-label="Choose a day" hidden></div>
+<div id="j-days"></div>
 <div class="empty" id="j-empty">No trades logged yet. Log your first one above.</div>
 <div class="btnrow"><button class="btn ghost small" id="j-more" type="button" hidden>Show more</button></div></div>
 <div class="card" id="j-skipcard" hidden><h3 class="jh" id="j-skiptitle">Kept but not counted</h3>
@@ -1213,6 +1241,56 @@ function jHero(){
     bd.appendChild(el("div","dt",t.date+(t.tag?" - "+t.tag:"")));b.appendChild(bd);b.onclick=function(){openLb(t)};strip.appendChild(b)})}
 Array.prototype.forEach.call($("h-per").children,function(b){b.onclick=function(){hPer=b.getAttribute("data-p");hOff=0;hAuto=true;jHero()}});
 $("h-prev").onclick=function(){hOff++;hAuto=false;jHero()};$("h-next").onclick=function(){if(hOff>0){hOff--;hAuto=false;jHero()}};
+/* trades: grouped by day, with a day total, a day filter, search, and a gallery layout */
+var tView="list",tDay="all",tPick="",tQ="",tOpen={};
+function tid(t){return t.date+"|"+(t.time||"")+"|"+t.inst+"|"+t.dir+"|"+t.pl+"|"+(t.no||"")}
+function ymd(ms){var d=new Date(ms);return d.getUTCFullYear()+"-"+("0"+(d.getUTCMonth()+1)).slice(-2)+"-"+("0"+d.getUTCDate()).slice(-2)}
+function tFilter(list){
+  var now=dparse(today()),want=tDay==="today"?ymd(now):tDay==="yesterday"?ymd(now-DAY):tDay==="pick"?tPick:"",q=tQ.trim().toLowerCase();
+  return list.filter(function(t){
+    if(want&&t.date!==want)return false;
+    if(q){var hay=[t.inst,t.tag,t.zone,t.strategy,t.notes,t.session,t.acctType,t.bias,t.emotion,t.date].join(" ").toLowerCase();if(hay.indexOf(q)<0)return false}
+    return true})}
+function tDelete(t){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}}
+function tShot(t){
+  if(t.img){var im=el("img","t-th");im.src="/api/img/"+t.img;im.loading="lazy";im.alt="Trade screenshot";im.onclick=function(e){e.stopPropagation();openLb(t)};return im}
+  var b=el("button","t-th","+");b.type="button";b.title="Add a screenshot";b.setAttribute("aria-label","Add a screenshot");b.onclick=function(e){e.stopPropagation();openLb(t)};return b}
+function tRow(t,box){
+  var id=tid(t),r=t.risk>0?t.pl/t.risk:(t.r!==undefined?t.r:null),open=!!tOpen[id];
+  var row=el("div","t-r"+(open?" t-open":""));row.appendChild(tShot(t));
+  var n=el("div","t-n"),b=el("b",null,t.inst);n.appendChild(b);n.appendChild(el("i",t.dir==="long"?"L":"S",t.dir==="long"?"Long":"Short"));
+  n.appendChild(el("small",null,[t.time||"",t.tag||"",t.session,t.acctType||(t.acct==="backtest"?"Backtest":"")].filter(Boolean).join(" - ")||t.date));row.appendChild(n);
+  row.appendChild(el("div","t-rr "+(r===null?"":cls(r)),r===null?"":(r>=0?"+":"")+fmt(r,2)+"R"));
+  row.appendChild(el("div","t-pl "+cls(t.pl),signed(t.pl)));row.appendChild(el("div","t-ch","\u2304"));
+  row.onclick=function(){tOpen[id]=!tOpen[id];jRender()};box.appendChild(row);
+  if(open){var d=el("div","t-det"),kv=el("div","kv");
+    [["Zone",t.zone],["Strategy",t.strategy],["Bias",t.bias],["Grade",t.grade],["Plan",t.plan],["Feeling",t.emotion],["Partials",t.partials],["Risk",t.risk?jm(t.risk):""],["Trade no.",t.no]].forEach(function(p){
+      if(p[1]===undefined||p[1]==="")return;var s=el("span");s.appendChild(document.createTextNode(p[0]+" "));s.appendChild(el("b",null,String(p[1])));kv.appendChild(s)});
+    d.appendChild(kv);if(t.notes)d.appendChild(el("p",null,t.notes));
+    var del=el("button","btn ghost small","Delete trade");del.type="button";del.onclick=function(e){e.stopPropagation();tDelete(t)};d.appendChild(del);box.appendChild(d)}}
+function tGallery(list,box){
+  var g=el("div","t-gal");
+  list.forEach(function(t){var b=el("button","h-tr "+cls(t.pl));b.type="button";
+    if(t.img){var im=el("img");im.src="/api/img/"+t.img;im.loading="lazy";im.alt="Trade screenshot";b.appendChild(im)}else b.appendChild(el("div","ph",t.inst));
+    var bd=el("div","bd");bd.appendChild(el("div","pl",signed(t.pl)));var nm=el("div","nm",t.inst);nm.appendChild(el("i",null,t.dir==="long"?"Long":"Short"));bd.appendChild(nm);
+    bd.appendChild(el("div","dt",t.date+(t.tag?" - "+t.tag:"")));b.appendChild(bd);b.onclick=function(){openLb(t)};g.appendChild(b)});
+  box.appendChild(g)}
+function tRender(list){
+  var box=$("j-days");box.textContent="";var shown=tFilter(list),all=jChron(shown).reverse();
+  Array.prototype.forEach.call($("t-view").children,function(b){b.className=b.getAttribute("data-v")===tView?"on":""});
+  Array.prototype.forEach.call($("t-day").children,function(b){b.className=b.getAttribute("data-d")===tDay?"on":""});
+  $("t-pick").hidden=tDay!=="pick";$("t-pick").value=tPick;
+  $("j-empty").style.display=all.length?"none":"block";
+  $("j-empty").textContent=trades.length?"No trades match this view.":"No trades logged yet. Log your first one above.";
+  var part=all.slice(0,jShown);$("j-more").hidden=all.length<=jShown;
+  if(tView==="gallery"){tGallery(part,box);return}
+  var days=[],by={};part.forEach(function(t){if(!by[t.date]){by[t.date]=[];days.push(t.date)}by[t.date].push(t)});
+  days.forEach(function(dk){var ts=by[dk],s=jStats(ts),ms=dparse(dk),sec=el("div","t-day"),h=el("div","t-dh"),l=el("div");
+    l.appendChild(el("span","d",ms===null?dk:dshort(ms)));
+    l.appendChild(el("span","m",pl(ts.length,"trade")+" - "+s.w+"W "+s.l+"L"));h.appendChild(l);
+    var r=el("div");r.appendChild(el("span","s "+cls(s.net),signed(s.net)));
+    if(tDay!=="pick"||tPick!==dk){var v=el("button","v","View day \u203a");v.type="button";v.onclick=function(){tDay="pick";tPick=dk;jShown=30;jRender()};r.appendChild(v)}
+    h.appendChild(r);sec.appendChild(h);ts.forEach(function(t){tRow(t,sec)});box.appendChild(sec)})}
 function jRender(){
   var list=jView(),st=jStats(list);jHero();setUnit(list);
   var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
@@ -1234,24 +1312,7 @@ function jRender(){
   cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
     if(s[2])c.appendChild(el("div","jsub",s[2]));box.appendChild(c)});
   jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jGroups(list);
-  var tb=$("j-rows");tb.textContent="";
-  $("j-empty").style.display=list.length?"none":"block";
-  $("j-empty").textContent=trades.length?"No trades in this view.":"No trades logged yet. Log your first one above.";
-  $("j-more").hidden=list.length<=jShown;
-  list.slice(0,jShown).forEach(function(t){
-    var r=t.risk>0?t.pl/t.risk:null,tr=el("tr");
-    function td(text,c){var n=el("td",c||null,text);tr.appendChild(n);return n}
-    var sh=td("");
-    if(t.img){var im=el("img","thumb");im.src="/api/img/"+t.img;im.loading="lazy";im.alt="Trade screenshot";im.onclick=function(){openLb(t)};sh.appendChild(im)}
-    else{var ab=el("button","del","+");ab.type="button";ab.title="Add a screenshot";ab.setAttribute("aria-label","Add a screenshot");ab.onclick=function(){openLb(t)};sh.appendChild(ab)}
-    td(t.date+(t.time?" "+t.time:"")+(t.acct==="backtest"?" (bt)":""));td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
-    td(t.emotion||"");td(t.risk?jm(t.risk):"-");
-    td(signed(t.pl),t.pl>=0?"pos":"neg");
-    td(r===null?"-":fmt(r,2)+"R",r===null?null:(r>=0?"pos":"neg"));
-    var nt=td(t.notes||"");nt.style.maxWidth="240px";nt.style.overflow="hidden";nt.style.textOverflow="ellipsis";nt.title=t.notes||"";
-    var del=el("button","del","x");del.type="button";del.setAttribute("aria-label","Delete trade");
-    del.onclick=function(){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}};
-    td("").appendChild(del);tb.appendChild(tr)});
+  tRender(list);
   var sk=jSkipped().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}),sb=$("j-skiprows");sb.textContent="";
   $("j-skipcard").hidden=!sk.length;$("j-skiptitle").textContent="Kept but not counted ("+sk.length+")";
   sk.forEach(function(t){var tr=el("tr");[t.date,t.inst==="-"?"":t.inst,SKIPNAME[t.skip]||"",t.tag||"",t.notes||""].forEach(function(s){tr.appendChild(el("td",null,s))});
@@ -1264,6 +1325,10 @@ Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function()
 $("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}jCal()};
 $("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
 $("j-more").onclick=function(){jShown+=50;jRender()};
+Array.prototype.forEach.call($("t-view").children,function(b){b.onclick=function(){tView=b.getAttribute("data-v");jShown=30;jRender()}});
+Array.prototype.forEach.call($("t-day").children,function(b){b.onclick=function(){tDay=b.getAttribute("data-d");if(tDay==="pick"&&!tPick)tPick=today();jShown=30;jRender()}});
+$("t-pick").onchange=function(){tPick=this.value;jShown=30;jRender()};
+var tQT=null;$("t-q").oninput=function(){var v=this.value;clearTimeout(tQT);tQT=setTimeout(function(){tQ=v;jShown=30;jRender();var q=$("t-q");q.focus();q.setSelectionRange(q.value.length,q.value.length)},180)};
 $("j-log-go").onclick=function(){$("j-form").scrollIntoView({behavior:"smooth",block:"start"});$("j-pl").focus({preventScroll:true})};
 /* import from a broker CSV: the columns are guessed, you check them, then it adds only what is new */
 function csvParse(text){
