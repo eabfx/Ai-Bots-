@@ -51,3 +51,17 @@ They never reach the win rate, P/L, charts, alerts or the coach.
 If the trades were copied without screenshots, export the database from Notion (Markdown & CSV), put the .zip in
 `trader\import`, then press Preview and Import again: trades already there are not duplicated, and each one that is
 missing its screenshot gets it. Exporting only reads your Notion; it changes nothing there.
+
+## Backup price source (Twelve Data)
+
+Prices come from Yahoo Finance. If Yahoo does not answer for gold or one of the currency pairs, RiskDesk can ask
+Twelve Data instead, and the Macro page says which prices came from the backup. It is off until you give it a key:
+
+1. Make a free account at twelvedata.com and copy your API key.
+2. Save the key as the only text in `trader\twelvedata_key.txt` (the `trader` folder is never committed to git),
+   or set the `TWELVEDATA_API_KEY` variable.
+3. Restart RiskDesk.
+
+The free plan covers gold and the currency pairs, not the indices (Nasdaq, VIX, S&P, the dollar index, yields and
+oil), so those stay Yahoo only. The backup is asked only when Yahoo has failed, so it uses very few of the free requests.
+It gives the last price and the change since the previous close, with no small chart.

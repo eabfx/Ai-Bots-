@@ -72,6 +72,76 @@ class FakeNet:
         return RSS
 
 
+TD_GOLD = json.dumps({"symbol": "XAU/USD", "close": "4012.50", "previous_close": "4000.00", "timestamp": NOW})
+
+
+class BackupPrices(unittest.TestCase):
+    """Twelve Data answers only when Yahoo has failed and a key is set, and only for gold and the currency pairs."""
+
+    class Net(FakeNet):
+        def __init__(self, text=TD_GOLD, **kw):
+            FakeNet.__init__(self, **kw)
+            self.text = text
+            self.asked = []
+
+        def twelve(self, symbol):
+            self.asked.append(symbol)
+            if isinstance(self.text, Exception):
+                raise self.text
+            return self.text
+
+    def item(self, sym="GC=F"):
+        return ("XAUUSD", "Gold", sym, 2)
+
+    def test_yahoo_is_used_when_it_answers_and_the_backup_is_never_asked(self):
+        net = self.Net()
+        q = macro.fetch_quote(net, self.item())
+        self.assertEqual(q["price"], 4000.0)
+        self.assertEqual(net.asked, [])
+
+    def test_a_failed_yahoo_falls_back_to_twelve_data_with_the_change_worked_out(self):
+        net = self.Net(fail=["quotes"])
+        q = macro.fetch_quote(net, self.item())
+        self.assertEqual(net.asked, ["XAU/USD"])
+        self.assertEqual((q["price"], q["prev"], q["src"], q["spark"]), (4012.5, 4000.0, "Twelve Data", []))
+        self.assertAlmostEqual(q["pct"], 0.3125)
+
+    def test_without_a_key_the_original_yahoo_error_stands(self):
+        class NoKey(FakeNet):
+            def twelve(self, symbol):
+                return None
+        with self.assertRaises(z.ZoneError):
+            macro.fetch_quote(NoKey(fail=["quotes"]), self.item())
+
+    def test_an_index_the_backup_does_not_cover_is_not_asked(self):
+        net = self.Net(fail=["quotes"])
+        with self.assertRaises(z.ZoneError):
+            macro.fetch_quote(net, ("VIX", "VIX", "^VIX", 2))
+        self.assertEqual(net.asked, [])
+
+    def test_a_bad_backup_answer_gives_the_yahoo_error_not_a_crash(self):
+        for text in ('{"status":"error","code":429,"message":"limit"}', "not json", "[]"):
+            with self.assertRaises(z.ZoneError):
+                macro.fetch_quote(self.Net(text, fail=["quotes"]), self.item())
+        with self.assertRaises(z.ZoneError):
+            macro.fetch_quote(self.Net(macro.MacroError("HTTP 500"), fail=["quotes"]), self.item())
+
+    def test_the_snapshot_says_which_prices_came_from_the_backup(self):
+        macro.clear_cache()
+        snap = macro.snapshot(NOW, self.Net(fail=["quotes"]), force=True)
+        self.assertTrue(any("Twelve Data" in n for n in snap["notes"]))
+        self.assertTrue(any(q["key"] == "XAUUSD" and q["src"] == "Twelve Data" for q in snap["quotes"]))
+
+    def test_the_key_comes_from_the_environment_or_a_file_in_the_trader_folder(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(macro.twelve_key(d, {}), "")
+            with open(os.path.join(d, macro.TD_KEY_FILE), "w") as fh:
+                fh.write(" abc123\n")
+            self.assertEqual(macro.twelve_key(d, {}), "abc123")
+            self.assertEqual(macro.twelve_key(d, {"TWELVEDATA_API_KEY": "fromenv"}), "fromenv")
+
+
 class Strength(unittest.TestCase):
     def test_each_currency_is_its_move_against_the_dollar_and_the_dollar_is_the_opposite_of_the_average(self):
         rows = macro.strength({"EUR": 0.4, "GBP": 0.2, "JPY": -0.6})

@@ -1,6 +1,6 @@
 """The macro desk: what the market is doing around your charts, in one place.
 
-  prices      Yahoo Finance daily charts: gold, Nasdaq, EURUSD, GBPUSD, the dollar index, the US 10 year yield,
+  prices      Yahoo Finance daily charts (with Twelve Data as a backup for gold and the currency pairs when you give it a key, see README): gold, Nasdaq, EURUSD, GBPUSD, the dollar index, the US 10 year yield,
               the VIX, the S&P 500 and oil, with the change since the last close
   calendar    the week's high and medium impact USD, EUR and GBP releases (Forex Factory's public weekly feed),
               in Dublin time, with how long until each
@@ -53,15 +53,45 @@ TOPICS = [("Gold", "gold price OR XAUUSD when:1d"),
 PER_TOPIC = 5
 
 
+# Twelve Data names for the Yahoo symbols it can back up (its free plan covers gold and the currency pairs, not the indices)
+TD_SYMBOLS = {"GC=F": "XAU/USD", "EURUSD=X": "EUR/USD", "GBPUSD=X": "GBP/USD", "AUDUSD=X": "AUD/USD",
+              "NZDUSD=X": "NZD/USD", "JPY=X": "USD/JPY", "CAD=X": "USD/CAD", "CHF=X": "USD/CHF"}
+TD_KEY_FILE = "twelvedata_key.txt"
+
+
 class MacroError(Exception):
     pass
 
 
+def twelve_key(key_dir, environ=None):
+    """The Twelve Data key: the TWELVEDATA_API_KEY variable, or twelvedata_key.txt in the trader folder (left out of git)."""
+    environ = os.environ if environ is None else environ
+    key = (environ.get("TWELVEDATA_API_KEY") or "").strip()
+    if key:
+        return key
+    try:
+        with open(os.path.join(key_dir, TD_KEY_FILE), encoding="utf-8") as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
 class Net:
-    """The two ways out to the internet. The tests swap this for a fake."""
+    """The ways out to the internet. The tests swap this for a fake."""
+
+    def __init__(self, key_dir=None):
+        self.key_dir = key_dir or os.path.join(os.path.dirname(HERE), "trader")
 
     def yahoo(self, path):
         return z.yahoo_get(path)
+
+    def twelve(self, symbol):
+        """The backup price source. Returns None when no key is set, so nothing is ever asked without one."""
+        key = twelve_key(self.key_dir)
+        if not key:
+            return None
+        url = "https://api.twelvedata.com/quote?symbol=%s&apikey=%s" % (urllib.parse.quote(symbol, safe=""), urllib.parse.quote(key, safe=""))
+        return self.get(url)
 
     def get(self, url, timeout=20):
         req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
@@ -106,10 +136,40 @@ def parse_quote(text, key, name, sym, digits):
             "when": z.to_dublin(int(when)).strftime("%a %H:%M") if when else None}
 
 
+def parse_twelve(text, key, name, sym, digits):
+    """The same quote from Twelve Data's /quote answer: last price and change since the previous close. No chart."""
+    try:
+        d = json.loads(text)
+        if not isinstance(d, dict) or d.get("status") == "error" or "close" not in d:
+            raise ValueError
+        price = float(d["close"])
+        prev = float(d["previous_close"]) if d.get("previous_close") not in (None, "") else None
+        stamp = d.get("timestamp")
+    except (ValueError, KeyError, TypeError):
+        raise MacroError("Twelve Data returned something unexpected for %s" % sym)
+    change = price - prev if prev is not None else None
+    when = z.to_dublin(int(stamp)).strftime("%a %H:%M") if isinstance(stamp, (int, float)) and stamp > 0 else None
+    return {"key": key, "name": name, "symbol": sym, "digits": digits, "price": price, "prev": prev, "change": change,
+            "pct": (change / prev * 100.0) if prev else None, "spark": [], "when": when, "src": "Twelve Data"}
+
+
 def fetch_quote(net, item):
+    """Yahoo first. If Yahoo fails and a Twelve Data key is set, the backup answers for the symbols it covers."""
     key, name, sym, digits = item
     path = "/v8/finance/chart/%s?range=1mo&interval=1d" % urllib.parse.quote(sym, safe="")
-    return parse_quote(net.yahoo(path), key, name, sym, digits)
+    try:
+        return parse_quote(net.yahoo(path), key, name, sym, digits)
+    except (MacroError, z.ZoneError) as first:
+        backup = getattr(net, "twelve", None)
+        if not backup or sym not in TD_SYMBOLS:
+            raise
+        try:
+            text = backup(TD_SYMBOLS[sym])
+            if text is None:                       # no key: the backup is off
+                raise first
+            return parse_twelve(text, key, name, sym, digits)
+        except MacroError:
+            raise first
 
 
 # ---------------------------------------------------------------- calendar
@@ -219,6 +279,9 @@ def snapshot(now, net=None, force=False):
                     bad.append("%s: %s" % (item[1], e))
             if not got:
                 raise MacroError("no prices came back (%s)" % "; ".join(bad[:2]))
+            for q in got:
+                if q.get("src") == "Twelve Data":
+                    bad.append("%s: Yahoo did not answer, so this price comes from Twelve Data" % q["name"])
             return got, bad
 
         def heads():
