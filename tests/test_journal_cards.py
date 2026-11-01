@@ -33,3 +33,16 @@ class TileWallAndRing(unittest.TestCase):
     def test_edge_score_is_a_ring(self):
         for needle in ('"jring ', "stroke-dashoffset", '"EDGE"'):
             self.assertIn(needle, PAGE)
+
+
+class Motion(unittest.TestCase):
+    def test_the_assistant_button_is_called_ai_bot_and_animated(self):
+        self.assertIn('<span>AI Bot</span>', PAGE)
+        self.assertNotIn("Ask RiskDesk", PAGE)
+        for needle in ("@keyframes botfloat", "@keyframes botring", "@keyframes botblink", 'class="bot"'):
+            self.assertIn(needle, PAGE)
+
+    def test_pages_play_an_entrance_once_and_motion_can_be_turned_off(self):
+        for needle in ("@keyframes fadeup", ".tool.enter", 'ent.classList.add("enter")', "pathLength:1"):
+            self.assertIn(needle, PAGE)
+        self.assertIn("prefers-reduced-motion:reduce){*{animation:none!important", PAGE)

@@ -115,6 +115,44 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 .ticket-head span{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase}
 .live{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* entrance motion: runs once when a page opens (class "enter" is on the page for ~2 s), never on later redraws */
+@keyframes fadeup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes popin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.tool.enter>.card,.tool.enter>.jgrid>.card,.tool.enter>.tool-grid>.card{animation:fadeup .55s cubic-bezier(.2,.8,.2,1) both}
+.tool.enter>.card:nth-child(2),.tool.enter>.jgrid:nth-of-type(1)>.card:nth-child(1){animation-delay:.06s}
+.tool.enter>.card:nth-child(3),.tool.enter>.jgrid>.card:nth-child(2){animation-delay:.12s}
+.tool.enter>.card:nth-child(4){animation-delay:.18s}.tool.enter>.card:nth-child(5){animation-delay:.24s}
+.tool.enter>.card:nth-child(n+6){animation-delay:.3s}
+.tool.enter .stat{animation:fadeup .5s cubic-bezier(.2,.8,.2,1) both}
+.tool.enter .stats .stat:nth-child(1){animation-delay:.15s}.tool.enter .stats .stat:nth-child(2){animation-delay:.21s}.tool.enter .stats .stat:nth-child(3){animation-delay:.27s}
+.tool.enter .stats .stat:nth-child(4){animation-delay:.33s}.tool.enter .stats .stat:nth-child(5){animation-delay:.39s}.tool.enter .stats .stat:nth-child(6){animation-delay:.45s}
+.tool.enter .h-tr{animation:fadeup .55s cubic-bezier(.2,.8,.2,1) both}
+.tool.enter .h-tr:nth-child(1){animation-delay:.3s}.tool.enter .h-tr:nth-child(2){animation-delay:.36s}.tool.enter .h-tr:nth-child(3){animation-delay:.42s}.tool.enter .h-tr:nth-child(4){animation-delay:.48s}
+.tool.enter .h-tr:nth-child(5){animation-delay:.54s}.tool.enter .h-tr:nth-child(6){animation-delay:.6s}.tool.enter .h-tr:nth-child(n+7){animation-delay:.66s}
+.tool.enter .h-spark{animation:wipe 1.5s cubic-bezier(.3,.6,.2,1) both}
+.tool.enter .jcurve .ln{stroke-dasharray:1;stroke-dashoffset:1;animation:wdraw 1.6s ease .2s forwards}
+.tool.enter .jcurve .area,.tool.enter .jcurve .dot{animation:fadein 1s ease 1s both}
+.tool.enter .jtrack i{animation:wipe .9s cubic-bezier(.3,.6,.2,1) .25s both}
+.tool.enter .jcal .cd{animation:popin .4s cubic-bezier(.2,.8,.2,1) both}
+.tool.enter .jcal .cd:nth-child(7n+2){animation-delay:.05s}.tool.enter .jcal .cd:nth-child(7n+3){animation-delay:.1s}.tool.enter .jcal .cd:nth-child(7n+4){animation-delay:.15s}
+.tool.enter .jcal .cd:nth-child(7n+5){animation-delay:.2s}.tool.enter .jcal .cd:nth-child(7n+6){animation-delay:.25s}.tool.enter .jcal .cd:nth-child(7n){animation-delay:.3s}
+/* the AI Bot button: floats, pulses a soft ring, blinks, and waves its antenna */
+@keyframes botfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes botring{0%{transform:scale(1);opacity:.55}70%,100%{transform:scale(1.5);opacity:0}}
+@keyframes botblink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes botping{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(1.5)}}
+@keyframes botwave{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+.chatbtn{display:inline-flex;align-items:center;gap:9px;padding-left:12px;animation:botfloat 3.4s ease-in-out infinite}
+.chatbtn::before{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid var(--accent);animation:botring 2.6s ease-out infinite;pointer-events:none}
+.chatbtn:hover{animation-play-state:paused}.chatbtn:hover .bot{animation:botwave .7s ease-in-out}
+.chatbtn .bot{width:26px;height:26px;flex:none;overflow:visible}
+.chatbtn .bot .bd{fill:none;stroke:currentColor;stroke-width:2}.chatbtn .bot .ey{fill:currentColor;transform-box:fill-box;transform-origin:center;animation:botblink 4.5s infinite}
+.chatbtn .bot .an{stroke:currentColor;stroke-width:2;stroke-linecap:round}.chatbtn .bot .ad{fill:var(--up);transform-box:fill-box;transform-origin:center;animation:botping 1.8s ease-in-out infinite}
+.chatbtn .bot .gr{transform-box:fill-box;transform-origin:50% 100%}
+.chatbtn .bot .mo{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .ticket-body{padding:16px 18px;font-family:var(--mono)}
 .trow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.14);gap:12px}
@@ -845,9 +883,9 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 
 </main>
 
-<button class="btn chatbtn" id="chat-btn" type="button" aria-expanded="false" aria-controls="chat">Ask RiskDesk</button>
-<div class="chat" id="chat" role="dialog" aria-label="RiskDesk assistant" hidden>
-<div class="hd"><b>RiskDesk assistant</b><span><button class="btn ghost small" id="chat-clear" type="button">Clear</button> <button class="btn ghost small" id="chat-close" type="button" aria-label="Close">x</button></span></div>
+<button class="btn chatbtn" id="chat-btn" type="button" aria-expanded="false" aria-controls="chat"><svg class="bot" viewBox="0 0 32 32" aria-hidden="true"><g class="gr"><line class="an" x1="16" y1="3" x2="16" y2="8"/><circle class="ad" cx="16" cy="3" r="2"/></g><rect class="bd" x="4" y="9" width="24" height="18" rx="7"/><circle class="ey" cx="11.5" cy="17" r="2.4"/><circle class="ey" cx="20.5" cy="17" r="2.4"/><path class="mo" d="M12 22.5q4 2.4 8 0"/></svg><span>AI Bot</span></button>
+<div class="chat" id="chat" role="dialog" aria-label="AI Bot" hidden>
+<div class="hd"><b>AI Bot</b><span><button class="btn ghost small" id="chat-clear" type="button">Clear</button> <button class="btn ghost small" id="chat-close" type="button" aria-label="Close">x</button></span></div>
 <div class="log" id="chat-log"></div>
 <div class="chips" id="chat-chips"></div>
 <form id="chat-form"><input type="text" id="chat-in" placeholder="Ask about the market, your trades, risk..." maxlength="600" autocomplete="off"><button class="btn small" id="chat-send" type="submit">Send</button></form>
@@ -905,6 +943,7 @@ function showTab(name){
   var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
+  var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
   if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
   if(name==="alerts")alRender();if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
@@ -1184,7 +1223,7 @@ function jCurve(list){
   var d=pts.map(function(v,i){return(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)}).join(" ");
   mk("line",{x1:0,x2:W,y1:Y(0),y2:Y(0),class:"zero"});
   mk("path",{d:d+" L"+W+" "+Y(0).toFixed(1)+" L0 "+Y(0).toFixed(1)+" Z",class:"area"});
-  mk("path",{d:d,class:"ln",fill:"none"});mk("circle",{cx:X(pts.length-1),cy:Y(s),r:4,class:"dot"});
+  mk("path",{d:d,class:"ln",fill:"none",pathLength:1});mk("circle",{cx:X(pts.length-1),cy:Y(s),r:4,class:"dot"});
   box.appendChild(svg);
   sub.textContent=ch.length+" trades, oldest to newest. Now "+signed(s)+". Best point "+signed(hi)+". Deepest drop from a peak "+(dd?"-"+jm(dd):"none")+"."}
 function jCal(){
