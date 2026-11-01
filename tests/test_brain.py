@@ -168,7 +168,7 @@ class Wiring(unittest.TestCase):
     def test_the_editor_never_calls_notion(self):
         self.assertNotIn("notion.com", JS)
         self.assertNotIn("api.notion", JS)
-        for needle in ("/api/brain", "execCommand", "contentEditable", "multi_select", "/api/journal/image"):
+        for needle in ("function sectionBar()", "sb-tabs", "+ New section", "/api/brain", "execCommand", "contentEditable", "multi_select", "/api/journal/image"):
             self.assertIn(needle, JS)
 
 

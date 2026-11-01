@@ -130,9 +130,26 @@ function render(){
     if(i)cr.appendChild(h("span","sb-sep","/"));
     if(c.loc&&i<all.length-1){var b=h("button","sb-crumb",c.label);b.type="button";b.onclick=function(){go(c.loc)};cr.appendChild(b)}else cr.appendChild(h("span","sb-crumb cur",c.label))});
   top.appendChild(cr);STATUS=h("span","sb-status",S.dirty?"Saving...":"Saved");top.appendChild(STATUS);m.appendChild(top);
+  m.appendChild(sectionBar());
   var body=h("div","sb-body");m.appendChild(body);
   if(S.loc.row)rowPage(body);else pageView(body);
   window.scrollTo(0,y)}
+/* the sections of your journal as buttons: Home, then every page that sits directly under it, in the order they appear */
+function sectionIds(){
+  var root=S.doc.root,seen={},out=[];
+  walkNodes(S.doc.pages[root].nodes,function(n){if(n.t==="page"&&n.id&&S.doc.pages[n.id]&&S.doc.pages[n.id].parent===root&&!seen[n.id]){seen[n.id]=1;out.push(n.id)}});
+  pageKids(root).forEach(function(k){if(!seen[k]){seen[k]=1;out.push(k)}});
+  return out}
+function sectionBar(){
+  var bar=h("div","sb-tabs"),root=S.doc.root;
+  var at=S.loc.row?(S.loc.from||root):S.loc.page,top=root,id=at,guard=0;
+  while(id&&id!==root&&guard++<20){top=id;id=S.doc.pages[id]&&S.doc.pages[id].parent;if(!S.doc.pages[id]&&id!==root){top=root;break}}
+  function tab(label,target,on){var b=h("button","sb-tab"+(on?" on":""),label);b.type="button";b.onclick=function(){go({page:target})};bar.appendChild(b)}
+  tab("\u{1F3E0} "+(S.doc.pages[root].title||"Home"),root,top===root&&!S.loc.row&&at===root);
+  sectionIds().forEach(function(k){var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k)});
+  var add=h("button","sb-tab add","+ New section");add.type="button";
+  add.onclick=function(){var id2=newPage(root,"Untitled");S.doc.pages[root].nodes.push({t:"page",id:id2,title:"Untitled"});touch();go({page:id2})};
+  bar.appendChild(add);return bar}
 function pageView(body){
   var id=S.loc.page;if(!S.doc.pages[id]){S.loc={page:S.doc.root};id=S.doc.root}
   var pg=S.doc.pages[id];

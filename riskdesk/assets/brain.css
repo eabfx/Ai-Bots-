@@ -152,3 +152,10 @@
 #sb-root td,#sb-root th{color:var(--text)}
 #sb-root .sb-th{color:var(--muted)}
 .bk-col{min-height:34px;border-radius:8px}.bk-cols:hover .bk-col{outline:1px dashed var(--line)}
+
+.sb-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px}
+.sb-tab{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:99px;padding:7px 15px;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-family:var(--sans)}
+.sb-tab:hover{border-color:var(--accent)}
+.sb-tab.on{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+.sb-tab.add{background:none;border-style:dashed;color:var(--muted);font-weight:500}
+.sb-tab.add:hover{color:var(--text)}
