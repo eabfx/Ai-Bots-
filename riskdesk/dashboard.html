@@ -646,6 +646,11 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <tbody id="j-rows"></tbody></table></div>
 <div class="empty" id="j-empty">No trades logged yet. Log your first one above.</div>
 <div class="btnrow"><button class="btn ghost small" id="j-more" type="button" hidden>Show more</button></div></div>
+<div class="card" id="j-skipcard" hidden><h3 class="jh" id="j-skiptitle">Kept but not counted</h3>
+<div class="jsub">No-trade days, invalid trades and tests with no result. They stay in your journal so nothing is lost, but they are left out of the win rate, the P/L, the charts and the coach.</div>
+<details style="margin-top:8px"><summary>Show them</summary><div class="scroll"><table>
+<thead><tr><th>Date</th><th>Instrument</th><th>Kind</th><th>Label</th><th>Notes</th><th></th></tr></thead>
+<tbody id="j-skiprows"></tbody></table></div></details></div>
 <div class="card" id="coach">
 <h2>Journal coach</h2>
 <p class="sub">An AI review of your journal and the Indicator Stats. Pressing the button sends your logged trades (date, instrument, direction, tag, risk, result, notes) to Anthropic (Claude) or Google (Gemini), whichever key you saved. It reviews past trades. It never places an order and never tells you what to take.</p>
@@ -909,6 +914,7 @@ function cleanTrade(t){
   var b=String(t.bias||"").toLowerCase();if(b==="bullish"||b==="bearish"||b==="neutral")o.bias=b;
   ["zone","strategy","session"].forEach(function(k){var s=String(t[k]||"").trim().slice(0,k==="zone"?40:30);if(s)o[k]=s});
   if(t.partials==="yes"||t.partials==="no")o.partials=t.partials;
+  if(t.skip==="none"||t.skip==="invalid"||t.skip==="test")o.skip=t.skip;          /* kept in the journal but left out of every number */
   var r=parseFloat(t.r),rp=parseFloat(t.riskPct),no=parseInt(t.no,10);
   if(isFinite(r))o.r=r;if(isFinite(rp)&&rp>0)o.riskPct=rp;if(isFinite(no))o.no=no;
   if(/^[0-9a-f]{16}\.(png|jpg|webp|gif)$/.test(String(t.img||"")))o.img=t.img;
@@ -925,8 +931,10 @@ function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))+(UNITPCT?"%":"")}
 function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
 var jAcct="live",UNITPCT=false;           /* which set the Journal page is showing: live trades on Journal, backtests on Backtest */
-function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"})}          /* a trade with no account set counts as live */
-function jPool(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"}):liveOnly()}
+function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"&&!t.skip})}          /* a trade with no account set counts as live */
+function jPool(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"&&!t.skip}):liveOnly()}
+var SKIPNAME={none:"No trade",invalid:"Invalid",test:"Test, no result"};
+function jSkipped(){return trades.filter(function(t){return t.skip&&(jAcct==="backtest"?t.acct==="backtest":t.acct!=="backtest")})}
 function setUnit(list){UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"})}
 function jm(x){return money(x)+(UNITPCT?"%":"")}
 function sinceDays(n,pool){var c=dparse(today())-(n-1)*DAY;return(pool||liveOnly()).filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
@@ -992,7 +1000,7 @@ function jCurve(list){
 function jCal(){
   var now=dparse(today());if(jMonth===null){var n=new Date(now);jMonth={y:n.getUTCFullYear(),m:n.getUTCMonth()}}
   var y=jMonth.y,m=jMonth.m,days=new Date(Date.UTC(y,m+1,0)).getUTCDate(),lead=wdOf(Date.UTC(y,m,1)),byDay={},net=0,cnt=0,mx=0;
-  trades.forEach(function(t){var d=dparse(t.date);if(d===null)return;var n=new Date(d);
+  trades.forEach(function(t){if(t.skip)return;var d=dparse(t.date);if(d===null)return;var n=new Date(d);
     if(n.getUTCFullYear()===y&&n.getUTCMonth()===m){var k=n.getUTCDate();byDay[k]=byDay[k]||{pl:0,n:0};byDay[k].pl+=t.pl;byDay[k].n++;net+=t.pl;cnt++}});
   Object.keys(byDay).forEach(function(k){mx=Math.max(mx,Math.abs(byDay[k].pl))});
   var green=Object.keys(byDay).filter(function(k){return byDay[k].pl>0}).length,red=Object.keys(byDay).filter(function(k){return byDay[k].pl<0}).length;
@@ -1119,6 +1127,11 @@ function jRender(){
     var del=el("button","del","x");del.type="button";del.setAttribute("aria-label","Delete trade");
     del.onclick=function(){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}};
     td("").appendChild(del);tb.appendChild(tr)});
+  var sk=jSkipped().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}),sb=$("j-skiprows");sb.textContent="";
+  $("j-skipcard").hidden=!sk.length;$("j-skiptitle").textContent="Kept but not counted ("+sk.length+")";
+  sk.forEach(function(t){var tr=el("tr");[t.date,t.inst==="-"?"":t.inst,SKIPNAME[t.skip]||"",t.tag||"",t.notes||""].forEach(function(s){tr.appendChild(el("td",null,s))});
+    var d=el("button","del","x");d.type="button";d.setAttribute("aria-label","Delete entry");d.onclick=function(){var ix=trades.indexOf(t);if(ix>=0){trades.splice(ix,1);jSave();jRender()}};
+    var c=el("td");c.appendChild(d);tr.appendChild(c);sb.appendChild(tr)});
   propCalc();
 }
 Array.prototype.forEach.call($("j-range").children,function(b){b.onclick=function(){jRange=b.getAttribute("data-r");jset(JRKEY,jRange);jShown=30;jRender()}});
@@ -1291,11 +1304,11 @@ var ntReady=false;
 function ntKey(t){return t.no!==undefined?["no",t.no,t.date,t.inst].join("|"):[t.date,t.time,t.inst,t.dir,Number(t.pl).toFixed(2)].join("|")}
 function ntShow(j){
   var out=$("nt-out");out.textContent="";var r=j.report,st=el("div","ntstat");
-  [["Rows in the table",r.rows],["Will add",(j.applied?j.trades.length:r.live+r.backtest)],["Live",r.live],["Backtest",r.backtest],["With screenshot",r.with_image],["Screenshot not found",r.missing_image]].forEach(function(p){
+  [["Rows in the table",r.rows],["Will add",(j.applied?j.trades.length:r.live+r.backtest)],["Live",r.live],["Backtest",r.backtest],["Kept, not counted",(r.skipped.none||0)+(r.skipped.invalid||0)+(r.skipped.test||0)],["With screenshot",r.with_image],["Screenshot not found",r.missing_image]].forEach(function(p){
     var d=el("div");d.appendChild(el("div","k",p[0]));d.appendChild(el("div","v",String(p[1])));st.appendChild(d)});
   out.appendChild(st);
   var sk=Object.keys(r.skipped).map(function(k){return r.skipped[k]+" "+k}).join(", ");
-  if(sk)out.appendChild(el("div","jsub","Skipped: "+sk+"."));
+  if(sk)out.appendChild(el("div","jsub","Kept but left out of the numbers: "+sk.replace(/(\d+) none/,"$1 no-trade days").replace(/(\d+) test/,"$1 tests with no result").replace(/(\d+) invalid/,"$1 invalid")+"."));
   if(!j.applied&&j.sample.length){var h=el("div","jsub","First trades it would add:");h.style.marginTop="8px";out.appendChild(h);
     out.appendChild(table(["Date","Pair","Dir","Account","Zone","Setup","R","Risk %"],j.sample.map(function(t){return[t.date,t.inst,t.dir,t.acct,t.zone||"",t.tag||"",t.r===undefined?"":fmt(t.r,2),String(t.riskPct||"")]})))}}
 function ntCall(apply){

@@ -120,6 +120,15 @@ def split_multi(text):
     return [p.strip() for p in (text or "").split(",") if p.strip()]
 
 
+def tokens(text):
+    """Notion exports a multi-select cell as 'A, B'. Upper-cased, trimmed pieces."""
+    return [p.strip().upper() for p in (text or "").split(",") if p.strip()]
+
+
+LIVE_ACCOUNTS = ("LIVE ACCOUNT", "FUNDED ACCOUNT")          # real money; everything else (Backtest, Forward-Test, Demo, Evaluation) is kept out of the live numbers
+SKIP_ACCOUNTS = ("NO SETUP", "NO TRADING")
+
+
 def column(headers, *names):
     low = [h.strip().lower() for h in headers]
     for n in names:
@@ -186,7 +195,7 @@ def convert(src):
         return row[i].strip() if i is not None and i < len(row) else ""
 
     skipped, trades = {}, []
-    report = {"table": path, "rows": len(rows) - 1, "skipped": skipped, "with_image": 0, "missing_image": 0, "live": 0, "backtest": 0}
+    report = {"table": path, "rows": len(rows) - 1, "skipped": skipped, "with_image": 0, "missing_image": 0, "live": 0, "backtest": 0}   # "skipped" now counts rows kept but left out of the numbers
 
     def skip(why):
         skipped[why] = skipped.get(why, 0) + 1
@@ -194,48 +203,61 @@ def convert(src):
     for row in rows[1:]:
         if not any(c.strip() for c in row):
             continue
-        wl, acct = get(row, "wl").upper(), get(row, "acct")
-        if acct.lower().startswith("no setup") or wl in ("NO TRADE", ""):
-            skip("no trade that day")
-            continue
-        if wl == "INVALID":
-            skip("marked invalid")
-            continue
+        wlt, acct_t = tokens(get(row, "wl")), tokens(get(row, "acct"))
+        wl = next((t for t in ("WIN", "LOSS", "BREAKEVEN", "INVALID", "NO TRADE", "TEST") if t in wlt), wlt[0] if wlt else "")
         d = parse_date(get(row, "date"))
         if not d:
-            skip("date could not be read")
+            if get(row, "pair") or get(row, "wl") or get(row, "acct"):
+                skip("date could not be read")
+            else:
+                report["empty"] = report.get("empty", 0) + 1                  # a blank template row in the Notion table
             continue
-        direction = get(row, "dir").lower()
-        if direction not in ("long", "short"):
-            skip("no long or short")
-            continue
-        pair = re.sub(r"[^A-Z0-9]", "", get(row, "pair").upper())
-        if not pair or pair == "NODATA":
-            skip("no pair")
-            continue
-        risk = num(get(row, "risk"))
-        if not risk or risk <= 0:
-            skip("no risk percent")
-            continue
-        rr = num(get(row, "rr"))
-        if "WIN" in wl:
+        direction = (tokens(get(row, "dir")) or [""])[0].lower()
+        direction = direction if direction in ("long", "short") else "long"
+        pair = re.sub(r"[^A-Z0-9]", "", (tokens(get(row, "pair")) or [""])[0])
+        pair = "" if pair in ("NODATA", "NOTRADE", "BANKHOLIDAY") else pair
+        risk = num((tokens(get(row, "risk")) or [""])[0])
+        rr_t = tokens(get(row, "rr"))
+        rr = 0 if "BE" in rr_t else num((rr_t or [""])[0])
+        kind = "live" if any(a in LIVE_ACCOUNTS for a in acct_t) else "backtest"
+        if acct_t and all(a in SKIP_ACCOUNTS for a in acct_t):
+            kind = "live"
+        notes = get(row, "notes")
+        why = ""                                   # "" = counts in the numbers; anything else is kept but left out of them
+        r = None
+        if wl in ("NO TRADE", "") or (acct_t and all(a in SKIP_ACCOUNTS for a in acct_t)):
+            why, r = "none", 0.0
+        elif wl == "INVALID":
+            why, r = "invalid", 0.0
+        elif "WIN" in wl:
             r = abs(rr) if rr else None
         elif "BREAK" in wl or wl == "BE":
             r = 0.0
         elif "LOSS" in wl or wl == "LOSE":
             r = -1.0
-        else:
-            r = None
-        if r is None:
-            skip("result could not be read")
-            continue
-        al = acct.lower()
-        kind = "live" if "live" in al else "backtest"
-        t = {"date": d, "inst": pair[:20], "dir": direction, "tag": " + ".join(split_multi(get(row, "setup")))[:60],
+        if why == "" and r is None:
+            why, r = "test", 0.0                  # marked TEST with no win or loss recorded
+            notes = ("Planned %sR. " % rr if rr else "") + notes
+        if why == "" and not (risk and risk > 0):
+            why, r = "invalid", 0.0               # a result but no risk percent, so the % result cannot be worked out
+            notes = "No risk % recorded in Notion. " + notes
+        risk = risk if risk and risk > 0 else 0
+        t = {"date": d, "inst": (pair or "-")[:20], "dir": direction,
+             "tag": {"none": "No trade", "invalid": "Invalid", "test": "Test"}.get(why, " + ".join(split_multi(get(row, "setup")))[:60]),
              "risk": round(risk, 4), "pl": round(risk * r, 4), "unit": "pct", "r": round(r, 4), "riskPct": round(risk, 4),
-             "notes": get(row, "notes")[:500], "acct": kind, "zone": get(row, "zone")[:40], "strategy": get(row, "strategy")[:30],
-             "session": get(row, "session")[:20], "partials": get(row, "partials").lower() if get(row, "partials").lower() in ("yes", "no") else ""}
-        b = get(row, "bias").lower()
+             "notes": notes[:500], "acct": kind, "zone": get(row, "zone")[:40], "strategy": get(row, "strategy")[:30],
+             "session": get(row, "session")[:20], "partials": (tokens(get(row, "partials")) or [""])[0].lower() if (tokens(get(row, "partials")) or [""])[0].lower() in ("yes", "no") else ""}
+        if why:
+            t["skip"] = why
+            if why == "none":
+                t["zone"] = t["strategy"] = t["session"] = ""
+                t["tag"] = " ".join(acct_t).title() if acct_t else "No trade"
+            if not risk:
+                t.pop("riskPct")
+            skipped[why] = skipped.get(why, 0) + 1
+        if "TEST" in wlt and why == "":
+            t["notes"] = ("TEST. " + t["notes"])[:500]
+        b = (tokens(get(row, "bias")) or [""])[0].lower()
         t["bias"] = b if b in ("bullish", "bearish", "neutral") else ""
         n = num(get(row, "no"))
         if n is not None:

@@ -425,6 +425,18 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class KeptButNotCounted(unittest.TestCase):
+    """No-trade days, invalid trades and tests are stored but never reach the numbers."""
+    PAGE = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+
+    def test_pools_leave_out_skipped_entries_and_they_have_their_own_list(self):
+        self.assertIn('t.acct!=="backtest"&&!t.skip', self.PAGE)
+        self.assertIn('t.acct==="backtest"&&!t.skip', self.PAGE)
+        self.assertIn("function jSkipped()", self.PAGE)
+        self.assertIn('id="j-skipcard"', self.PAGE)
+        self.assertIn('t.skip==="none"||t.skip==="invalid"||t.skip==="test"', self.PAGE)       # survives load and save
+
+
 class AllowedHosts(unittest.TestCase):
     """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""
 

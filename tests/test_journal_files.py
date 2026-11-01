@@ -45,6 +45,16 @@ def make_export(folder, nested=False):
     return path
 
 
+REAL_CSV = """Date,Account Type,Bias,Pair,Session,Long / Short,Risk,Win / Loss,R/R,Partials ,Strategy ,Zone,Setup,Trade SS,Strategy + Setup,Trade Breakdown,Profit,Trade No.
+"September 1, 2025","No Setup","NO DATA","EUR/USD","HUGGING","NO DATA","0.0%","NO TRADE","0.0RR","NO","OG","NO TRADE","NO SETUP",,No Trade,No Trade,,1
+"March 10, 2026","Backtest","BULLISH","XAU/USD","NY Session","LONG","1%","WIN, TEST","3RR","YES","OG","30m Demand Zone","Double Bottom","Trade%20Journey/P1/a.png",OG Strategy,Double Bottom,,28
+"March 11, 2026","Funded Account","BEARISH","NAS100","NY Session","SHORT","0.5%","LOSS","-1RR","NO","OG","15m Supply Zone","EQ HIGHS, LIQ GRAB","Trade%20Journey/P2/b.png",OG Strategy,EQ + LQ grab,,31
+"March 12, 2026","Evaluation","BULLISH","US30","LDN Session","LONG","0.75%","BREAKEVEN","BE","NO","OG","15m Demand Zone","Double Bottom",,OG Strategy,BE trade,,32
+"March 13, 2026","Backtest, Live Account","BEARISH","GBP/USD","NY Session","SHORT","1.5%","WIN","30RR","NO","OG","30m Supply Zone","H&S",,OG Strategy,big one,,33
+"March 14, 2026","No Trading","NO DATA","BANK HOLIDAY","No Session","NO DATA","0.0%","NO TRADE","0.0RR","N/A","NONE","NO TRADE","NO SETUP",,NO TRADE,Holiday,,34
+"""
+
+
 class Store(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -97,9 +107,12 @@ class Import(unittest.TestCase):
 
     def test_rows_become_trades_in_r_and_percent_and_the_rest_are_counted(self):
         trades, rep = self.convert()
-        self.assertEqual(len(trades), 3)
-        self.assertEqual(rep["skipped"], {"no trade that day": 1, "marked invalid": 1})
-        win, loss, be = trades
+        self.assertEqual(len(trades), 5)                                              # nothing is dropped
+        self.assertEqual(rep["skipped"], {"none": 1, "invalid": 1})                   # kept, but left out of the numbers
+        win, loss, be = [t for t in trades if not t.get("skip")]
+        self.assertEqual(sorted(t["skip"] for t in trades if t.get("skip")), ["invalid", "none"])
+        nothing = next(t for t in trades if t.get("skip") == "none")
+        self.assertEqual((nothing["pl"], nothing["r"], nothing["inst"] != ""), (0.0, 0.0, True))
         self.assertEqual((win["date"], win["inst"], win["dir"], win["acct"], win["unit"]), ("2025-09-01", "GBPUSD", "long", "backtest", "pct"))
         self.assertEqual((win["risk"], win["pl"], win["r"]), (1.0, 3.0, 3.0))
         self.assertEqual((loss["date"], loss["acct"], loss["inst"], loss["dir"]), ("2026-01-11", "live", "XAUUSD", "short"))   # day first
@@ -108,16 +121,53 @@ class Import(unittest.TestCase):
         self.assertEqual((be["pl"], be["partials"]), (0.0, "yes"))
         self.assertEqual((win["zone"], win["bias"], win["no"], win["strategy"]), ("15m Demand Zone", "bullish", 2, "OG"))
 
+    def test_a_real_notion_export_with_multi_select_cells(self):
+        with zipfile.ZipFile(os.path.join(self.tmp.name, "real.zip"), "w") as zf:
+            zf.writestr("Data Collection/Trade Journey.csv", REAL_CSV)
+            zf.writestr("Trade Journey/P1/a.png", PNG)
+            zf.writestr("Trade Journey/P2/b.png", PNG2)
+        src = notion_import.open_source(self.tmp.name)
+        self.addCleanup(src.close)
+        trades, rep = notion_import.convert(src)
+        self.assertEqual(rep["skipped"], {"none": 2})
+        gold, nas, us30, gbp = [t for t in trades if not t.get("skip")]
+        self.assertEqual((gold["inst"], gold["acct"], gold["r"], gold["partials"]), ("XAUUSD", "backtest", 3.0, "yes"))
+        self.assertTrue(gold["notes"].startswith("TEST."))                       # the TEST tag is kept, not lost
+        self.assertEqual((nas["inst"], nas["acct"], nas["r"], nas["pl"], nas["tag"]), ("NAS100", "live", -1.0, -0.5, "EQ HIGHS + LIQ GRAB"))   # funded counts as live
+        self.assertEqual((us30["acct"], us30["r"], us30["pl"]), ("backtest", 0.0, 0.0))      # an evaluation is not live money
+        self.assertEqual((gbp["acct"], gbp["r"], gbp["pl"]), ("live", 30.0, 45.0))           # live wins when both are ticked
+        self.assertEqual(rep["with_image"], 2)
+
+    def test_tests_zero_risk_and_no_trade_days_are_kept_but_not_counted(self):
+        csv_text = REAL_CSV + (
+            '"March 15, 2026","Forward-Test","BULLISH","EUR/USD","NY Session","LONG","0.5%","TEST","3RR","NO","OG","15m Demand Zone","FIB Retest",,,,40\n'
+            '"March 16, 2026","Forward-Test","BEARISH","NAS100","LDN Session","SHORT","0.0%","WIN","3.5RR","NO","IFVG","30m Supply Zone","SSL",,,,41\n'
+            ',,,,,,,,,,,,,,,,,\n')
+        with zipfile.ZipFile(os.path.join(self.tmp.name, "real.zip"), "w") as zf:
+            zf.writestr("Data Collection/Trade Journey.csv", csv_text)
+        src = notion_import.open_source(self.tmp.name)
+        self.addCleanup(src.close)
+        trades, rep = notion_import.convert(src)
+        self.assertEqual(len(trades), 8)                                      # 4 real + 2 no-trade days + the test + the zero-risk win
+        self.assertEqual(rep["skipped"], {"none": 2, "test": 1, "invalid": 1})
+        test = next(t for t in trades if t.get("skip") == "test")
+        self.assertEqual((test["pl"], test["r"], test["acct"]), (0.0, 0.0, "backtest"))
+        self.assertIn("Planned 3.0R", test["notes"])
+        norisk = next(t for t in trades if t.get("skip") == "invalid")
+        self.assertEqual((norisk["pl"], norisk["inst"]), (0.0, "NAS100"))
+        self.assertIn("No risk %", norisk["notes"])
+
     def test_screenshots_are_matched_and_missing_ones_are_counted(self):
         trades, rep = self.convert()
         self.assertEqual(rep["with_image"], 2)
         self.assertEqual(rep["missing_image"], 1)
-        self.assertEqual(trades[0]["image"], "Trade Journey/Page A/one.png")
-        self.assertNotIn("image", trades[2])
+        counted = [t for t in trades if not t.get("skip")]
+        self.assertEqual(counted[0]["image"], "Trade Journey/Page A/one.png")
+        self.assertNotIn("image", counted[2])
 
     def test_an_export_zipped_inside_a_zip_is_read_too(self):
         trades, rep = self.convert(nested=True)
-        self.assertEqual(len(trades), 3)
+        self.assertEqual(len(trades), 5)
         self.assertEqual(rep["with_image"], 2)
 
     def test_dates_in_the_formats_notion_uses(self):
@@ -195,11 +245,11 @@ class Routes(Server):
         make_export(d)
         code, js = self.post("/api/import/notion", {})
         self.assertEqual(code, 200)
-        self.assertEqual((js["applied"], js["report"]["with_image"], len(js["sample"]), js["trades"]), (False, 2, 3, []))
+        self.assertEqual((js["applied"], js["report"]["with_image"], len(js["sample"]), js["trades"]), (False, 2, 5, []))
         self.assertNotIn("image", js["sample"][0])
         self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "journal")))                 # nothing written yet
         code, js = self.post("/api/import/notion", {"apply": True})
-        self.assertEqual((code, len(js["trades"])), (200, 3))
+        self.assertEqual((code, len(js["trades"])), (200, 5))
         names = [t["img"] for t in js["trades"] if "img" in t]
         self.assertEqual(len(names), 2)
         self.assertEqual(self.get_bytes("/api/img/" + names[0])[2], PNG)
