@@ -84,6 +84,22 @@ class Basics(Server):
         start = body.index("function jReview")
         self.assertNotIn("innerHTML", body[start:body.index("function jRender")])
 
+    def test_the_journal_saves_to_the_pc_and_has_screenshots_account_filter_and_notion_import(self):
+        _, _, body = self.get("/")
+        for words in ('/api/journal"', "function jLoad", "function jPushNow", 'id="j-acct"', "function liveOnly", 'id="lb"', 'id="nt-card"',
+                      "/api/import/notion", "/api/journal/image", 'id="j-img"', "UNITPCT"):
+            self.assertIn(words, body)
+        start, end = body.index("function openLb"), body.index("var ntReady")
+        self.assertNotIn("innerHTML", body[start:end])
+        self.assertNotIn("innerHTML", body[body.index("function ntShow"):body.index("function ntCall")])
+
+    def test_backtests_never_count_in_home_prop_coach_or_chat(self):
+        _, _, body = self.get("/")
+        self.assertIn("liveOnly().filter(function(t){return !from", body)                 # prop firm room
+        self.assertIn("trades:liveOnly().slice(0,200)", body)                              # the coach
+        self.assertIn("trades:liveOnly().slice(0,100)", body)                              # the chat box
+        self.assertIn("tl=liveOnly().filter", body)                                        # Home, today
+
     def test_outside_text_on_home_is_never_put_in_through_innerhtml(self):
         _, _, body = self.get("/")
         start = body.index("function homeRender")
@@ -107,7 +123,7 @@ class Basics(Server):
         _, _, body = self.get("/")
         self.assertIn('var JKEY="riskdesk_journal_v1"', body)
         self.assertIn(r"/^[=+\-@\t\r]/.test(s)", body)                              # no spreadsheet formulas from notes
-        self.assertIn("data.length>5000", body)
+        self.assertIn("data.length>20000", body)
         self.assertIn("cleanTrade", body)
 
 

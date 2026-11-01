@@ -25,6 +25,8 @@ sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
+import notion_import  # noqa: E402
+import store         # noqa: E402
 
 PORT = 8765
 
@@ -32,6 +34,7 @@ PORT = 8765
 class Handler(BaseHTTPRequestHandler):
     config_path = os.path.join(TRADER, "config.json")
     offline = None
+    data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     macro_net = macro.Net()                         # and this, for the price, calendar and news feeds
 
@@ -44,6 +47,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def send_bytes(self, code, data, kind, cache="no-store"):
+        self.send_response(code)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", cache)
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
@@ -63,7 +75,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(403, {"error": "missing X-Requested-With header"})
         try:
             size = int(self.headers.get("Content-Length") or 0)
-            limit = 150000 if urlparse(self.path).path in ("/api/coach", "/api/chat") else 20000     # a journal is bigger than a zone
+            route = urlparse(self.path).path
+            if route == "/api/journal/image":                    # the raw bytes of a screenshot, not JSON
+                if not 0 < size <= store.MAX_IMAGE:
+                    raise store.StoreError("the image is empty or larger than %d MB" % (store.MAX_IMAGE // 1024 // 1024))
+                return self.send_json(200, {"name": store.save_image(self.data_dir, self.rfile.read(size))})
+            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route == "/api/journal" else 20000
             if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
@@ -78,6 +95,10 @@ class Handler(BaseHTTPRequestHandler):
                 answer = coach.ask(body.get("trades"), str(body.get("question") or ""), body.get("indicator"), pv["key"],
                                    pv["model"], self.coach_post, pv["name"])
                 return self.send_json(200, {"answer": answer})
+            elif path == "/api/journal":
+                return self.send_json(200, {"saved": store.save_trades(self.data_dir, body.get("trades"))})
+            elif path == "/api/import/notion":
+                return self.notion(bool(body.get("apply")))
             elif path == "/api/macro/brief":
                 now = z.parse_now(str(body.get("now") or "") or None)
                 snap = macro.snapshot(now, self.macro_net)
@@ -94,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, notion_import.ImportError_) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -107,11 +128,44 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
             self.macro(parse_qs(url.query))
+        elif url.path == "/api/journal":
+            try:
+                saved = store.load_trades(self.data_dir)
+            except store.StoreError as e:
+                return self.send_json(500, {"error": str(e)})
+            self.send_json(200, {"exists": saved is not None, "trades": saved or []})
+        elif url.path.startswith("/api/img/"):
+            found = store.read_image(self.data_dir, url.path[len("/api/img/"):])
+            if found:
+                self.send_bytes(200, found[0], found[1], "private, max-age=31536000, immutable")     # the name is a fingerprint of the picture
+            else:
+                self.send_json(404, {"error": "not found"})
         elif url.path == "/api/coach/status":
             pv = coach.provider(self.config_path)
             self.send_json(200, {"ready": bool(pv["key"]), "service": pv["name"], "model": pv["model"]})
         else:
             self.send_json(404, {"error": "not found"})
+
+    def notion(self, apply):
+        """Read the Notion export in trader/import. Preview only reads; apply also keeps the screenshots and returns the trades."""
+        src = notion_import.open_source(os.path.join(self.data_dir, "import"))
+        try:
+            trades, report = notion_import.convert(src)
+            if apply:
+                for t in trades:
+                    path = t.pop("image", None)
+                    if path:
+                        try:
+                            t["img"] = store.save_image(self.data_dir, src.read(path))
+                        except store.StoreError:
+                            report["missing_image"] += 1
+                            report["with_image"] -= 1
+            else:
+                for t in trades:
+                    t.pop("image", None)
+        finally:
+            src.close()
+        self.send_json(200, {"applied": apply, "report": report, "sample": trades[:5], "trades": trades if apply else []})
 
     def macro(self, q):
         try:
@@ -131,7 +185,8 @@ class DashboardServer(HTTPServer):
 
 
 def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offline=None):
-    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline})
+    handler = type("Bound", (Handler,), {"config_path": config_path, "offline": offline,
+                                          "data_dir": os.path.dirname(os.path.abspath(config_path))})
     return DashboardServer(("127.0.0.1", port), handler)
 
 

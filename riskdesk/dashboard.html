@@ -326,6 +326,16 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .ckstate{margin-top:10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase}
 .ckstate.up{color:var(--up)}.ckstate.flat{color:var(--flat)}
 #ck-editor{margin-top:10px}#ck-editor .btnrow{margin-top:8px}
+.thumb{width:64px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;display:block;background:var(--panel2)}
+#lb{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+#lb[hidden]{display:none}
+.lbbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-width:min(1200px,96vw);max-height:94vh;overflow:auto;padding:14px 16px;position:relative}
+.lbx{position:sticky;top:0;float:right;margin:0 0 8px 8px}
+.lbimg img{max-width:100%;max-height:68vh;display:block;margin:0 auto;border-radius:8px}
+.lbinfo{margin:12px 0;font-size:14px;line-height:1.55}.lbinfo b{font-weight:600}
+.ntstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.ntstat div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2)}
+.ntstat .k{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.ntstat .v{font:600 20px var(--mono);margin-top:4px}
 /* phone: the section tabs move to a bar along the bottom, and everything you tap gets bigger */
 @media(max-width:640px){
   header{backdrop-filter:none;background:var(--bgc)}
@@ -493,8 +503,8 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <section class="tool" id="tab-journal" role="tabpanel" hidden>
 <div class="jhead">
 <div><h2>Journal</h2>
-<p class="sub">Your trades, your numbers. Everything is stored in this browser on this computer, and nothing is uploaded unless you press Ask the coach below. Use Backup JSON now and then, because clearing the browser's site data erases it.</p></div>
-<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
+<p class="sub">Your trades, your numbers. Trades and screenshots are saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.</p></div>
+<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><div class="seg" id="j-acct" role="group" aria-label="Account"><button type="button" data-a="live">Live</button><button type="button" data-a="backtest">Backtest</button><button type="button" data-a="all">Both</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
 </div>
 
 <div class="card jhero">
@@ -518,7 +528,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 
 <div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
-<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
+<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="acct">Account</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
 <div id="j-groups"></div></div>
 
 <div class="card" id="j-form">
@@ -541,6 +551,17 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div><label for="j-plan">Did you follow the plan? (optional)</label><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div>
 <div><label for="j-emo">How did you feel? (optional)</label><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div>
 </div>
+<div class="frow three">
+<div><label for="j-acct-in">Account</label><select id="j-acct-in"><option value="live">Live</option><option value="backtest">Backtest</option></select></div>
+<div><label for="j-bias">Your bias (optional)</label><select id="j-bias"><option value="">Not set</option><option value="bullish">Bullish</option><option value="bearish">Bearish</option><option value="neutral">Neutral</option></select></div>
+<div><label for="j-zone">Zone (optional)</label><input type="text" id="j-zone" placeholder="e.g. 15m demand zone" maxlength="40"></div>
+</div>
+<div class="frow two">
+<div><label for="j-r">Result in R (optional)</label><input type="number" id="j-r" placeholder="3, -1 or 0" step="any"></div>
+<div><label for="j-rp">Risk as % of account (with R)</label><input type="number" id="j-rp" placeholder="1 or 0.75" min="0" step="any"></div>
+</div>
+<div class="hint" style="margin:-4px 0 10px">Use R and risk % instead of P/L if you track the account in percent: the result is stored as risk % times R and the stats then show %.</div>
+<div class="frow two"><div><label for="j-img">Screenshot (optional)</label><input type="file" id="j-img" accept="image/png,image/jpeg,image/webp,image/gif"><div class="jsub" id="j-img-state">You can also paste an image (Ctrl+V) while this form is open.</div></div></div>
 <div class="frow two"><div><label for="j-notes">Notes</label><input type="text" id="j-notes" placeholder="What did you do well or badly?" maxlength="140"></div></div>
 <div class="btnrow">
 <button class="btn" id="j-add" type="button">Log trade</button>
@@ -549,6 +570,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Restore JSON<input type="file" id="j-restore" accept=".json" style="display:none"></label>
 </div>
 <div class="err" id="j-err" style="display:none"></div>
+</div>
+
+<div class="card" id="nt-card">
+<h3 class="jh">Import from Notion</h3>
+<p class="sub" style="margin-bottom:10px">In Notion open your Trade Journey database, choose Export, format Markdown &amp; CSV (include subpages), then put the downloaded .zip in the <b>trader\import</b> folder next to your keys. Press Preview to see what it would add. Nothing is saved until you press Import. Screenshots are copied to your PC with the trades, and trades already in the journal are skipped.</p>
+<div class="btnrow"><button class="btn small" id="nt-prev" type="button">Preview</button><button class="btn" id="nt-go" type="button" disabled>Import</button></div>
+<div class="err" id="nt-err" style="display:none"></div><div id="nt-out"></div>
 </div>
 
 <div class="card" id="imp-card">
@@ -575,7 +603,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 </div>
 
 <div class="card"><h3 class="jh">Trades</h3><div class="scroll"><table>
-<thead><tr><th>Date</th><th>Instrument</th><th>Dir</th><th>Setup</th><th>Grade</th><th>Plan</th><th>Feeling</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
+<thead><tr><th>Shot</th><th>Date</th><th>Instrument</th><th>Dir</th><th>Setup</th><th>Grade</th><th>Plan</th><th>Feeling</th><th>Risk</th><th>P/L</th><th>R</th><th>Notes</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
 <div class="empty" id="j-empty">No trades logged yet. Log your first one above.</div>
 <div class="btnrow"><button class="btn ghost small" id="j-more" type="button" hidden>Show more</button></div></div>
@@ -589,6 +617,10 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="err" id="coach-err" style="display:none"></div>
 <div id="coach-out" class="coach-out" hidden></div>
 </div>
+<div id="lb" hidden role="dialog" aria-modal="true" aria-label="Trade screenshot"><div class="lbbox"><button class="btn small ghost lbx" id="lb-x" type="button">Close</button>
+<div class="lbimg" id="lb-imgbox"></div><div class="lbinfo" id="lb-info"></div>
+<div class="btnrow"><label class="btn small ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Attach or replace screenshot<input type="file" id="lb-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none"></label></div></div></div>
+<div class="jsub" id="j-save-status" style="margin:6px 0 0"></div>
 <div class="notice" id="j-storage-note" hidden>This browser is blocking local storage, so trades only last for this session. Use Backup JSON before you close the tab.</div>
 </section>
 
@@ -763,7 +795,7 @@ function propCalc(){
   var saved={};PFIDS.forEach(function(id){saved[id]=$(id).value});store(PFKEY,JSON.stringify(saved));
   o.textContent="";
   if(!(size>0)||!(dd>0)){o.appendChild(trow("Check","Enter the account size and the max drawdown.","warn"));pfRoom=0;return}
-  var list=trades.filter(function(t){return !from||(t.date&&t.date>=from)}),ch=jChron(list),run=size+adj,peak=run;
+  var list=liveOnly().filter(function(t){return !from||(t.date&&t.date>=from)}),ch=jChron(list),run=size+adj,peak=run;
   ch.forEach(function(t){run+=t.pl;if(run>peak)peak=run});
   var bal=run,floor=type==="static"?size-dd:type==="lock"?Math.min(size,peak-dd):peak-dd,
     day=today(),todayPL=list.filter(function(t){return t.date===day}).reduce(function(a,t){return a+t.pl},0),
@@ -802,16 +834,42 @@ try{trades=JSON.parse(jget(JKEY)||"[]");if(!Array.isArray(trades))trades=[]}catc
 if(!persistent)$("j-storage-note").hidden=false;
 function today(){var n=new Date();return n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)}
 $("j-date").value=today();
-function jSave(){jset(JKEY,JSON.stringify(trades))}
+var jReady=false,jPushT=null;
+function jSave(){jset(JKEY,JSON.stringify(trades));jPush()}
+function jStatus(msg,bad){var e=$("j-save-status");e.textContent=msg||"";e.style.color=bad?"var(--down)":""}
+function jPush(){if(!jReady)return;clearTimeout(jPushT);jPushT=setTimeout(jPushNow,300)}
+function jPushNow(){
+  fetch("/api/journal",{method:"POST",headers:HDRS,body:JSON.stringify({trades:trades})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){var n=new Date();jStatus(x.ok?"Saved to your PC ("+trades.length+" trades) at "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+".":"Could not save to your PC: "+(x.j.error||"unknown error"),!x.ok)})
+  .catch(function(){jStatus("The dashboard did not answer, so this change is only in this browser for now.",true)})}
+function jLoad(){                              /* the file on your PC is the journal; this browser's copy is only a fallback */
+  fetch("/api/journal").then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){
+    if(!x.ok)throw new Error(x.j.error||"could not load");
+    if(x.j.exists){trades=x.j.trades.map(cleanTrade).filter(function(t){return t});jset(JKEY,JSON.stringify(trades));jStatus(trades.length+" trades loaded from your PC.")}
+    jReady=true;
+    if(!x.j.exists&&trades.length){jPushNow()}             /* first run: move the browser's trades onto the PC */
+    jRender();if(typeof macroData!=="undefined"&&macroData)homeNums();planRender()})
+  .catch(function(e){jStatus("Could not reach the journal file on your PC ("+e.message+"). Trades are kept in this browser only.",true)})}
 function cleanTrade(t){
   if(!t||typeof t!=="object")return null;
   var pl=parseFloat(t.pl),risk=parseFloat(t.risk),g=String(t.grade||"").toUpperCase().slice(0,1);
   if(!isFinite(pl))return null;
-  return{date:String(t.date||"").slice(0,10),inst:String(t.inst||"-").slice(0,20),dir:t.dir==="short"?"short":"long",
-    tag:String(t.tag||"").slice(0,30),risk:isFinite(risk)&&risk>0?risk:0,pl:pl,notes:String(t.notes||"").slice(0,300),
+  var o={date:String(t.date||"").slice(0,10),inst:String(t.inst||"-").slice(0,20),dir:t.dir==="short"?"short":"long",
+    tag:String(t.tag||"").slice(0,60),risk:isFinite(risk)&&risk>0?risk:0,pl:pl,notes:String(t.notes||"").slice(0,500),
     time:/^([01]\d|2[0-3]):[0-5]\d$/.test(String(t.time||""))?String(t.time):"",
     grade:g&&"ABCD".indexOf(g)>=0?g:"",plan:t.plan==="followed"||t.plan==="deviated"?t.plan:"",
-    emotion:String(t.emotion||"").trim().toLowerCase().slice(0,20)}
+    emotion:String(t.emotion||"").trim().toLowerCase().slice(0,20)};
+  if(t.acct==="live"||t.acct==="backtest")o.acct=t.acct;
+  if(t.unit==="pct")o.unit="pct";
+  var b=String(t.bias||"").toLowerCase();if(b==="bullish"||b==="bearish"||b==="neutral")o.bias=b;
+  ["zone","strategy","session"].forEach(function(k){var s=String(t[k]||"").trim().slice(0,k==="zone"?40:30);if(s)o[k]=s});
+  if(t.partials==="yes"||t.partials==="no")o.partials=t.partials;
+  var r=parseFloat(t.r),rp=parseFloat(t.riskPct),no=parseInt(t.no,10);
+  if(isFinite(r))o.r=r;if(isFinite(rp)&&rp>0)o.riskPct=rp;if(isFinite(no))o.no=no;
+  if(/^[0-9a-f]{16}\.(png|jpg|webp|gif)$/.test(String(t.img||"")))o.img=t.img;
+  return o
 }
 /* The numbers on this tab are all worked out here from the trades above, in this browser. */
 var DAY=86400000,MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"],
@@ -820,11 +878,17 @@ if(["all","90","30","7"].indexOf(jRange)<0)jRange="all";
 function dparse(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||"");return m?Date.UTC(+m[1],+m[2]-1,+m[3]):null}
 function wdOf(ms){return(new Date(ms).getUTCDay()+6)%7}
 function pl(n,w,p){return n+" "+(n===1?w:(p||w+"s"))}
-function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))}
+function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))+(UNITPCT?"%":"")}
 function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
-function sinceDays(n){var c=dparse(today())-(n-1)*DAY;return trades.filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
-function jView(){return jRange==="all"?trades.slice():sinceDays(+jRange)}
+var JAKEY="zd.jacct",jAcct=jget(JAKEY)||"live",UNITPCT=false;
+if(["live","backtest","all"].indexOf(jAcct)<0)jAcct="live";
+function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"})}          /* a trade with no account set counts as live */
+function jPool(){return jAcct==="all"?trades.slice():jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"}):liveOnly()}
+function setUnit(list){UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"})}
+function jm(x){return money(x)+(UNITPCT?"%":"")}
+function sinceDays(n,pool){var c=dparse(today())-(n-1)*DAY;return(pool||liveOnly()).filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
+function jView(){return jRange==="all"?jPool():sinceDays(+jRange,jPool())}
 function jChron(list){
   return list.map(function(t,i){return{t:t,i:i}}).sort(function(a,b){
     var da=dparse(a.t.date)||0,db=dparse(b.t.date)||0;if(da!==db)return da-db;
@@ -882,7 +946,7 @@ function jCurve(list){
   mk("path",{d:d+" L"+W+" "+Y(0).toFixed(1)+" L0 "+Y(0).toFixed(1)+" Z",class:"area"});
   mk("path",{d:d,class:"ln",fill:"none"});mk("circle",{cx:X(pts.length-1),cy:Y(s),r:4,class:"dot"});
   box.appendChild(svg);
-  sub.textContent=ch.length+" trades, oldest to newest. Now "+signed(s)+". Best point "+signed(hi)+". Deepest drop from a peak "+(dd?"-"+money(dd):"none")+"."}
+  sub.textContent=ch.length+" trades, oldest to newest. Now "+signed(s)+". Best point "+signed(hi)+". Deepest drop from a peak "+(dd?"-"+jm(dd):"none")+"."}
 function jCal(){
   var now=dparse(today());if(jMonth===null){var n=new Date(now);jMonth={y:n.getUTCFullYear(),m:n.getUTCMonth()}}
   var y=jMonth.y,m=jMonth.m,days=new Date(Date.UTC(y,m+1,0)).getUTCDate(),lead=wdOf(Date.UTC(y,m,1)),byDay={},net=0,cnt=0,mx=0;
@@ -915,15 +979,16 @@ function jGroups(list){
   var box=$("j-groups");box.textContent="";
   var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},
     plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""},
-    session:function(t){return t.time?jSession(t.time):""},hour:function(t){return t.time?t.time.slice(0,2)+":00":""}}[jBy],
-    hint={tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
+    zone:function(t){return t.zone||""},bias:function(t){return t.bias?t.bias.charAt(0).toUpperCase()+t.bias.slice(1):""},strategy:function(t){return t.strategy||""},acct:function(t){return t.acct==="backtest"?"Backtest":"Live"},
+    session:function(t){return t.time?jSession(t.time):(t.session||"")},hour:function(t){return t.time?t.time.slice(0,2)+":00":""}}[jBy],
+    hint={zone:"Add a zone to your trades (for example 15m demand zone) to see which zones pay.",bias:"Add your bias to your trades to see whether it pays.",strategy:"Add a strategy name to your trades to compare strategies.",tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
       plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are.",
       session:"Add the time to your trades, or import them with times, to see which session pays.",hour:"Add the time to your trades, or import them with times, to see which hours pay."}[jBy],
     g={},unset=0;
   list.forEach(function(t){var k=key(t);if(!k){unset++;return}(g[k]=g[k]||[]).push(t)});
   var order=jBy==="session"?SESSION_NAMES:null,
     names=Object.keys(g).sort(function(a,b){
-      if(order)return order.indexOf(a)-order.indexOf(b);
+      if(order)return (order.indexOf(a)<0?9:order.indexOf(a))-(order.indexOf(b)<0?9:order.indexOf(b))||(a<b?-1:1);
       if(jBy==="hour")return a<b?-1:1;
       return g[b].length-g[a].length||(a<b?-1:1)}).slice(0,jBy==="hour"?24:10);
   if(!names.length){box.appendChild(el("div","empty",list.length?(hint||"Nothing to group yet."):"No trades in this period."));return}
@@ -939,8 +1004,8 @@ function dshort(ms){var d=new Date(ms);return WDAYS[wdOf(ms)]+" "+d.getUTCDate()
 function jReview(){
   var box=$("j-review");box.textContent="";
   var start=dparse(today())-wdOf(dparse(today()))*DAY-jWk*7*DAY,end=start+6*DAY;
-  function inWeek(s,e){return trades.filter(function(t){var d=dparse(t.date);return d!==null&&d>=s&&d<=e})}
-  var list=inWeek(start,end),st=jStats(list),prev=jStats(inWeek(start-7*DAY,end-7*DAY));
+  function inWeek(s,e){return jPool().filter(function(t){var d=dparse(t.date);return d!==null&&d>=s&&d<=e})}
+  var list=inWeek(start,end),st=jStats(list),prev=jStats(inWeek(start-7*DAY,end-7*DAY));setUnit(list);
   var head=el("div","jcalhead"),pv=el("button","btn ghost small","\u2039"),nx=el("button","btn ghost small","\u203a");
   pv.type=nx.type="button";pv.setAttribute("aria-label","Earlier week");nx.setAttribute("aria-label","Later week");nx.disabled=jWk===0;
   pv.onclick=function(){jWk++;jReview()};nx.onclick=function(){if(jWk>0){jWk--;jReview()}};
@@ -962,30 +1027,31 @@ function jReview(){
   if(fo.n&&de.n)facts.push("Plan followed "+signed(fo.net)+" over "+pl(fo.n,"trade")+"; deviated "+signed(de.net)+" over "+pl(de.n,"trade")+".");
   facts.forEach(function(s){var p=el("div","jfact",s);box.appendChild(p)});
   var fix=[];
-  if(de.n&&de.net<0)fix.push("Trades where you deviated from the plan lost "+money(-de.net)+". Following the plan is the first thing to protect.");
+  if(de.n&&de.net<0)fix.push("Trades where you deviated from the plan lost "+jm(-de.net)+". Following the plan is the first thing to protect.");
   var heavy=dn.filter(function(d){return d.n>=3&&d.net<0}).sort(function(a,c){return a.net-c.net})[0];
-  if(heavy)fix.push(dshort(dparse(heavy.k))+" had "+heavy.n+" trades and lost "+money(-heavy.net)+". Check whether you kept trading after the day had gone wrong; a stop-after-losses rule can cap this.");
-  if(st.avgW!==null&&st.avgL!==null&&-st.avgL>st.avgW)fix.push("Your average loss ("+money(-st.avgL)+") is bigger than your average win ("+money(st.avgW)+"). Look at whether stops are moved or winners cut short.");
+  if(heavy)fix.push(dshort(dparse(heavy.k))+" had "+heavy.n+" trades and lost "+jm(-heavy.net)+". Check whether you kept trading after the day had gone wrong; a stop-after-losses rule can cap this.");
+  if(st.avgW!==null&&st.avgL!==null&&-st.avgL>st.avgW)fix.push("Your average loss ("+jm(-st.avgL)+") is bigger than your average win ("+jm(st.avgW)+"). Look at whether stops are moved or winners cut short.");
   var ses={};list.forEach(function(t){if(t.time)(ses[jSession(t.time)]=ses[jSession(t.time)]||[]).push(t)});
   var sk=Object.keys(ses).map(function(k){return{k:k,net:jStats(ses[k]).net,n:ses[k].length}}).filter(function(s){return s.n>=2&&s.net<0}).sort(function(a,c){return a.net-c.net})[0];
-  if(sk)fix.push("Your "+sk.k.split(" (")[0]+" session trades lost "+money(-sk.net)+" over "+pl(sk.n,"trade")+". Check whether that session suits your setup.");
+  if(sk)fix.push("Your "+sk.k.split(" (")[0]+" session trades lost "+jm(-sk.net)+" over "+pl(sk.n,"trade")+". Check whether that session suits your setup.");
   var h=el("h3","jh","Check next");h.style.marginTop="14px";box.appendChild(h);
   if(!fix.length)box.appendChild(el("div","jsub","Nothing stands out this week. Keep logging so the review has more to work with."));
   fix.slice(0,3).forEach(function(s){var p=el("div","jfact",s);box.appendChild(p)});
   box.appendChild(el("div","jsub","Worked out from your journal with fixed rules. It describes the week; it does not predict anything."))}
 function jRender(){
-  var list=jView(),st=jStats(list);
+  var list=jView(),st=jStats(list);setUnit(list);
+  Array.prototype.forEach.call($("j-acct").children,function(b){b.className=b.getAttribute("data-a")===jAcct?"on":""});
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
   Array.prototype.forEach.call($("j-by").children,function(b){b.className=b.getAttribute("data-by")===jBy?"on":""});
-  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange];
+  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(jAcct==="all"?", live and backtest":jAcct==="backtest"?", backtest only":", live only");
   var tot=$("j-total");tot.textContent=st.n?signed(st.net):"-";tot.className="jtotal "+(st.n?cls(st.net):"");
-  var wk=jStats(sinceDays(7));
+  var wk=jStats(sinceDays(7,jPool()));
   $("j-totsub").textContent=st.n?pl(st.w,"win")+" / "+pl(st.l,"loss","losses")+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+pl(st.n,"trade")+
-    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":"."):trades.length?"No trades in this period.":"Log your first trade below and the numbers fill in.";
+    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":".")+(list.some(function(t){return t.unit==="pct"})&&!UNITPCT?" This view mixes trades in money and in %, so the totals are not meaningful. Pick Live or Backtest.":""):trades.length?(jPool().length?"No trades in this period.":"No "+(jAcct==="backtest"?"backtest":"live")+" trades yet. Switch the account filter to see the others."):"Log your first trade below and the numbers fill in.";
   var cards=[["Win rate",st.winrate===null?"-":fmt(st.winrate,1)+"%",st.n?st.w+"W / "+st.l+"L":"",null],
     ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+pl(st.rs.length,"trade"),st.avgR===null?null:cls(st.avgR)],
     ["Profit factor",st.pf===null?"-":st.pf===Infinity?"no losses":fmt(st.pf,2),st.avgWinR===null?"":"avg winner "+fmt(st.avgWinR,2)+"R",null],
-    ["Avg win / loss",st.avgW===null?"-":"+"+money(st.avgW),st.avgL===null?"":"avg loss "+money(st.avgL),st.avgW===null?null:"up"],
+    ["Avg win / loss",st.avgW===null?"-":"+"+jm(st.avgW),st.avgL===null?"":"avg loss "+jm(st.avgL),st.avgW===null?null:"up"],
     ["Plan followed",st.planned?Math.round(st.followed/st.planned*100)+"%":"-",st.planned?st.followed+" of "+st.planned+" marked":"mark it when you log",null]];
   var box=$("j-stats");box.textContent="";
   cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
@@ -993,13 +1059,16 @@ function jRender(){
   jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jGroups(list);
   var tb=$("j-rows");tb.textContent="";
   $("j-empty").style.display=list.length?"none":"block";
-  $("j-empty").textContent=trades.length?"No trades in this period.":"No trades logged yet. Log your first one above.";
+  $("j-empty").textContent=trades.length?"No trades in this view.":"No trades logged yet. Log your first one above.";
   $("j-more").hidden=list.length<=jShown;
   list.slice(0,jShown).forEach(function(t){
     var r=t.risk>0?t.pl/t.risk:null,tr=el("tr");
     function td(text,c){var n=el("td",c||null,text);tr.appendChild(n);return n}
-    td(t.date+(t.time?" "+t.time:""));td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
-    td(t.emotion||"");td(t.risk?money(t.risk):"-");
+    var sh=td("");
+    if(t.img){var im=el("img","thumb");im.src="/api/img/"+t.img;im.loading="lazy";im.alt="Trade screenshot";im.onclick=function(){openLb(t)};sh.appendChild(im)}
+    else{var ab=el("button","del","+");ab.type="button";ab.title="Add a screenshot";ab.setAttribute("aria-label","Add a screenshot");ab.onclick=function(){openLb(t)};sh.appendChild(ab)}
+    td(t.date+(t.time?" "+t.time:"")+(t.acct==="backtest"?" (bt)":""));td(t.inst);td(t.dir==="long"?"L":"S");td(t.tag||"");td(t.grade||"");td(t.plan==="followed"?"followed":t.plan==="deviated"?"deviated":"",t.plan==="deviated"?"neg":null);
+    td(t.emotion||"");td(t.risk?jm(t.risk):"-");
     td(signed(t.pl),t.pl>=0?"pos":"neg");
     td(r===null?"-":fmt(r,2)+"R",r===null?null:(r>=0?"pos":"neg"));
     var nt=td(t.notes||"");nt.style.maxWidth="240px";nt.style.overflow="hidden";nt.style.textOverflow="ellipsis";nt.title=t.notes||"";
@@ -1009,6 +1078,7 @@ function jRender(){
   propCalc();
 }
 Array.prototype.forEach.call($("j-range").children,function(b){b.onclick=function(){jRange=b.getAttribute("data-r");jset(JRKEY,jRange);jShown=30;jRender()}});
+Array.prototype.forEach.call($("j-acct").children,function(b){b.onclick=function(){jAcct=b.getAttribute("data-a");jset(JAKEY,jAcct);jShown=30;jRender()}});
 Array.prototype.forEach.call($("j-by").children,function(b){b.onclick=function(){jBy=b.getAttribute("data-by");jRender()}});
 $("j-prev").onclick=function(){jMonth.m--;if(jMonth.m<0){jMonth.m=11;jMonth.y--}jCal()};
 $("j-next").onclick=function(){jMonth.m++;if(jMonth.m>11){jMonth.m=0;jMonth.y++}jCal()};
@@ -1117,15 +1187,89 @@ $("imp-go").onclick=function(){
   jSave();jRender();$("imp-map").hidden=true;impRows=null;impError("");
   $("imp-sum").textContent="";$("j-err").style.display="none"};
 function jError(msg){var e=$("j-err");e.textContent=msg||"";e.style.display=msg?"":"none"}
+var pendingImg="";
+function imgState(msg,bad){var e=$("j-img-state");e.textContent=msg;e.style.color=bad?"var(--down)":""}
+function downscale(file){
+  return new Promise(function(res){
+    if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size<1500000){res(file);return}
+    var img=new Image(),u=URL.createObjectURL(file);
+    img.onload=function(){URL.revokeObjectURL(u);var s=Math.min(1,1920/Math.max(img.width,img.height)),c=document.createElement("canvas");
+      c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      c.toBlob(function(b){res(b||file)},"image/jpeg",0.88)};
+    img.onerror=function(){URL.revokeObjectURL(u);res(file)};img.src=u})}
+function uploadImage(file){
+  return downscale(file).then(function(blob){
+    return fetch("/api/journal/image",{method:"POST",headers:{"X-Requested-With":"zones-dashboard","Content-Type":blob.type||"application/octet-stream"},body:blob})
+      .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"upload failed");return j.name})})})}
+function pickImage(file){
+  if(!file)return;imgState("Saving the screenshot...");
+  uploadImage(file).then(function(n){pendingImg=n;imgState("Screenshot ready ("+n+"). It is attached when you log the trade.")})
+  .catch(function(e){pendingImg="";imgState("Could not save the screenshot: "+e.message,true)})}
+$("j-img").onchange=function(ev){pickImage(ev.target.files[0]);ev.target.value=""};
+document.addEventListener("paste",function(ev){
+  if(tabNow!=="journal"||!ev.clipboardData)return;
+  var items=ev.clipboardData.files;if(items&&items.length&&/^image\//.test(items[0].type)){
+    if(!$("lb").hidden)return;ev.preventDefault();pickImage(items[0])}});
 $("j-add").onclick=function(){
   jError("");
-  var pl=$("j-pl").value.trim();
-  if(pl===""||!isFinite(parseFloat(pl))){jError("Enter the result (P/L) first. Use a negative number for a loss.");return}
+  var pl=$("j-pl").value.trim(),rv=$("j-r").value.trim(),rp=num("j-rp"),useR=rv!==""&&isFinite(parseFloat(rv))&&rp>0,unit="";
+  var risk=num("j-risk"),plv=parseFloat(pl);
+  if(useR){risk=rp;plv=Math.round(parseFloat(rv)*rp*10000)/10000;unit="pct"}
+  else if(pl===""||!isFinite(plv)){jError("Enter the result (P/L) first, or the result in R with the risk percent. Use a negative number for a loss.");return}
   var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
-    tag:$("j-tag").value.trim(),risk:num("j-risk"),pl:parseFloat(pl),notes:$("j-notes").value.trim(),
-    time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value});
-  trades.unshift(t);jSave();jRender();$("j-pl").value="";$("j-notes").value="";$("j-grade").value="";$("j-plan").value="";$("j-emo").value="";$("j-time").value="";
+    tag:$("j-tag").value.trim(),risk:risk,pl:plv,notes:$("j-notes").value.trim(),
+    time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value,
+    acct:$("j-acct-in").value,bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
+  trades.unshift(t);jSave();jRender();
+  ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-rp","j-zone","j-bias"].forEach(function(i){$(i).value=""});
+  pendingImg="";imgState("You can also paste an image (Ctrl+V) while this form is open.");
 };
+/* screenshot viewer */
+var lbTrade=null;
+function openLb(t){
+  lbTrade=t;var box=$("lb-imgbox");box.textContent="";
+  if(t.img){var im=el("img");im.src="/api/img/"+t.img;im.alt="Trade screenshot";box.appendChild(im)}else box.appendChild(el("div","empty","No screenshot on this trade yet."));
+  var info=$("lb-info");info.textContent="";
+  var r=t.risk>0?t.pl/t.risk:null,bits=[t.date+(t.time?" "+t.time:""),t.inst+" "+t.dir,t.acct==="backtest"?"Backtest":"Live",
+    r===null?"":fmt(r,2)+"R",t.zone||"",t.tag||"",t.bias?"bias "+t.bias:"",t.session||"",t.strategy||""].filter(Boolean);
+  info.appendChild(el("b",null,bits.join("  |  ")));
+  if(t.notes)info.appendChild(el("div",null,t.notes));
+  $("lb").hidden=false}
+function closeLb(){$("lb").hidden=true;lbTrade=null}
+$("lb-x").onclick=closeLb;
+$("lb").onclick=function(ev){if(ev.target===$("lb"))closeLb()};
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&!$("lb").hidden)closeLb()});
+$("lb-file").onchange=function(ev){
+  var f=ev.target.files[0];ev.target.value="";if(!f||!lbTrade)return;var t=lbTrade;
+  uploadImage(f).then(function(n){t.img=n;jSave();jRender();openLb(t)}).catch(function(e){jError("Could not save the screenshot: "+e.message)})};
+/* import from a Notion export: preview reads only, import saves the trades and copies the screenshots */
+var ntReady=false;
+function ntKey(t){return t.no!==undefined?["no",t.no,t.date,t.inst].join("|"):[t.date,t.time,t.inst,t.dir,Number(t.pl).toFixed(2)].join("|")}
+function ntShow(j){
+  var out=$("nt-out");out.textContent="";var r=j.report,st=el("div","ntstat");
+  [["Rows in the table",r.rows],["Will add",(j.applied?j.trades.length:r.live+r.backtest)],["Live",r.live],["Backtest",r.backtest],["With screenshot",r.with_image],["Screenshot not found",r.missing_image]].forEach(function(p){
+    var d=el("div");d.appendChild(el("div","k",p[0]));d.appendChild(el("div","v",String(p[1])));st.appendChild(d)});
+  out.appendChild(st);
+  var sk=Object.keys(r.skipped).map(function(k){return r.skipped[k]+" "+k}).join(", ");
+  if(sk)out.appendChild(el("div","jsub","Skipped: "+sk+"."));
+  if(!j.applied&&j.sample.length){var h=el("div","jsub","First trades it would add:");h.style.marginTop="8px";out.appendChild(h);
+    out.appendChild(table(["Date","Pair","Dir","Account","Zone","Setup","R","Risk %"],j.sample.map(function(t){return[t.date,t.inst,t.dir,t.acct,t.zone||"",t.tag||"",t.r===undefined?"":fmt(t.r,2),String(t.riskPct||"")]})))}}
+function ntCall(apply){
+  var e=$("nt-err");e.style.display="none";$("nt-prev").disabled=true;$("nt-go").disabled=true;
+  return fetch("/api/import/notion",{method:"POST",headers:HDRS,body:JSON.stringify({apply:apply})})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"import failed");return j})})
+    .catch(function(er){e.textContent=er.message;e.style.display="";return null})
+    .then(function(j){$("nt-prev").disabled=false;return j})}
+$("nt-prev").onclick=function(){ntCall(false).then(function(j){if(!j)return;ntShow(j);$("nt-go").disabled=!(j.report.live+j.report.backtest)})};
+$("nt-go").onclick=function(){
+  ntCall(true).then(function(j){
+    if(!j)return;var have={};trades.forEach(function(t){have[ntKey(t)]=true});
+    var add=j.trades.map(cleanTrade).filter(function(t){return t&&!have[ntKey(t)]}),skipped=j.trades.length-add.length;
+    if(trades.length+add.length>20000){var e=$("nt-err");e.textContent="The journal holds up to 20,000 trades.";e.style.display="";return}
+    trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
+    jAcct="all";jset(JAKEY,jAcct);jSave();jRender();
+    $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+". The Journal now shows Live and Backtest together. Use the account buttons at the top to separate them.");m.style.marginTop="8px";$("nt-out").appendChild(m);
+    $("nt-go").disabled=true})};
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
@@ -1139,7 +1283,7 @@ $("coach-go").onclick=function(){
   if(!trades.length){err.textContent="Log some trades first, then ask the coach.";err.style.display="";return}
   btn.disabled=true;btn.textContent="Thinking... this can take half a minute";
   fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
-    body:JSON.stringify({trades:trades.slice(0,200),question:$("coach-q").value.trim()})})
+    body:JSON.stringify({trades:liveOnly().slice(0,200),question:$("coach-q").value.trim()})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
   .then(function(x){
     if(!x.ok){err.textContent=x.j.error||"The coach could not answer.";err.style.display="";coachStatus();return}
@@ -1151,9 +1295,9 @@ coachStatus();
 function dl(blob,name){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},4000)}
 function csvCell(v,text){var s=String(v===undefined||v===null?"":v);if(text&&/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
 $("j-export").onclick=function(){
-  var head="date,time,instrument,direction,tag,risk,pl,r,notes\n";
+  var head="date,time,instrument,direction,tag,risk,pl,r,notes,account,zone,bias\n";
   var body=trades.map(function(t){return[csvCell(t.date,true),csvCell(t.time||"",true),csvCell(t.inst,true),csvCell(t.dir,true),csvCell(t.tag,true),csvCell(t.risk),csvCell(t.pl),
-    csvCell(t.risk>0?(t.pl/t.risk).toFixed(2):""),csvCell(t.notes,true)].join(",")}).join("\n");
+    csvCell(t.risk>0?(t.pl/t.risk).toFixed(2):""),csvCell(t.notes,true),csvCell(t.acct||"live",true),csvCell(t.zone||"",true),csvCell(t.bias||"",true)].join(",")}).join("\n");
   dl(new Blob([head+body],{type:"text/csv"}),"zones-journal.csv");
 };
 $("j-backup").onclick=function(){dl(new Blob([JSON.stringify(trades,null,2)],{type:"application/json"}),"zones-journal.json")};
@@ -1162,7 +1306,7 @@ $("j-restore").onchange=function(ev){
   var rd=new FileReader();
   rd.onload=function(){
     try{
-      var data=JSON.parse(rd.result);if(!Array.isArray(data)||data.length>5000)throw new Error("bad");
+      var data=JSON.parse(rd.result);if(!Array.isArray(data)||data.length>20000)throw new Error("bad");
       var ok=data.map(cleanTrade).filter(function(t){return t});
       trades=ok;jSave();jRender();
     }catch(e){jError("That file is not a valid journal backup.")}
@@ -1319,7 +1463,7 @@ function tickClock(){
 setInterval(tickClock,30000);tickClock();
 function homeNums(){
   var box=$("h-nums");box.textContent="";
-  var day=today(),tl=trades.filter(function(t){return t.date===day}),tn=tl.reduce(function(a,t){return a+t.pl},0),wk=jStats(sinceDays(7)),m30=jStats(sinceDays(30));
+  setUnit(liveOnly());var day=today(),tl=liveOnly().filter(function(t){return t.date===day}),tn=tl.reduce(function(a,t){return a+t.pl},0),wk=jStats(sinceDays(7)),m30=jStats(sinceDays(30));
   function card(k,v,s,tone,go){var c=el("button","hnum");c.type="button";c.appendChild(el("div","k",k));c.appendChild(el("div","v"+(tone?" "+tone:""),v));c.appendChild(el("div","s",s));
     c.onclick=function(){showTab(go)};box.appendChild(c)}
   card("Today",tl.length?signed(tn):"-",tl.length?pl(tl.length,"trade")+" logged":"no trades logged",tl.length?cls(tn):"","journal");
@@ -1428,7 +1572,7 @@ function chatSend(text){
   chatMsgs=chatMsgs.filter(function(m){return m.role!=="err"});chatMsgs.push({role:"user",content:text});chatBusy=true;chatSave();chatRender();
   var send=chatMsgs.filter(function(m){return m.role==="user"||m.role==="assistant"}).slice(-12);
   fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
-    body:JSON.stringify({messages:send,context:chatContext(),trades:trades.slice(0,100)})})
+    body:JSON.stringify({messages:send,context:chatContext(),trades:liveOnly().slice(0,100)})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
   .then(function(x){chatMsgs.push(x.ok?{role:"assistant",content:x.j.answer}:{role:"err",content:x.j.error||"The assistant could not answer."})})
   .catch(function(e){chatMsgs.push({role:"err",content:"The dashboard did not answer: "+e})})
@@ -1441,6 +1585,7 @@ CHIPS.forEach(function(t){var b=el("button",null,t);b.type="button";b.onclick=fu
 chatRender();
 
 var tab0=store("zd.tab");showTab(["home","macro","trades","journal"].indexOf(tab0)>=0?tab0:"home");
+jLoad();
 })();
 </script>
 </body>
