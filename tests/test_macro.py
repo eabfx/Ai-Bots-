@@ -72,6 +72,41 @@ class FakeNet:
         return RSS
 
 
+class Strength(unittest.TestCase):
+    def test_each_currency_is_its_move_against_the_dollar_and_the_dollar_is_the_opposite_of_the_average(self):
+        rows = macro.strength({"EUR": 0.4, "GBP": 0.2, "JPY": -0.6})
+        by = {r["cur"]: r["pct"] for r in rows}
+        self.assertEqual(by["EUR"], 0.4)
+        self.assertEqual(by["JPY"], -0.6)
+        self.assertEqual(by["USD"], 0.0)                                  # -(0.4 + 0.2 - 0.6) / 3
+        self.assertEqual([r["cur"] for r in rows], ["EUR", "GBP", "USD", "JPY"])
+
+    def test_too_few_pairs_is_an_error_not_a_made_up_chart(self):
+        with self.assertRaises(macro.MacroError):
+            macro.strength({"EUR": 0.4, "GBP": 0.2})
+
+    def test_snapshot_flips_the_usd_first_pairs(self):
+        macro.clear_cache()
+        self.addCleanup(macro.clear_cache)
+
+        class Net(FakeNet):
+            def yahoo(self, path):
+                if "JPY%3DX" in path:
+                    return chart(150.0, [100.0, 101.0])                 # USD/JPY up 1%: the yen is weaker
+                return FakeNet.yahoo(self, path)
+        snap = macro.snapshot(NOW, Net())
+        by = {r["cur"]: r["pct"] for r in snap["strength"]}
+        self.assertLess(by["JPY"], 0)
+        self.assertEqual(set(by), {"EUR", "GBP", "AUD", "NZD", "JPY", "CAD", "CHF", "USD"})
+
+    def test_a_dead_feed_leaves_strength_empty_with_a_note(self):
+        macro.clear_cache()
+        self.addCleanup(macro.clear_cache)
+        snap = macro.snapshot(NOW, FakeNet(fail=["quotes"]))
+        self.assertEqual(snap["strength"], [])
+        self.assertTrue(any("Strength" in n for n in snap["notes"]))
+
+
 class Parsing(unittest.TestCase):
     def test_a_quote_gets_its_change_from_the_previous_close(self):
         q = macro.parse_quote(chart(4000.0, [3950.0, 3980.0, 3999.0]), "XAUUSD", "Gold", "GC=F", 2)

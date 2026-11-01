@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zones</title>
+<style>
+:root{
+  --bgc:#111;--bg:linear-gradient(180deg,#0a0a0a 0%,#111 55%,#181818 100%);
+  --panel:#141414;--panel2:#1b1b1b;--line:#2b2b2b;--text:#f2f2f0;--muted:#9c9c98;
+  --accent:#ffffff;--onaccent:#0a0a0a;--input:#0e0e0e;--hover:#4a4a48;
+  --up:#5fd79a;--down:#f08a81;--demand:#5fd79a;--supply:#f08a81;
+  --warn:#e5b84c;--warnbg:#2a2412;--errbg:#3a1a1a;--errtext:#f4b0aa;
+  --tk-bg:linear-gradient(165deg,#1b1b1b 0%,#262626 100%);--tk-line:#3a3a3a;
+  --header:rgba(10,10,10,.82);--shadow:0 1px 2px rgba(0,0,0,.4);
+  --radius:12px;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --disp:'Space Grotesk','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+:root[data-theme="light"]{
+  --bgc:#f1f1ef;--bg:linear-gradient(180deg,#ffffff 0%,#f4f4f2 55%,#e7e7e4 100%);
+  --panel:#ffffff;--panel2:#f4f4f2;--line:#e4e4e1;--text:#141414;--muted:#6e6e6a;
+  --accent:#101010;--onaccent:#ffffff;--input:#fbfbfa;--hover:#bdbdb9;
+  --up:#0f8a4e;--down:#c93b3b;--demand:#0f8a4e;--supply:#c93b3b;
+  --warn:#7a5500;--warnbg:#fff4d6;--errbg:#fde7e7;--errtext:#8c1d1d;
+  --tk-bg:linear-gradient(165deg,#0e0e0e 0%,#1e1e1e 55%,#2e2e2c 100%);--tk-line:#000;
+  --header:rgba(255,255,255,.82);--shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px -18px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark;background:var(--bgc)}
+:root[data-theme="light"]{color-scheme:light}
+body{background:var(--bg);background-attachment:fixed;background-color:var(--bgc);color:var(--text);font-family:var(--sans);font-size:15px;
+  line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+::selection{background:var(--accent);color:var(--onaccent)}
+button,input,select{font:inherit;color:var(--text)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{position:sticky;top:0;z-index:50;background:var(--header);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1120px;margin:0 auto;padding:0 20px;height:58px;display:flex;align-items:center;gap:22px}
+.logo{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;white-space:nowrap}
+.logo .dot{width:10px;height:10px;background:var(--accent);border-radius:3px;display:inline-block}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1}
+nav::-webkit-scrollbar{display:none}
+nav button{appearance:none;background:none;border:0;border-radius:99px;color:var(--muted);font-weight:500;font-size:13.5px;
+  padding:8px 15px;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--text)}
+nav button[aria-selected="true"]{color:var(--onaccent);background:var(--accent);font-weight:600}
+.themebtn{appearance:none;background:none;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:12.5px;
+  padding:6px 13px;cursor:pointer;white-space:nowrap}
+.themebtn:hover{color:var(--text);border-color:var(--hover)}
+
+.hero{max-width:1120px;margin:0 auto;padding:40px 20px 4px}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--disp);font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin:12px 0 10px;max-width:680px}
+.hero p{color:var(--muted);max-width:640px;font-size:14px}
+main{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+.tool{display:none}
+.tool.active{display:block}
+h2{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+h3{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.sub{color:var(--muted);margin-bottom:18px;max-width:640px;font-size:14px}
+.tool-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+.tool-grid>*{min-width:0}
+@media(max-width:900px){.tool-grid{grid-template-columns:minmax(0,1fr)}.ticket{position:static!important}}
+.block-gap{height:36px;border-bottom:1px solid var(--line);margin-bottom:36px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 10px}
+.mute{color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+.note{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px}
+.err{background:var(--errbg);color:var(--errtext);border-radius:8px;padding:10px 12px;margin:8px 0}
+
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.tab{appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:99px;color:var(--muted);
+  font-weight:500;font-size:13.5px;padding:7px 16px;cursor:pointer}
+.tab:hover{color:var(--text);border-color:var(--hover)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:600}
+
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:14px}
+.frow.two{grid-template-columns:1fr 1fr}
+@media(max-width:520px){.frow.two{grid-template-columns:1fr}}
+label{display:block;font-weight:500;font-size:12px;color:var(--muted);margin-bottom:6px}
+input,select{width:100%;background:var(--input);border:1px solid var(--line);border-radius:8px;font:500 14px var(--mono);padding:9px 11px}
+input:hover,select:hover{border-color:var(--hover)}
+input[type=checkbox]{width:auto;accent-color:var(--accent)}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{appearance:none;background:var(--input);border:1px solid var(--line);border-radius:99px;color:var(--muted);
+  font-weight:500;font-size:12.5px;padding:6px 14px;cursor:pointer}
+.seg button:hover{color:var(--text);border-color:var(--hover)}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:600}
+.btn{appearance:none;border:1px solid var(--accent);border-radius:99px;background:var(--accent);color:var(--onaccent);
+  font-weight:600;font-size:13.5px;padding:9px 20px;cursor:pointer}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.ghost{background:transparent;color:var(--text);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--hover);opacity:1}
+.btn.small{padding:4px 12px;font-size:12.5px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.btnrow label.inline{display:flex;align-items:center;gap:6px;margin:0}
+
+.ticket{background:var(--tk-bg);border:1px solid var(--tk-line);border-radius:var(--radius);overflow:hidden;position:sticky;top:78px;
+  color:#f2f2f0;box-shadow:0 18px 44px -20px rgba(0,0,0,.45)}
+.ticket-head{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
+.ticket-head span{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase}
+.live{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.ticket-body{padding:16px 18px;font-family:var(--mono)}
+.trow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.14);gap:12px}
+.trow:last-child{border-bottom:0}
+.trow .k{font-size:11.5px;color:#9c9c98;text-transform:uppercase;letter-spacing:.06em}
+.trow .v{font-size:13.5px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums;color:#f2f2f0}
+.trow .v.big{font-size:24px;font-weight:600;color:#fff}
+.trow .v.pos{color:#5fd79a}.trow .v.neg{color:#f08a81}.trow .v.warn{color:#f08a81;font-size:12px}
+.ticket-note{padding:12px 18px;border-top:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#8f8f8b;line-height:1.5}
+
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font:400 12.5px var(--mono);font-variant-numeric:tabular-nums}
+th{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 7px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+td.wrap{white-space:normal;min-width:90px}
+tr:last-child td{border-bottom:0}
+td.pos{color:var(--up)}td.neg{color:var(--down)}
+.tag{display:inline-block;border-radius:6px;padding:1px 8px;font:600 11px var(--mono);color:#0a0a0a}
+.tag.long,.tag.demand{background:var(--demand)}
+.tag.short,.tag.supply{background:var(--supply)}
+:root[data-theme="light"] .tag{color:#fff}
+.sig{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--panel2)}
+.sig .row{display:flex;flex-wrap:wrap;gap:6px 24px;margin-top:8px}
+.sig .row div span{display:block;color:var(--muted);font-size:11.5px}
+.sig .row div b{font:600 14px var(--mono)}
+.sig .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.stage{margin:0 0 10px}
+.stage .head{font-weight:600;font-size:14px}
+.stage .ln{color:var(--muted);font-size:13px;margin-left:12px}
+svg text{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+details summary{cursor:pointer;margin-top:4px}
+details div.ln{margin-left:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+td details summary{margin-top:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 15px;box-shadow:var(--shadow)}
+.stat .k{font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:600 20px var(--mono);margin-top:4px}
+.del{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 6px;border-radius:5px}
+.del:hover{color:var(--down)}
+.notice{margin-top:18px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);font-size:12.5px;color:var(--muted)}
+
+/* macro desk and chat */
+.msess{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.msess>div{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:var(--panel)}
+.msess b{font:600 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.msess .st{font:600 11px var(--mono);margin-left:8px;color:var(--muted)}
+.msess .st.open{color:var(--up)}
+.msess .mute{display:block;font-size:12px;margin-top:3px}
+.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px}
+.mrow>.card{margin-bottom:0}
+.mlabel{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.mbig{font:700 24px var(--disp);letter-spacing:-.02em}
+.mbig.up{color:var(--up)}.mbig.down{color:var(--down)}
+.mmore{font-size:12.5px;color:var(--muted);margin-top:6px}
+.flowrow{display:grid;grid-template-columns:130px 1fr 66px;gap:12px;align-items:center;padding:5px 0;font:12px var(--mono)}
+.flowbar{position:relative;height:8px;background:var(--panel2);border-radius:4px}
+.flowbar:after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+.flowbar i{position:absolute;top:0;bottom:0;border-radius:4px}
+.flowbar i.up{background:var(--up);left:50%}.flowbar i.down{background:var(--down);right:50%}
+.flowrow .pct{text-align:right}
+.mkts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+.mkt{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow)}
+.mkt .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.mkt h3{font:700 15px var(--disp);letter-spacing:-.01em}
+.mkt .px{font:600 20px var(--mono);margin:8px 0 2px}
+.mkt svg{display:block;width:100%;height:46px;margin:8px 0}
+.mkt .read{font-size:13px;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);white-space:pre-wrap}
+.mkt .read:before{content:"AI read";display:block;font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.bias{display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.bias span{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.bbtn{appearance:none;border:1px solid var(--line);background:transparent;border-radius:99px;padding:2px 10px;font-size:12px;color:var(--muted);cursor:pointer}
+.bbtn:hover{border-color:var(--hover);color:var(--text)}
+.bbtn.on{color:#0a0a0a;border-color:transparent}
+.bbtn.on.bullish{background:var(--up)}.bbtn.on.bearish{background:var(--down)}.bbtn.on.neutral{background:var(--muted)}
+.imp{display:inline-block;border-radius:6px;padding:0 7px;font:600 10.5px var(--mono);text-transform:uppercase}
+.imp.High{background:var(--down);color:#0a0a0a}.imp.Medium{background:var(--warn);color:#0a0a0a}
+tr.soon td{background:var(--panel2)}
+.news{display:grid;gap:0}
+.news .it{padding:9px 0;border-bottom:1px solid var(--line)}
+.news .it:last-child{border-bottom:0}
+.news .it a{color:var(--text);text-decoration:none;font-weight:500}
+.news .it a:hover{text-decoration:underline}
+.news .meta{font:11px var(--mono);color:var(--muted);margin-top:2px}
+.seg{display:inline-flex;gap:4px}
+.brief{white-space:pre-wrap;line-height:1.55;font-size:14px}
+.briefpart{margin-top:12px}.briefpart b{display:block;font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.chatbtn{position:fixed;right:20px;bottom:20px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.chat{position:fixed;right:20px;bottom:74px;z-index:60;width:min(390px,calc(100vw - 40px));height:min(580px,calc(100vh - 110px));display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.chat[hidden]{display:none}
+.chat .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.chat .hd b{font:700 14px var(--disp)}
+.chat .log{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.chat .m{max-width:90%;padding:8px 11px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.chat .m.user{align-self:flex-end;background:var(--accent);color:var(--onaccent)}
+.chat .m.assistant{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
+.chat .m.err{align-self:stretch;max-width:100%;background:var(--errbg);color:var(--errtext)}
+.chat .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
+.chat .chips button{appearance:none;border:1px solid var(--line);background:transparent;border-radius:99px;padding:3px 10px;font-size:12px;color:var(--muted);cursor:pointer}
+.chat .chips button:hover{color:var(--text);border-color:var(--hover)}
+.chat form{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.chat form input{flex:1;background:var(--input);border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-size:13.5px}
+.chat .cnote{font-size:11px;color:var(--muted);padding:0 14px 10px}
+.coach-out{white-space:pre-wrap;line-height:1.55;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.sig .part+.part{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px}
+.form label{margin:0;display:flex;flex-direction:column;gap:3px}
+.form input[type=text]{width:170px}
+.form input[type=number]{width:120px}
+footer{border-top:1px solid var(--line);padding:26px 20px 38px}
+.foot{max-width:1120px;margin:0 auto;font-size:12px;color:var(--muted);line-height:1.6}
+@media (max-width:560px){.hero{padding-top:28px}.bar{gap:10px}}
+
+/* journal */
+.jhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 20px;flex-wrap:wrap}
+.jh{font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.jhero{text-align:center;padding:26px 20px 22px}
+.jtotal{font:600 clamp(34px,8vw,54px) var(--mono);letter-spacing:-.02em;margin:8px 0 6px;text-shadow:0 0 36px rgba(255,255,255,.12)}
+:root[data-theme="light"] .jtotal{text-shadow:none}
+.jtotal.up,.stat .v.up,.jv.up{color:var(--up)}.jtotal.down,.stat .v.down,.jv.down{color:var(--down)}
+.jsub{color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:4px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px;margin-bottom:16px}
+.jgrid>.card{margin-bottom:0;min-width:0}
+.jscoretop{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+.jscore{font:600 46px var(--mono);letter-spacing:-.02em;line-height:1}
+.jrow{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;padding:6px 0;font-size:13px}
+.jrow .nm small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
+.jv{font:600 12.5px var(--mono);text-align:right;white-space:nowrap}
+.jtrack{position:relative;height:8px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.jtrack i{position:absolute;top:0;bottom:0;border-radius:99px}
+.jtrack i.fill{left:0;background:var(--text)}.jtrack i.up{left:50%;background:var(--up)}.jtrack i.down{right:50%;background:var(--down)}
+.jtrack::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.jtrack:has(i.fill)::after{display:none}
+.jcurve{width:100%;height:auto;display:block}
+.jcurve .zero{stroke:var(--line);stroke-dasharray:4 4;stroke-width:1}
+.jcurve .ln{stroke:var(--text);stroke-width:2;stroke-linejoin:round}
+.jcurve .area{fill:var(--text);opacity:.07}
+.jcurve .dot{fill:var(--text)}
+.jcurve.up .ln{stroke:var(--up)}.jcurve.up .area,.jcurve.up .dot{fill:var(--up)}
+.jcurve.down .ln{stroke:var(--down)}.jcurve.down .area,.jcurve.down .dot{fill:var(--down)}
+.jcalhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.jcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.jcal .dow{font:600 10px var(--mono);color:var(--muted);text-align:center;padding:2px 0}
+.jcal .cd{min-height:46px;border:1px solid var(--line);border-radius:8px;padding:4px 5px;overflow:hidden}
+.jcal .cd b{font:500 10px var(--mono);color:var(--muted)}
+.jcal .cd span{display:block;font:600 11px var(--mono);margin-top:2px}
+.jcal .cd.up span{color:var(--up)}.jcal .cd.down span{color:var(--down)}
+.jcal .cd.blank{border:0}.jcal .cd.today{border-color:var(--text)}
+.frow.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+@media(max-width:520px){.jcal .cd{min-height:40px;padding:3px}.jcal .cd span{font-size:10px}.jrow{grid-template-columns:minmax(80px,34%) 1fr auto}}
+
+/* phone: the section tabs move to a bar along the bottom, and everything you tap gets bigger */
+@media(max-width:640px){
+  header{backdrop-filter:none;background:var(--bgc)}
+  .bar{height:52px;gap:10px}
+  .bar nav{position:fixed;left:0;right:0;bottom:0;z-index:70;flex:none;justify-content:space-around;gap:4px;overflow:visible;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--header);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+  .bar nav button{flex:1;min-height:46px;padding:8px 2px;font-size:13px;border-radius:12px}
+  .logo{flex:1}
+  body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  .chatbtn{bottom:calc(78px + env(safe-area-inset-bottom));right:14px}
+  .chat{right:10px;left:10px;width:auto;bottom:calc(128px + env(safe-area-inset-bottom));height:min(520px,calc(100vh - 190px))}
+  .btn,.btn.small,.seg button,.tab,.themebtn{min-height:42px}
+  .btn.small{padding:8px 14px}
+  .del{min-width:42px;min-height:42px}
+  input,select{font-size:16px;min-height:44px}
+  input[type="checkbox"]{min-height:0}
+  .hero{padding:22px 16px 0}.hero h1{font-size:28px}
+  .card{padding:16px}
+  .hero p,.hero .eyebrow{display:none}
+  .jhead .btnrow{margin-bottom:12px!important}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="bar">
+<div class="logo"><span class="dot"></span>Zones</div>
+<span class="mute" style="flex:1;font-size:13px">Supply and demand zones, entries and levels</span>
+<button class="themebtn" id="theme" type="button">Light mode</button>
+</div>
+</header>
+
+<div class="hero">
+<div class="eyebrow">Gold · Index futures · Forex</div>
+<h1>Supply and demand zones in one place.</h1>
+<p>Signals only. Nothing is ever placed from here. Set your stop and size before any order. Times are Dublin.</p>
+</div>
+
+<main>
+
+<section class="tool active" id="tab-zones" role="tabpanel">
+<div class="tabs" id="tabs" role="tablist" aria-label="Markets"></div>
+<div class="tool-grid">
+<div>
+<div class="card" id="controls">
+<div class="frow">
+<div id="spotLabel"><label for="spot">Your chart price now</label><input type="number" step="any" id="spot" placeholder="e.g. 4021.5"></div>
+<div><label for="days">Days back</label><select id="days"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>7</option></select></div>
+<div><label for="window">Entries</label><select id="window"><option value="24" selected>last 24 hours</option><option value="72">last 3 days</option><option value="0">all</option></select></div>
+<div><label for="respect">Show zones</label><select id="respect"><option value="hide" selected>not failed</option><option value="all">all</option><option value="held">respected only</option></select></div>
+<div><label for="entry">Entry style</label><select id="entry"><option value="yours" selected>mine: fib + IFVG</option><option value="tool">tool: sweep + CHoCH</option></select></div>
+<div><label for="rule">Zone rule</label><select id="rule"><option value="standard">standard</option><option value="before">candle before the move</option><option value="both" selected>both</option></select></div>
+<div><label for="perday">Zones per day</label><select id="perday"><option selected>3</option><option>6</option><option>10</option><option>20</option></select></div>
+</div>
+<div class="frow two">
+<div><label>Frames</label><div class="seg" id="frames"><button type="button" class="on" data-frame="60m">1 hour</button><button type="button" class="on" data-frame="30m">30 min</button><button type="button" class="on" data-frame="15m">15 min</button></div></div>
+<div class="btnrow" style="align-self:end;margin:0"><button class="btn" id="refresh" type="button">Refresh</button><label class="inline"><input type="checkbox" id="auto"> Refresh every 5 minutes</label></div>
+</div>
+</div>
+<div id="out"><div class="card empty">Loading... the first load of a market can take up to half a minute while the charts download.</div></div>
+</div>
+<aside class="ticket" aria-live="polite">
+<div class="ticket-head"><span id="tkName">Market</span><span class="live" aria-hidden="true"></span></div>
+<div class="ticket-body" id="tk"></div>
+<div class="ticket-note">Prices are from Yahoo and can differ a little from your chart. Always check your own chart before an order.</div>
+</aside>
+</div>
+</section>
+
+</main>
+
+<footer><div class="foot"><p><strong>Risk disclaimer:</strong> Zones shows signals for educational purposes only. It is not investment advice and it never places an order. Trading forex, futures and CFDs carries a high risk of loss. Prices come from Yahoo and can differ from your broker's.</p></div></footer>
+
+<script>
+(function(){
+"use strict";
+var markets=[],current=null,timer=null,busy=false,lastData=null,clientNote="";
+var GAP_MAX_MS=3*3600*1000;      /* the gap between futures and spot drifts, so a gap measured longer ago is not reused */
+var frames={"60m":true,"30m":true,"15m":true};
+var $=function(id){return document.getElementById(id)};
+function store(k,v){try{if(v===undefined){return localStorage.getItem(k)}localStorage.setItem(k,v)}catch(e){return null}}
+function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
+function fmt(x,d){return x===null||x===undefined||!isFinite(x)?"-":Number(x).toFixed(d)}
+function money(x){return isFinite(x)?Number(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"-"}
+function num(id){var v=parseFloat($(id).value);return isFinite(v)?v:0}
+function age(sec){
+  if(sec<0)sec=0;var m=Math.round(sec/60);
+  if(m<60)return m+" min ago";
+  var h=Math.floor(m/60);if(h<48)return h+"h "+(m%60)+"m ago";
+  return Math.floor(h/24)+" days ago";
+}
+function tag(kind){return el("span","tag "+kind,kind.toUpperCase())}
+function trow(k,v,cls){var r=el("div","trow");r.appendChild(el("span","k",k));r.appendChild(el("span","v"+(cls?" "+cls:""),v));return r}
+
+/* ---------------- theme and sections ---------------- */
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme",t);store("zd.theme",t);
+  $("theme").textContent=t==="dark"?"Light mode":"Dark mode";
+}
+$("theme").onclick=function(){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark")};
+setTheme(store("zd.theme")==="light"?"light":"dark");
+
+/* ---------------- zones ---------------- */
+function tabs(){
+  var box=$("tabs");box.textContent="";
+  markets.forEach(function(m){
+    var b=el("button","tab",m.symbol);b.setAttribute("role","tab");
+    b.setAttribute("aria-selected",String(m.symbol===current));
+    b.onclick=function(){current=m.symbol;store("zd.market",current);tabs();spotBox();load()};
+    box.appendChild(b);
+  });
+}
+function spotBox(){
+  var m=markets.filter(function(x){return x.symbol===current})[0];
+  var show=m&&!m.spot;
+  $("spotLabel").style.display=show?"":"none";
+  $("spot").value=show?(store("zd.spot."+current)||""):"";
+}
+function table(head,rows,wrapCols){
+  var wrap=el("div","scroll"),t=el("table"),tr=el("tr");
+  head.forEach(function(h){tr.appendChild(el("th",null,h))});t.appendChild(tr);
+  rows.forEach(function(r){var row=el("tr");r.forEach(function(c,i){var td=el("td",wrapCols&&wrapCols.indexOf(i)>=0?"wrap":null);
+    if(c&&c.nodeType){td.appendChild(c)}else{td.textContent=c}row.appendChild(td)});t.appendChild(row)});
+  wrap.appendChild(t);return wrap;
+}
+var RESPECT_TEXT={respected:"respected",failed:"failed, closed through it",testing:"being tested"};
+var SESSION_TEXT={asia:"Asia",london:"London",ny:"NY"};
+function visibleZones(d){
+  var mode=$("respect").value;
+  return d.zones.filter(function(x){
+    if(x.tf==="mine")return true;                                   /* your own boxes are never hidden */
+    if(frames[x.tf]===false)return false;
+    if(!x.respect)return true;
+    if(mode==="hide")return x.respect!=="failed";
+    if(mode==="held")return x.respect==="respected";
+    return true})}
+function respectText(x){
+  if(x.respect&&RESPECT_TEXT[x.respect])return RESPECT_TEXT[x.respect]+(x.respect_when&&x.respect!=="testing"?" "+x.respect_when:"");
+  return x.status==="fresh"?"not tested yet":"-";
+}
+function levelText(lv,d){
+  return lv.frame+" "+lv.kind+" "+fmt(lv.low,d.digits)+" to "+fmt(lv.high,d.digits)+(lv.note?" ("+lv.note+")":"");
+}
+function frameCell(x,d){
+  var ls=x.levels||[];if(!ls.length)return x.tf;
+  var c=el("span",null,x.tf+" "),m=el("span","mute","at "+ls.map(function(l){return l.frame}).filter(function(f,i,a){return a.indexOf(f)===i}).join(" + "));
+  m.title="Inside "+ls.map(function(l){return levelText(l,d)}).join("; ");c.appendChild(m);return c;
+}
+function touchLine(t,d){
+  var depth=t.depth>=1?"through it":Math.round(t.depth*100)+"% in";
+  var res=t.result+(t.result_when?" "+t.result_when:"");
+  return t.when+" | "+(SESSION_TEXT[t.session]||"no session")+" | "+depth+" | "+res;
+}
+function touchCell(x,d){
+  var n=(x.touches||[]).length;
+  if(!n)return "-";
+  var dt=el("details"),sm=el("summary",null,n+(n===1?" visit":" visits"));dt.appendChild(sm);
+  x.touches.forEach(function(t){dt.appendChild(el("div","ln",touchLine(t,d)))});
+  return dt;
+}
+function ladder(d){
+  var zs=visibleZones(d);if(!zs.length)return null;
+  var lanes=["60m","30m","15m"],W=720,H=300,L=64,top=14,bot=14;
+  if(zs.some(function(x){return x.tf==="mine"}))lanes.push("mine");
+  var lo=Math.min.apply(null,zs.map(function(x){return x.low})),hi=Math.max.apply(null,zs.map(function(x){return x.high}));
+  if(d.price!==null){lo=Math.min(lo,d.price);hi=Math.max(hi,d.price)}
+  var pad=(hi-lo)*0.05||1;lo-=pad;hi+=pad;
+  function y(p){return top+(hi-p)/(hi-lo)*(H-top-bot)}
+  var ns="http://www.w3.org/2000/svg",s=document.createElementNS(ns,"svg");
+  s.setAttribute("viewBox","0 0 "+W+" "+H);s.setAttribute("width","100%");s.setAttribute("role","img");
+  s.setAttribute("aria-label","Zones by timeframe against price");
+  function add(tagName,attrs,text){var n=document.createElementNS(ns,tagName);
+    for(var k in attrs){n.setAttribute(k,attrs[k])}if(text!==undefined)n.textContent=text;s.appendChild(n);return n}
+  for(var i=0;i<=4;i++){var p=lo+(hi-lo)*i/4;
+    add("line",{x1:L,x2:W,y1:y(p),y2:y(p),stroke:"var(--line)","stroke-width":1});
+    add("text",{x:L-6,y:y(p)+4,"text-anchor":"end"},fmt(p,d.digits>3?4:2))}
+  (d.levels||[]).forEach(function(lv){                                /* your daily and 4h levels, behind the zones */
+    if(lv.high<lo||lv.low>hi)return;
+    var top2=Math.max(top,y(Math.min(lv.high,hi))),bot2=Math.min(H-bot,y(Math.max(lv.low,lo)));
+    var r=add("rect",{x:L,y:top2,width:W-L,height:Math.max(2,bot2-top2),fill:"var(--muted)","fill-opacity":0.12,
+      stroke:"var(--muted)","stroke-dasharray":"3 3"});
+    var tt=document.createElementNS(ns,"title");tt.textContent="Your "+levelText(lv,d);r.appendChild(tt);
+    add("text",{x:L+4,y:top2+10,"text-anchor":"start","fill-opacity":0.8},lv.frame+" "+lv.kind)});
+  var lw=(W-L)/lanes.length;
+  lanes.forEach(function(name,i){add("text",{x:L+lw*i+lw/2,y:11,"text-anchor":"middle"},name);
+    var inl=zs.filter(function(x){return x.tf===name});
+    inl.forEach(function(x,j){
+      var w=Math.max(10,(lw-12)/Math.max(inl.length,1)),xx=L+lw*i+6+j*((lw-12-w)/Math.max(inl.length-1,1));
+      if(inl.length===1)xx=L+lw*i+lw/2-w/2;
+      var r=add("rect",{x:xx,y:y(x.high),width:w,height:Math.max(2,y(x.low)-y(x.high)),rx:2,
+        fill:x.kind==="demand"?"var(--demand)":"var(--supply)","fill-opacity":x.status==="fresh"?0.7:0.3,
+        stroke:x.kind==="demand"?"var(--demand)":"var(--supply)"});
+      var tt=document.createElementNS(ns,"title");
+      tt.textContent=x.kind+" "+x.tf+" "+x.when+"  "+fmt(x.low,d.digits)+" to "+fmt(x.high,d.digits)+"  "+x.status;
+      r.appendChild(tt)})});
+  if(d.price!==null){add("line",{x1:L,x2:W,y1:y(d.price),y2:y(d.price),stroke:"var(--text)","stroke-width":1.5,"stroke-dasharray":"5 4"});
+    add("text",{x:W-2,y:y(d.price)-4,"text-anchor":"end"},"price "+fmt(d.price,d.digits))}
+  return s;
+}
+function ticket(d,shownEntries,shownZones){
+  var t=$("tk");t.textContent="";$("tkName").textContent=d.symbol;
+  t.appendChild(trow("Price",fmt(d.price,d.digits),"big"));
+  t.appendChild(trow("Source",d.yahoo));
+  t.appendChild(trow("Last bar",d.price_when||"-"));
+  t.appendChild(trow("Checked",d.as_of));
+  t.appendChild(trow("Entries shown",String(shownEntries)));
+  t.appendChild(trow("Zones shown",shownZones+" of "+d.zones.length));
+  if(!d.signals.length)t.appendChild(trow("Furthest","no entry: "+d.furthest));
+}
+function render(d){
+  lastData=d;
+  var out=$("out");out.textContent="";
+  var notes=(clientNote?[clientNote]:[]).concat(d.notes);
+  if(notes.length){var nc=el("div","card");notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
+
+  var hrs=parseInt($("window").value,10)||0;
+  var shown=d.signals.slice().reverse().filter(function(r){return (hrs===0||d.now_t-r.entry_t<=hrs*3600)&&frames[r.zone.tf]!==false});          /* Frames also decide which entries show */
+  var sc=el("div","card");sc.appendChild(el("h2",null,"Entries found ("+shown.length+
+    (shown.length<d.signals.length?" of "+d.signals.length+", change Entries or Frames above to see the rest":"")+")"));
+  if(!d.signals.length){
+    sc.appendChild(el("div","empty","No entry. Furthest any zone got: "+d.furthest+"."));
+    d.stages.forEach(function(s){var b=el("div","stage");b.appendChild(el("div","head",s.head));
+      s.lines.forEach(function(l){b.appendChild(el("div","ln",l))});sc.appendChild(b)});
+  }
+  if(d.signals.length&&!shown.length){
+    sc.appendChild(el("div","empty","No entry in this window or these frames. The most recent was "+
+      d.signals[d.signals.length-1].entry_when+" ("+age(d.now_t-d.signals[d.signals.length-1].entry_t)+")."));
+  }
+  var groups=[],byKey={};                                /* one card per gap: its inversion entry and its retest entry go together */
+  shown.forEach(function(r){
+    var key=r.style==="yours"?[r.zone.tf,r.zone.kind,r.zone.low,r.zone.high,r.gap[0],r.gap[1],r.fib&&r.fib.start,r.fib&&r.fib.end].join("|"):null;
+    if(key!==null&&byKey[key]){byKey[key].items.unshift(r);return}                /* shown is newest first: oldest goes first */
+    var g={items:[r]};groups.push(g);if(key!==null)byKey[key]=g});
+  groups.forEach(function(g){
+    var r=g.items[0],yours=r.style==="yours";
+    var b=el("div","sig"),h=el("div");h.appendChild(tag(r.side));
+    h.appendChild(el("span",null," "+r.zone.tf+" "+r.zone.kind+" zone "+fmt(r.zone.low,d.digits)+" to "+fmt(r.zone.high,d.digits)+
+      (yours?", price reached the fib "+r.swept+", gap "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)
+        :", swept "+r.swept+", "+r.trigger+" "+fmt(r.gap[0],d.digits)+" to "+fmt(r.gap[1],d.digits)+" in the OTE")));
+    b.appendChild(h);
+    if(r.fib)b.appendChild(el("div","mute","Fib: the leg runs "+fmt(r.fib.start,d.digits)+" to "+fmt(r.fib.end,d.digits)+
+      "; 0.705 is at "+fmt(r.fib.l705,d.digits)+" and 0.79 at "+fmt(r.fib.l79,d.digits)+". Stop just beyond where it held."));
+    if(r.levels.length)b.appendChild(el("div","mute","At your "+r.levels.map(function(l){
+      return levelText(l,d)+(l.via==="entry"?" (the entry price is in it)":" (the zone is in it)")}).join("; ")+"."));
+    g.items.forEach(function(it){
+      var part=el("div","part");
+      if(yours)part.appendChild(el("div","mute",it.trigger==="IFVG retest"?"Entry on the retest of the gap":"Entry on the inversion of the gap"));
+      var row=el("div","row");
+      [["Entry time",it.entry_when+" ("+age(d.now_t-it.entry_t)+")"],["Entry",fmt(it.entry,d.digits)],["Stop",fmt(it.stop,d.digits)],
+       ["Target",it.target===null?"none":fmt(it.target,d.digits)],["Reward to risk",it.rr===null?"-":it.rr.toFixed(1)]].forEach(function(p){
+        var x=el("div");x.appendChild(el("span",null,p[0]));x.appendChild(el("b",null,p[1]));row.appendChild(x)});
+      part.appendChild(row);
+      if(it.also.length){
+        var dt=el("details","mute"),sm=el("summary",null,"Same trade also seen from "+it.also.length+" other zone"+(it.also.length>1?"s":""));
+        dt.appendChild(sm);
+        it.also.forEach(function(o){dt.appendChild(el("div",null,"The "+o.tf+" "+o.kind+" zone "+
+          fmt(o.low,d.digits)+" to "+fmt(o.high,d.digits)))});
+        part.appendChild(dt)}
+      b.appendChild(part)});
+    sc.appendChild(b)});
+  out.appendChild(sc);
+  if(groups.length)out.appendChild(indicatorStats(groups,d));
+
+  var vz=visibleZones(d);
+  var zc=el("div","card");zc.appendChild(el("h2",null,"Zones (last "+d.days+" day"+(d.days>1?"s":"")+", up to "+d.per_day+" a day)"));
+  var lad=ladder(d);if(lad)zc.appendChild(lad);
+  if(!d.zones.length){zc.appendChild(el("div","empty","No zones. The rules are strict: a small-bodied, long-wicked candle, then a strong move away."))}
+  else if(!vz.length){zc.appendChild(el("div","empty","All "+d.zones.length+" zones are hidden by the Show zones and Frames settings above."))}
+  else{
+    if(vz.length<d.zones.length)zc.appendChild(el("div","mute","Showing "+vz.length+" of "+d.zones.length+" zones. Change Show zones or Frames above to see the rest."));
+    zc.appendChild(table(["Side","Frame","Zone candle (Dublin)","Low","High","Respected?","Visits"],vz.slice().reverse().map(function(x){
+      return [tag(x.kind),frameCell(x,d),x.when,fmt(x.low,d.digits),fmt(x.high,d.digits),respectText(x),touchCell(x,d)]}),[2,5]))}
+  out.appendChild(zc);
+  out.appendChild(levelsCard(d));
+  out.appendChild(mineCard(d));
+  ticket(d,shown.length,vz.length);
+}
+var lastIndicator=null;                                   /* what the Indicator Stats card last showed, for the coach */
+function indicatorStats(groups,d){                      /* what the shown entries did next: one trade per card, the earliest entry */
+  var c=el("div","card");c.appendChild(el("h2",null,"Indicator Stats"));
+  var w=0,l=0,o=0,net=0;
+  groups.forEach(function(g){var x=g.items[0].outcome;
+    if(x.result==="target"){w++;net+=x.r_mult}else if(x.result==="stop"){l++;net-=1}else o++});
+  var done=w+l,box=el("div","stats");
+  lastIndicator={symbol:d.symbol,entries:groups.length,hit_target:w,hit_stop:l,still_open:o,win_rate_pct:done?Math.round(w/done*1000)/10:null,net_r:Math.round(net*10)/10};
+  [["Entries",String(groups.length)],["Hit target",String(w)],["Hit stop",String(l)],["Still open",String(o)],
+   ["Win rate",done?fmt(w/done*100,1)+"%":"-"],["Net result",(net>=0?"+":"")+fmt(net,1)+" R",net>=0?"var(--up)":"var(--down)"]].forEach(function(s){
+    var x=el("div","stat");x.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[2])v.style.color=s[2];x.appendChild(v);box.appendChild(x)});
+  c.appendChild(box);
+  c.appendChild(el("div","mute","Counts the entries shown above, one trade per card (the earliest entry), replayed on the 5-minute bars after it. "+
+    "A bar that touches both the stop and the target counts as the stop. Past results only. Win rate and R leave out trades still open."));
+  return c}
+function post(url,body){
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
+    body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})});
+}
+function mineCard(d){
+  var c=el("div","card");c.appendChild(el("h2",null,"My zones ("+d.mine.length+")"));
+  c.appendChild(el("div","mute","Boxes you drew yourself. They are saved on this computer and checked for entries on every "+
+    "refresh, next to the tool's own zones. Type prices as your chart shows them"+
+    (d.symbol==="XAUUSD"?" (enter your chart price at the top first, so gold lines up)":"")+"."));
+  var msg=el("div","err");msg.style.display="none";
+  if(d.mine.length){
+    c.appendChild(table(["Side","Low","High","Candle opened (Dublin)","Note","Visits",""],d.mine.map(function(m){
+      var rm=el("button","btn small ghost","Remove");
+      rm.onclick=function(){post("/api/mine/remove",{symbol:d.symbol,index:m.index}).then(function(x){
+        if(x.ok){load()}else{msg.textContent=x.j.error||"Could not remove it";msg.style.display=""}})};
+      var zr=d.zones.filter(function(q){return q.tf==="mine"&&q.low===m.low&&q.high===m.high&&q.kind===m.kind})[0];
+      return [m.kind?tag(m.kind):"?",m.low===undefined?"-":fmt(m.low,d.digits),m.high===undefined?"-":fmt(m.high,d.digits),
+        m.when||"-",m.note||"",zr?touchCell(zr,d):"-",rm]})));
+  }
+  var f=el("div","form"),side=el("select"),low=el("input"),high=el("input"),when=el("input"),note=el("input"),
+      add=el("button","btn","Add zone");
+  add.type="button";
+  ["demand","supply"].forEach(function(k){var o=el("option",null,k);o.value=k;side.appendChild(o)});
+  low.type=high.type="number";low.step=high.step="any";when.type=note.type="text";
+  when.placeholder="2026-10-28 02:00";note.placeholder="optional";note.maxLength=80;
+  function lab(text,input){var l=el("label",null,text);l.appendChild(input);f.appendChild(l)}
+  lab("Side",side);lab("Low",low);lab("High",high);lab("Candle opened (Dublin time)",when);lab("Note",note);
+  f.appendChild(add);c.appendChild(f);c.appendChild(msg);
+  add.onclick=function(){
+    msg.style.display="none";
+    post("/api/mine/add",{symbol:d.symbol,kind:side.value,low:low.value,high:high.value,when:when.value.trim(),note:note.value})
+      .then(function(x){if(x.ok){load()}else{msg.textContent=x.j.error||"Could not add it";msg.style.display=""}})
+      .catch(function(e){msg.textContent="Could not reach the dashboard server: "+e;msg.style.display=""});
+  };
+  return c;
+}
+function levelsCard(d){
+  var c=el("div","card");c.appendChild(el("h2",null,"My levels ("+(d.levels||[]).length+")"));
+  c.appendChild(el("div","mute","Your big daily and 4 hour support and resistance zones. The tool does not look for these: "+
+    "you save them, and any zone or entry that sits inside one is marked. Type prices as your chart shows them"+
+    (d.symbol==="XAUUSD"?" (enter your chart price at the top first, so gold lines up)":"")+"."));
+  var msg=el("div","err");msg.style.display="none";
+  if((d.levels||[]).length){
+    var WHERE={inside:"price is inside it",above:"price is above it",below:"price is below it"};
+    c.appendChild(table(["Frame","Kind","Low","High","Note","Price now",""],d.levels.map(function(m){
+      var rm=el("button","btn small ghost","Remove");
+      rm.onclick=function(){post("/api/levels/remove",{symbol:d.symbol,index:m.index}).then(function(x){
+        if(x.ok){load()}else{msg.textContent=x.j.error||"Could not remove it";msg.style.display=""}})};
+      return [m.frame||"?",m.kind||"?",fmt(m.low,d.digits),fmt(m.high,d.digits),m.note||"",WHERE[m.where]||"-",rm]}),[4,5]));
+  }
+  var f=el("div","form"),frame=el("select"),kind=el("select"),low=el("input"),high=el("input"),note=el("input"),
+      add=el("button","btn","Add level");
+  add.type="button";
+  ["daily","4h"].forEach(function(k){var o=el("option",null,k);o.value=k;frame.appendChild(o)});
+  ["support","resistance"].forEach(function(k){var o=el("option",null,k);o.value=k;kind.appendChild(o)});
+  low.type=high.type="number";low.step=high.step="any";note.type="text";note.placeholder="optional";note.maxLength=80;
+  function lab(text,input){var l=el("label",null,text);l.appendChild(input);f.appendChild(l)}
+  lab("Frame",frame);lab("Kind",kind);lab("Low",low);lab("High",high);lab("Note",note);
+  f.appendChild(add);c.appendChild(f);c.appendChild(msg);
+  add.onclick=function(){
+    msg.style.display="none";
+    post("/api/levels/add",{symbol:d.symbol,frame:frame.value,kind:kind.value,low:low.value,high:high.value,note:note.value})
+      .then(function(x){if(x.ok){load()}else{msg.textContent=x.j.error||"Could not add it";msg.style.display=""}})
+      .catch(function(e){msg.textContent="Could not reach the dashboard server: "+e;msg.style.display=""});
+  };
+  return c;
+}
+function showError(msg){var out=$("out");out.textContent="";out.appendChild(el("div","err",msg))}
+function load(){
+  if(busy||!current)return;busy=true;
+  var btn=$("refresh");btn.disabled=true;btn.textContent="Loading...";
+  var m=markets.filter(function(x){return x.symbol===current})[0];
+  var typed=(!m||m.spot)?"":$("spot").value.trim(), sym=current, query="";
+  if(m&&!m.spot)store("zd.spot."+sym,typed);
+  store("zd.days",$("days").value);store("zd.perday",$("perday").value);
+  var kept=null;try{kept=JSON.parse(store("zd.gap."+sym)||"null")}catch(e){kept=null}
+  clientNote="";
+  if(typed&&kept&&kept.text===typed){
+    if(kept.at&&Date.now()-kept.at<GAP_MAX_MS){query="&shift="+encodeURIComponent(kept.v)}   /* same price, typed recently: reuse its gap */
+    else{                                                                                    /* typed too long ago: its gap is out of date */
+      clientNote="The chart price "+typed+" was typed "+(kept.at?Math.round((Date.now()-kept.at)/3600000)+" hours ago":"some time ago")+
+        ", so the gap to spot is out of date and is not applied. Type the price your chart shows now and press Refresh.";
+      store("zd.gap."+sym,"");store("zd.spot."+sym,"");$("spot").value="";typed="";$("spot").focus()}
+  }
+  else if(typed){query="&spot="+encodeURIComponent(typed)}                           /* a new price: measure the gap now */
+  else{store("zd.gap."+sym,"")}
+  store("zd.rule",$("rule").value);store("zd.entry",$("entry").value);
+  var url="/api/snapshot?symbol="+encodeURIComponent(sym)+"&days="+encodeURIComponent($("days").value)+
+    "&per_day="+encodeURIComponent($("perday").value)+"&rule="+encodeURIComponent($("rule").value)+"&entry="+encodeURIComponent($("entry").value)+query;
+  fetch(url).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){
+    if(x.ok){
+      if(typed&&query.indexOf("&spot=")>=0)store("zd.gap."+sym,JSON.stringify({text:typed,v:x.j.shift_value,at:Date.now()}));
+      render(x.j)
+    }else{showError(x.j.error||"Something went wrong")}
+  }).catch(function(e){showError("Could not reach the dashboard server: "+e)}).then(function(){
+    busy=false;btn.disabled=false;btn.textContent="Refresh"});
+}
+function auto(){clearInterval(timer);if($("auto").checked)timer=setInterval(load,300000)}
+function redraw(){if(lastData)render(lastData)}
+$("refresh").onclick=load;$("auto").onchange=auto;
+$("window").onchange=function(){store("zd.window",$("window").value);redraw()};
+$("respect").onchange=function(){store("zd.respect",$("respect").value);redraw()};
+$("rule").onchange=load;$("entry").onchange=load;
+$("spot").onkeydown=function(e){if(e.key==="Enter")load()};
+(function(){var bs=$("frames").querySelectorAll("button");
+  for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){
+    var f=b.getAttribute("data-frame");frames[f]=!frames[f];b.classList.toggle("on",frames[f]);
+    var on=Object.keys(frames).filter(function(k){return frames[k]});store("zd.frames",on.join(","));redraw()}})(bs[i])})();
+var d0=store("zd.days");if(d0)$("days").value=d0;
+var p0=store("zd.perday");if(p0)$("perday").value=p0;
+var w0=store("zd.window");if(w0)$("window").value=w0;
+var en0=store("zd.entry");if(en0==="yours"||en0==="tool")$("entry").value=en0;
+var ru0=store("zd.rule");if(ru0==="before"||ru0==="standard"||ru0==="both")$("rule").value=ru0;
+var r0=store("zd.respect");if(r0&&["hide","all","held"].indexOf(r0)>=0)$("respect").value=r0;
+var f0=store("zd.frames");
+if(f0!==null&&f0!==undefined){
+  var keep=f0.split(",");
+  Object.keys(frames).forEach(function(k){frames[k]=keep.indexOf(k)>=0;
+    var b=$("frames").querySelector('[data-frame="'+k+'"]');if(b)b.classList.toggle("on",frames[k])})}
+
+fetch("/api/markets").then(function(r){return r.json()}).then(function(j){
+  markets=j.markets;var saved=store("zd.market");
+  current=markets.some(function(m){return m.symbol===saved})?saved:markets[0].symbol;
+  tabs();spotBox();load();
+}).catch(function(e){showError("Could not reach the Zones server: "+e)});
+})();
+</script>
+</body>
+</html>

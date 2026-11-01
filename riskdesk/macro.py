@@ -35,13 +35,17 @@ CALENDAR_URLS = ["https://nfs.faireconomy.media/ff_calendar_thisweek.json",
                  "https://nfs.faireconomy.media/ff_calendar_nextweek.json"]
 CURRENCIES = ("USD", "EUR", "GBP")
 IMPACTS = ("High", "Medium")
-TTL = {"quotes": 60, "calendar": 900, "headlines": 600}
+TTL = {"quotes": 60, "calendar": 900, "headlines": 600, "strength": 60}
 
 # (key, name, Yahoo symbol, decimals)
 WATCH = [("XAUUSD", "Gold futures (GC)", "GC=F", 2), ("NQ", "Nasdaq 100 futures (NQ)", "NQ=F", 2),
          ("EURUSD", "EUR/USD", "EURUSD=X", 5), ("GBPUSD", "GBP/USD", "GBPUSD=X", 5),
          ("DXY", "US Dollar Index", "DX-Y.NYB", 3), ("US10Y", "US 10 year yield (%)", "^TNX", 3),
          ("VIX", "VIX", "^VIX", 2), ("SPX", "S&P 500", "^GSPC", 2), ("OIL", "Crude oil (CL)", "CL=F", 2)]
+# Currency strength: each currency's move against the US dollar since the last close. (currency, Yahoo symbol,
+# +1 when the pair is quoted currency/USD, -1 when it is USD/currency, decimals)
+STRENGTH = [("EUR", "EURUSD=X", 1, 5), ("GBP", "GBPUSD=X", 1, 5), ("AUD", "AUDUSD=X", 1, 5), ("NZD", "NZDUSD=X", 1, 5),
+            ("JPY", "JPY=X", -1, 3), ("CAD", "CAD=X", -1, 5), ("CHF", "CHF=X", -1, 5)]
 TOPICS = [("Gold", "gold price OR XAUUSD when:1d"),
           ("Fed, yields, US data", "Federal Reserve OR Treasury yields OR US inflation OR US jobs when:1d"),
           ("Dollar, Europe, UK", "EUR/USD OR GBP/USD OR ECB OR Bank of England when:1d"),
@@ -234,8 +238,21 @@ def snapshot(now, net=None, force=False):
                     unique.append(h)
             return unique, bad
 
+        def strengths():
+            futs = {c: pool.submit(fetch_quote, net, (c, c, sym, dig)) for c, sym, sign, dig in STRENGTH}
+            moves = {}
+            for c, sym, sign, dig in STRENGTH:
+                try:
+                    pct = futs[c].result()["pct"]
+                except (MacroError, z.ZoneError):
+                    continue
+                if pct is not None:
+                    moves[c] = sign * pct
+            return strength(moves)
+
         results = {}
-        for kind, make in (("quotes", quotes), ("calendar", lambda: fetch_calendar(net, now)), ("headlines", heads)):
+        for kind, make in (("quotes", quotes), ("calendar", lambda: fetch_calendar(net, now)), ("headlines", heads),
+                           ("strength", strengths)):
             try:
                 results[kind] = cached(kind, make, force)
             except (MacroError, z.ZoneError) as e:
@@ -244,12 +261,13 @@ def snapshot(now, net=None, force=False):
     quotes, qbad = results["quotes"] or ([], [])
     heads, hbad = results["headlines"] or ([], [])
     events = results["calendar"] or []
+    strong = results["strength"] or []
     # minutes-to-go were worked out when the calendar was fetched: bring them up to now
     events = [dict(e, minutes=round((e["t"] - now) / 60)) for e in events if e["t"] >= now - 2 * 3600]
     notes += qbad + hbad
     return {"as_of": z.to_dublin(now).strftime("%a %d %b %H:%M"), "now_t": now, "quotes": quotes, "events": events,
             "headlines": [dict(h, when=z.to_dublin(h["t"]).strftime("%a %H:%M") if h["t"] else "") for h in heads],
-            "notes": notes, "sessions": sessions(now), "mood": mood(quotes)}
+            "notes": notes, "sessions": sessions(now), "mood": mood(quotes), "strength": strong}
 
 
 # ---------------------------------------------------------------- sessions and mood
@@ -294,6 +312,16 @@ def sessions(now):
                 break
         out.append({"name": name, "open": is_open, "minutes": step * 5})
     return out
+
+
+def strength(moves):
+    """Currency strength from {currency: percent move against the dollar}: each currency's own move, and the
+    dollar as the opposite of the average of the others. Strongest first. Needs at least three currencies."""
+    if len(moves) < 3:
+        raise MacroError("only %d currency pairs came back" % len(moves))
+    rows = [{"cur": c, "pct": round(p, 3)} for c, p in moves.items()]
+    rows.append({"cur": "USD", "pct": round(-sum(moves.values()) / len(moves), 3)})
+    return sorted(rows, key=lambda r: -r["pct"])
 
 
 def mood(quotes):
