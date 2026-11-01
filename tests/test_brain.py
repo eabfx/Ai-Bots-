@@ -22,7 +22,7 @@ ROWS = [HEAD,
         ["15/07/2026", "Live", "BEARISH", "NQ", "NY Session", "SHORT", "0.5%", "LOSS", "3RR", "YES", "OG", "30m Supply Zone", "Double Top", "", "", "", "", "201"]]
 HUB = {"at": "x", "root": "R", "pages": {"R": {"title": "Trade Journal", "nodes": [
     {"t": "h2", "r": [{"x": "RISK"}], "co": "red_background"},
-    {"t": "cols", "cols": [{"k": [{"t": "file", "name": "OG STRATEGY CHECKLIST"}, {"t": "page", "title": "Thoughts + Emotions", "id": "", "locked": True}]}]},
+    {"t": "cols", "cols": [{"k": [{"t": "file", "name": "OG STRATEGY CHECKLIST"}, {"t": "file", "name": "CVD AGGRESSOR CANDLE + FIXED VOLUME PROFILE TOOL AND MORE WORDS"}, {"t": "page", "title": "Thoughts + Emotions", "id": "", "locked": True}]}]},
     {"t": "paragraph", "r": [{"x": "The pages above open once the live Notion link is set up."}]},
     {"t": "db", "title": "Scaling", "cols": ["Name", "Level"], "rows": [["Step 1", "1"]]},
     {"t": "group", "k": [{"t": "todo", "r": [{"x": "task"}], "done": False}]}]}}}

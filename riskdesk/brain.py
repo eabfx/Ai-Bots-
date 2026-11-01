@@ -315,7 +315,7 @@ def option_color(prop_name, option):
 
 
 def _slug(name, used):
-    base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "p"
+    base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:30].strip("_") or "p"
     pid, n = base, 2
     while pid in used:
         pid, n = "%s_%d" % (base, n), n + 1
