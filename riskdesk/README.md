@@ -97,3 +97,7 @@ The app keeps no copy of your data on the device: your journal stays on the serv
 
 The server checks GitHub every hour. When there is a newer version it installs it and restarts RiskDesk, and if the new
 version does not come back healthy it goes back to the one that was running. Reload the page to get the new version.
+
+## Import from TradeZella
+
+Connections page, "Import from TradeZella". It reads `backtest.csv` and `demo.csv` from `trader\tradezella` (copied from TradeZella through its Claude connection, so they are not in git). Backtest trades become a percent of the practice balance with the R TradeZella worked out, and go to the Backtest page as "TradeZella Backtest". Demo-account trades are kept as "TradeZella Demo" but never counted. Preview first; Import skips anything already in the journal.

@@ -30,6 +30,7 @@ import macro         # noqa: E402
 import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
+import tradezella_import  # noqa: E402
 
 PORT = 8765
 
@@ -158,6 +159,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"saved": store.save_trades(self.data_dir, body.get("trades"))})
             elif path == "/api/import/notion":
                 return self.notion(bool(body.get("apply")))
+            elif path == "/api/import/tradezella":
+                return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
                 now = z.parse_now(str(body.get("now") or "") or None)
                 snap = macro.snapshot(now, self.macro_net)
@@ -174,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError, store.StoreError, notion_import.ImportError_) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -229,6 +232,11 @@ class Handler(BaseHTTPRequestHandler):
                     t.pop("image", None)
         finally:
             src.close()
+        self.send_json(200, {"applied": apply, "report": report, "sample": trades[:5], "trades": trades if apply else []})
+
+    def tradezella(self, apply):
+        """Read the TradeZella csv files in trader/tradezella. Preview only reads; apply also returns the trades."""
+        trades, report = tradezella_import.convert(os.path.join(self.data_dir, "tradezella"))
         self.send_json(200, {"applied": apply, "report": report, "sample": trades[:5], "trades": trades if apply else []})
 
     def macro(self, q):

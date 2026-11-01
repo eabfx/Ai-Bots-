@@ -621,6 +621,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="err" id="nt-err" style="display:none"></div><div id="nt-out"></div>
 </div>
 
+<div class="card" id="tz-card">
+<h3 class="jh">Import from TradeZella</h3>
+<p class="sub" style="margin-bottom:10px">Your TradeZella backtesting trades and demo-account trades, copied through the TradeZella connection into <b>trader\tradezella</b>. Backtest trades go to the Backtest page as a percent of the practice balance with their R. Demo trades are kept but not counted. Press Preview to see what it would add. Nothing is saved until you press Import, and trades already in the journal are skipped.</p>
+<div class="btnrow"><button class="btn small" id="tz-prev" type="button">Preview</button><button class="btn" id="tz-go" type="button" disabled>Import</button></div>
+<div class="err" id="tz-err" style="display:none"></div><div id="tz-out"></div>
+</div>
+
 <div class="card" id="imp-card">
 <h3 class="jh">Import from a broker CSV</h3>
 <p class="sub" style="margin-bottom:10px">Choose the trade history file your broker or TradingView exports. It is read in this browser and nothing is uploaded. You check the columns and a preview before anything is added, and trades already in the journal are skipped.</p>
@@ -1738,6 +1745,34 @@ $("nt-go").onclick=function(){
     jSave();jRender();
     $("nt-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+(pics?". Added "+pics+" screenshots to trades you imported earlier":"")+". "+add.filter(function(t){return t.acct==="backtest"}).length+" went to Backtest and "+add.filter(function(t){return t.acct!=="backtest"}).length+" to your live Journal.");m.style.marginTop="8px";$("nt-out").appendChild(m);
     $("nt-go").disabled=true})};
+/* import from TradeZella: the csv files in trader/tradezella; same rules as the Notion import */
+function tzShow(j){
+  var out=$("tz-out");out.textContent="";var r=j.report,st=el("div","ntstat");
+  [["Backtest trades",r.backtest],["Demo trades (not counted)",r.demo],["No R recorded",r.invalid],["Can't be read",r.unreadable]].forEach(function(p){
+    var d=el("div");d.appendChild(el("div","k",p[0]));d.appendChild(el("div","v",String(p[1])));st.appendChild(d)});
+  out.appendChild(st);
+  var ss=Object.keys(r.sessions).map(function(k){return k+": "+r.sessions[k].trades+" trades, "+(r.sessions[k].usd<0?"-":"+")+"$"+Math.abs(r.sessions[k].usd).toLocaleString()}).join("  |  ");
+  if(ss)out.appendChild(el("div","jsub","Backtesting sessions - "+ss));
+  if(!j.applied&&j.sample.length){var h=el("div","jsub","First trades it would add:");h.style.marginTop="8px";out.appendChild(h);
+    out.appendChild(table(["Date","Pair","Dir","Account","R","Result %"],j.sample.map(function(t){return[t.date,t.inst,t.dir,t.acctType||"",t.skip?"":fmt(t.r,2),t.skip?"not counted":fmt(t.pl,2)+"%"]})))}}
+function tzCall(apply){
+  var e=$("tz-err");e.style.display="none";$("tz-prev").disabled=true;$("tz-go").disabled=true;
+  return fetch("/api/import/tradezella",{method:"POST",headers:HDRS,body:JSON.stringify({apply:apply})})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"import failed");return j})})
+    .catch(function(er){e.textContent=er.message;e.style.display="";return null})
+    .then(function(j){$("tz-prev").disabled=false;return j})}
+$("tz-prev").onclick=function(){tzCall(false).then(function(j){if(!j)return;tzShow(j);$("tz-go").disabled=!(j.report.backtest+j.report.demo)})};
+$("tz-go").onclick=function(){
+  tzCall(true).then(function(j){
+    if(!j)return;var have={},day={};
+    trades.forEach(function(t){have[ntKey(t)]=1;if(!t.skip&&t.acct==="backtest"&&!t.time)day[[t.date,t.inst,t.dir].join("|")]=1});         /* a Notion backtest trade of the same day, pair and side is the same trade */
+    var fresh=j.trades.map(cleanTrade).filter(function(t){return t});
+    var add=fresh.filter(function(t){return !have[ntKey(t)]&&(t.skip||!day[[t.date,t.inst,t.dir].join("|")])}),skipped=fresh.length-add.length;
+    if(trades.length+add.length>20000){var e=$("tz-err");e.textContent="The journal holds up to 20,000 trades.";e.style.display="";return}
+    trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
+    jSave();jRender();
+    $("tz-out").textContent="";var m=el("div","jsub","Added "+add.length+" trades"+(skipped?" ("+skipped+" were already in the journal)":"")+": "+add.filter(function(t){return !t.skip}).length+" counted in Backtest and "+add.filter(function(t){return t.skip}).length+" kept, not counted.");m.style.marginTop="8px";$("tz-out").appendChild(m);
+    $("tz-go").disabled=true})};
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
