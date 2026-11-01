@@ -465,6 +465,10 @@ class KeptButNotCounted(unittest.TestCase):
             self.assertIn(s, self.PAGE)
         self.assertEqual(self.PAGE.count('id="h-greet"'), 1)                    # the Home greeting; the hero's is h-hello
 
+    def test_share_card_is_drawn_on_a_canvas_and_can_be_saved_or_copied(self):
+        for s in ('id="sh-cv"', 'id="h-share"', 'id="sh-dl"', 'id="sh-cp"', "function shDraw()", "function shOpen(", 'toBlob(cb,"image/png")', "Share this month"):
+            self.assertIn(s, self.PAGE)
+
 
 class AllowedHosts(unittest.TestCase):
     """A private tunnel (Tailscale) reaches the dashboard under its own name; nothing else is let in."""

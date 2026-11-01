@@ -250,6 +250,10 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .ac-t{appearance:none;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:inherit;font:inherit;cursor:pointer}
 .ac-t:hover{border-color:var(--hover)}.ac-t.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .ac-t .n{font:600 12px var(--mono);color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+#sh{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}#sh[hidden]{display:none}
+.sh-box{width:min(420px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+#sh-cv{width:100%;height:auto;border-radius:12px;display:block;background:#0a0a0a}
+.sh-ctl{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 4px}.sh-opt{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer}
 #wrap{position:fixed;inset:0;z-index:250;background:#0a0a0a;color:#f2f2f0;display:flex;align-items:center;justify-content:center;overflow:hidden}
 #wrap[hidden]{display:none}
 #wrap.up{background:radial-gradient(ellipse at 50% 38%,#0f3a26 0%,#0a0a0a 68%)}#wrap.down{background:radial-gradient(ellipse at 50% 38%,#401616 0%,#0a0a0a 68%)}
@@ -667,7 +671,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="card hcard" id="h-card">
 <div class="h-top"><div><div class="h-greet" id="h-hello"></div><div class="jsub" id="h-meta"></div></div>
 <div class="h-ctl"><div class="seg" id="h-per" role="group" aria-label="Period for the P&amp;L"><button type="button" data-p="month">Month</button><button type="button" data-p="week">Week</button><button type="button" data-p="all">All time</button></div>
-<button class="btn small" id="h-wrap" type="button">Monthly wrapped</button>
+<button class="btn small" id="h-wrap" type="button">Monthly wrapped</button><button class="btn small ghost" id="h-share" type="button">Share</button>
 <div class="h-nav" id="h-nav"><button class="btn ghost small" id="h-prev" type="button" aria-label="Earlier">&lsaquo;</button><span id="h-label"></span><button class="btn ghost small" id="h-next" type="button" aria-label="Later">&rsaquo;</button></div></div></div>
 <div class="h-lw" id="h-lw" hidden></div>
 <div class="h-main"><svg class="h-spark" id="h-spark" viewBox="0 0 600 140" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -765,6 +769,10 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="err" id="coach-err" style="display:none"></div>
 <div id="coach-out" class="coach-out" hidden></div>
 </div>
+<div id="sh" hidden role="dialog" aria-modal="true" aria-label="Share card"><div class="sh-box"><canvas id="sh-cv" width="1080" height="1350" aria-label="Share card preview"></canvas>
+<div class="sh-ctl"><label class="sh-opt"><input type="checkbox" id="sh-hide"> Hide the account name</label><label class="sh-opt"><input type="checkbox" id="sh-nostat"> Only the big number</label></div>
+<div class="btnrow"><button class="btn small" id="sh-dl" type="button">Download PNG</button><button class="btn small ghost" id="sh-cp" type="button">Copy image</button><button class="btn small ghost" id="sh-x" type="button">Close</button></div>
+<div class="jsub" id="sh-msg"></div></div></div>
 <div id="wrap" hidden role="dialog" aria-modal="true" aria-label="Monthly wrapped"><div class="w-bars" id="w-bars"></div><button class="w-x" id="w-x" type="button" aria-label="Close">Close</button>
 <div class="w-stage" id="w-stage"></div><button class="w-nav w-l" id="w-l" type="button" aria-label="Previous"></button><button class="w-nav w-r" id="w-r" type="button" aria-label="Next"></button></div>
 <div id="lb" hidden role="dialog" aria-modal="true" aria-label="Trade screenshot"><div class="lbbox"><button class="btn small ghost lbx" id="lb-x" type="button">Close</button>
@@ -1537,6 +1545,45 @@ $("j-add").onclick=function(){
   ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-rp","j-zone","j-bias"].forEach(function(i){$(i).value=""});
   pendingImg="";imgState("You can also paste an image (Ctrl+V) while this form is open.");
 };
+/* share card: a picture of one period's result, drawn on a canvas so it can be saved or pasted anywhere */
+var SH={list:[],label:"",who:""};
+function shDraw(){
+  var cv=$("sh-cv"),c=cv.getContext("2d"),W0=1080,H0=1350,list=SH.list,st=jStats(list),net=st.net,col=net>0?"#5fd79a":net<0?"#f08a81":"#a4a4a0";
+  setUnit(list);var mono="'IBM Plex Mono',ui-monospace,Consolas,monospace",sans="'Inter',system-ui,'Segoe UI',sans-serif",only=$("sh-nostat").checked;
+  var g=c.createRadialGradient(W0/2,470,40,W0/2,470,900);g.addColorStop(0,net>0?"#0f3a26":net<0?"#401616":"#1a1a1a");g.addColorStop(1,"#0a0a0a");c.fillStyle=g;c.fillRect(0,0,W0,H0);
+  c.textAlign="left";c.fillStyle="#f2f2f0";c.font="700 40px "+sans;c.fillText("RiskDesk.ai",72,112);
+  c.textAlign="right";c.fillStyle="rgba(255,255,255,.6)";c.font="600 28px "+mono;c.fillText(SH.label.toUpperCase(),W0-72,112);
+  c.textAlign="center";c.fillStyle="rgba(255,255,255,.6)";c.font="600 30px "+mono;c.fillText("NET P&L",W0/2,350);
+  var txt=signed(net),fs=200;c.font="700 "+fs+"px "+mono;while(c.measureText(txt).width>W0-140&&fs>60){fs-=8;c.font="700 "+fs+"px "+mono}
+  c.fillStyle=col;c.fillText(txt,W0/2,350+fs*.95);
+  c.fillStyle="rgba(255,255,255,.75)";c.font="500 32px "+sans;c.fillText(st.w+"W / "+st.l+"L - "+pl(st.n,"trade"),W0/2,350+fs*.95+64);
+  /* equity line */
+  var ch=jChron(list),top=only?760:700,bot=only?1120:930,x0=72,x1=W0-72;
+  if(ch.length>=2){var pts=[0],s=0;ch.forEach(function(t){s+=t.pl;pts.push(s)});var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),sp=(mx-mn)||1;
+    function X(i){return x0+i/(pts.length-1)*(x1-x0)}function Y(v){return bot-(v-mn)/sp*(bot-top)}
+    c.beginPath();pts.forEach(function(v,i){i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v))});c.lineTo(x1,bot+20);c.lineTo(x0,bot+20);c.closePath();c.globalAlpha=.14;c.fillStyle=col;c.fill();c.globalAlpha=1;
+    c.beginPath();pts.forEach(function(v,i){i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v))});c.strokeStyle=col;c.lineWidth=6;c.lineJoin="round";c.lineCap="round";c.stroke()}
+  if(!only){
+    var tiles=[["TRADES",String(st.n)],["WIN RATE",fmt(st.winrate,0)+"%"],["PROFIT FACTOR",st.pf===null?"-":isFinite(st.pf)?fmt(st.pf,2):"no losses"],["AVERAGE R",st.avgR===null?"-":fmt(st.avgR,2)+"R"]],tw=(W0-144-30)/2,th=118;
+    tiles.forEach(function(t,i){var x=72+(i%2)*(tw+30),yy=990+Math.floor(i/2)*(th+22);c.fillStyle="rgba(255,255,255,.05)";c.strokeStyle="rgba(255,255,255,.16)";c.lineWidth=2;
+      c.beginPath();if(c.roundRect)c.roundRect(x,yy,tw,th,22);else c.rect(x,yy,tw,th);c.fill();c.stroke();
+      c.textAlign="left";c.fillStyle="rgba(255,255,255,.55)";c.font="600 22px "+mono;c.fillText(t[0],x+26,yy+40);c.fillStyle="#f2f2f0";c.font="600 40px "+mono;c.fillText(t[1],x+26,yy+90)})}
+  c.textAlign="center";c.fillStyle="rgba(255,255,255,.45)";c.font="500 26px "+mono;
+  if(!$("sh-hide").checked)c.fillText(SH.who.toUpperCase(),W0/2,H0-52)}
+function shOpen(list,label,who){
+  if(!list.length)return false;SH.list=list;SH.label=label;SH.who=who;$("sh-msg").textContent="";$("sh").hidden=false;shDraw();return true}
+function shClose(){$("sh").hidden=true}
+$("sh-hide").onchange=shDraw;$("sh-nostat").onchange=shDraw;$("sh-x").onclick=shClose;
+$("sh").onclick=function(ev){if(ev.target===$("sh"))shClose()};
+function shBlob(cb){try{$("sh-cv").toBlob(cb,"image/png")}catch(e){cb(null)}}
+$("sh-dl").onclick=function(){shBlob(function(b){if(!b){$("sh-msg").textContent="Could not make the image in this browser.";return}
+  var a=document.createElement("a"),u=URL.createObjectURL(b);a.href=u;a.download="riskdesk-"+SH.label.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".png";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);$("sh-msg").textContent="Saved to your downloads."})};
+$("sh-cp").onclick=function(){shBlob(function(b){
+  try{if(!b||!navigator.clipboard||!window.ClipboardItem)throw 0;navigator.clipboard.write([new ClipboardItem({"image/png":b})]).then(function(){$("sh-msg").textContent="Copied. Paste it into a message or post."},function(){$("sh-msg").textContent="This browser would not copy the image. Use Download PNG."})}
+  catch(e){$("sh-msg").textContent="This browser cannot copy images. Use Download PNG."}})};
+$("h-share").onclick=function(){var R=hRange(),pool=jPool(),list=R.all?pool:hBetween(pool,R.from,R.to);
+  if(!shOpen(list,R.label,jAT||(jAcct==="backtest"?"Backtest":"Live journal")))$("ac-note").textContent="No trades in this period to share yet."};
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&!$("sh").hidden)shClose()});
 /* monthly wrapped: a story of one month, worked out from the journal with fixed rules (no AI, nothing guessed) */
 var W={i:0,slides:[],raf:null};
 function wCount(node,to){
@@ -1609,6 +1656,7 @@ function wSlides(){
     tile("Net result",signed(net),cls(net));tile("Trades",String(st.n));tile("Win rate",fmt(st.winrate,0)+"%");
     tile("Profit factor",st.pf===null?"-":isFinite(st.pf)?fmt(st.pf,2):"no losses");tile("Green days",dy.green+" of "+dy.n);
     tile("Best trade",bt0?signed(bt0.pl):"-",bt0?cls(bt0.pl):"");b.appendChild(g);
+    var sb=el("button","btn small","Share this month");sb.type="button";sb.onclick=function(e){e.stopPropagation();shOpen(list,name+" "+Y,who)};b.appendChild(sb);
     p(b,"Closing summary. Close this to get back to your journal.")}});
   return{slides:S,title:name+" "+Y}}
 function wShow(i){
