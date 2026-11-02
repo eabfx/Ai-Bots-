@@ -151,6 +151,20 @@ function applyView(){
   m.classList.toggle("sbv-narrow",!VIEW.wide);m.style.setProperty("--sbs",String(SIZES[VIEW.size]));
   var w=document.getElementById("sb-vw"),a=document.getElementById("sb-vm"),b=document.getElementById("sb-vp");
   if(w)w.textContent=VIEW.wide?"Narrow page":"Wide page";if(a)a.disabled=VIEW.size===0;if(b)b.disabled=VIEW.size===SIZES.length-1}
+function refreshFromNotion(btn){
+  if(btn){btn.disabled=true;btn.textContent="Reading Notion..."}
+  settle().then(function(){return fetch("/api/brain/fill",{method:"POST",headers:{"X-Requested-With":HDRS["X-Requested-With"],"Content-Type":HDRS["Content-Type"]},body:JSON.stringify({refresh:true})})})
+   .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"failed");return j})})
+   .then(function(j){return fetch("/api/brain").then(function(r){return r.json()}).then(function(d){
+      S.doc=d.doc;S.rev=d.doc.rev||0;S.conflict=false;if(!S.doc.pages[S.loc.page])S.loc={page:S.doc.root};render();
+      say(j.filled.length?"Filled from Notion: "+j.filled.join(", ")+".":"Nothing new to fill: every page already has content. Pages you edited are never overwritten.")})})
+   .catch(function(e){say("Could not read Notion: "+e.message);if(btn){btn.disabled=false;btn.textContent="Refresh pages from Notion"}})}
+function deletePageAsk(id){
+  var pg=S.doc.pages[id];if(!pg||id===S.doc.root)return false;
+  if(!confirm("Delete \""+(pg.title||"Untitled")+"\" and everything inside it? This only removes it here, never in Notion."))return false;
+  var parent=pg.parent||S.doc.root;
+  [S.doc.pages[parent]].forEach(function(pp){if(pp)pp.nodes=pp.nodes.filter(function(n){return!(n.t==="page"&&n.id===id)})});
+  dropPage(id);touch();return parent}
 /* the sections of your journal as buttons: Home, then every page that sits directly under it, in the order they appear */
 function sectionIds(){
   var root=S.doc.root,seen={},out=[];
@@ -161,13 +175,21 @@ function sectionBar(){
   var bar=h("div","sb-tabs"),root=S.doc.root;
   var at=S.loc.row?(S.loc.from||root):S.loc.page,top=root,id=at,guard=0;
   while(id&&id!==root&&guard++<20){top=id;id=S.doc.pages[id]&&S.doc.pages[id].parent;if(!S.doc.pages[id]&&id!==root){top=root;break}}
-  function tab(label,target,on){var b=h("button","sb-tab"+(on?" on":""),label);b.type="button";b.onclick=function(){go({page:target})};bar.appendChild(b)}
+  function tab(label,target,on,deletable){
+    var b=h("button","sb-tab"+(on?" on":""),label);b.type="button";b.onclick=function(){go({page:target})};
+    if(!deletable){bar.appendChild(b);return}
+    var w=h("span","sb-tabw"),x=h("button","sb-tabx","\u2715");x.type="button";x.title="Delete this section";x.setAttribute("aria-label","Delete section "+label);
+    x.onclick=function(e){e.stopPropagation();var parent=deletePageAsk(target);if(parent){go({page:on?root:at||root})}};
+    w.appendChild(b);w.appendChild(x);bar.appendChild(w)}
   tab((S.space==="vault"?"\u{1F512} ":"\u{1F3E0} ")+(S.doc.pages[root].title||"Home"),root,top===root&&!S.loc.row&&at===root);
-  sectionIds().forEach(function(k){var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k)});
+  sectionIds().forEach(function(k){var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k,true)});
   var add=h("button","sb-tab add","+ New section");add.type="button";
   add.onclick=function(){var id2=newPage(root,"Untitled");S.doc.pages[root].nodes.push({t:"page",id:id2,title:"Untitled"});touch();go({page:id2})};
   bar.appendChild(add);
-  if(S.space==="brain"){var lk=h("button","sb-tab lock","\u{1F512} Thoughts + Emotions");lk.type="button";lk.onclick=openVault;bar.appendChild(lk)}
+  if(S.space==="brain"){
+    var rf=h("button","sb-tab ctl","Refresh pages from Notion");rf.type="button";rf.title="Reads your Notion again (read only) and fills pages that are still empty. Pages you have written in are never touched.";
+    rf.onclick=function(){refreshFromNotion(rf)};bar.appendChild(rf);
+    var lk=h("button","sb-tab lock","\u{1F512} Thoughts + Emotions");lk.type="button";lk.onclick=openVault;bar.appendChild(lk)}
   else{
     function ctl(label,fn,cls){var b=h("button","sb-tab ctl"+(cls?" "+cls:""),label);b.type="button";b.onclick=fn;bar.appendChild(b)}
     ctl("Copy from Notion (read only)",importPrivate);ctl("Change password",changePassword);ctl("\u{1F512} Lock and leave",function(){leaveVault()},"lock")}
@@ -224,11 +246,8 @@ function pageView(body){
   head.appendChild(titleEl(pg.title,"Untitled",function(v){pg.title=v;touch()},function(){render()}));
   body.appendChild(head);
   if(id!==S.doc.root){
-    var del=h("button","sb-link","Delete this page");del.type="button";
-    del.onclick=function(){if(!confirm("Delete \""+(pg.title||"Untitled")+"\" and everything inside it?"))return;
-      var parent=pg.parent||S.doc.root;
-      [S.doc.pages[parent]].forEach(function(pp){if(pp)pp.nodes=pp.nodes.filter(function(n){return!(n.t==="page"&&n.id===id)})});
-      dropPage(id);touch();go({page:parent})};
+    var del=h("button","sb-link sb-del",(pg.parent===S.doc.root?"Delete this section":"Delete this page"));del.type="button";
+    del.onclick=function(){var parent=deletePageAsk(id);if(parent)go({page:parent})};
     body.appendChild(del)}
   var ed=h("div","sb-ed");body.appendChild(ed);
   editor(pg.nodes,ed,null,{page:id,fill:true});

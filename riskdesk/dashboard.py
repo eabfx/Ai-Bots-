@@ -170,6 +170,16 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json(409, {"error": str(e)})
             elif path == "/api/import/notion":
                 return self.notion(bool(body.get("apply")))
+            elif path == "/api/brain/fill":
+                link = self.notion_link
+                if not link:
+                    raise brain.BrainError("No Notion link is set up")
+                if body.get("refresh"):
+                    link.refresh()
+                    if link.state.get("error"):
+                        raise brain.BrainError(link.state["error"])
+                link.filled_at = link.hub_doc.get("at")
+                return self.send_json(200, {"filled": brain.fill_from_hub(self.data_dir, link.hub_doc), "hub_at": link.hub_doc.get("at", "")})
             elif path == "/api/notion/refresh":
                 if not self.notion_link:
                     return self.send_json(200, {"connected": False})
@@ -228,6 +238,11 @@ class Handler(BaseHTTPRequestHandler):
                 seeded = doc is None
                 if seeded:
                     doc = brain.seed(self.data_dir)
+                link = self.notion_link
+                if link and link.hub_doc.get("pages") and getattr(link, "filled_at", None) != link.hub_doc.get("at"):
+                    link.filled_at = link.hub_doc.get("at")          # empty pages pick up what the Notion copy has, once per copy
+                    if brain.fill_from_hub(self.data_dir, link.hub_doc):
+                        doc = brain.load(self.data_dir)
             except brain.BrainError as e:
                 return self.send_json(500, {"error": str(e)})
             self.send_json(200, {"doc": doc, "seeded": seeded})

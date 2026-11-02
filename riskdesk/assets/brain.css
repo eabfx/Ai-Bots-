@@ -169,3 +169,10 @@
 .sb-lock{max-width:420px;margin:50px auto;text-align:center;border:1px solid var(--line);border-radius:16px;padding:30px 26px;background:var(--panel)}
 .sb-lockic{font-size:42px}.sb-lock h2{margin:6px 0 8px}.sb-locknote{color:var(--muted);font-size:13.5px;margin-bottom:16px;line-height:1.5}
 .sb-lock .sb-seli{text-align:center;margin-bottom:10px}.sb-lock .sb-new{width:100%;padding:10px}.sb-lockerr{color:var(--errtext);font-size:13px;margin-top:10px;min-height:18px}
+
+.sb-tabw{display:inline-flex;align-items:center;position:relative}
+.sb-tabw .sb-tab{padding-right:30px}
+.sb-tabx{appearance:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:99px;border:0;background:none;color:inherit;opacity:.45;font-size:11px;line-height:1;cursor:pointer;padding:0}
+.sb-tabw:hover .sb-tabx,.sb-tabx:focus-visible{opacity:1}
+.sb-tabx:hover{background:rgba(220,60,60,.25);color:#ff6b6b;opacity:1}
+.sb-link.sb-del{color:#ff6b6b}

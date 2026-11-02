@@ -479,6 +479,49 @@ def pages_from_hub(hub, root_name, taken=(), placeholders=False):
     return pages, dbs
 
 
+def _is_blank(nodes):
+    """A page nobody has written in: nothing, or only empty paragraphs."""
+    return all(n.get("t") == "paragraph" and not n.get("r") and not n.get("k") for n in nodes or [])
+
+
+def fill_from_hub(data_dir, hub):
+    """Pages that are still empty get the content of the Notion page with the same title (read-only copy in the hub).
+    A page you have written in is never touched. Returns the titles that were filled."""
+    if not isinstance(hub, dict) or not isinstance(hub.get("pages"), dict) or not hub["pages"]:
+        return []
+    filled = []
+
+    def apply(doc):
+        pages, dbs = pages_from_hub(hub, "hubroot_", set(doc["pages"]) | set(doc["dbs"]), False)
+        empty = {}
+        for pid, p in doc["pages"].items():
+            if pid != doc["root"] and _is_blank(p["nodes"]):
+                empty.setdefault(p["title"].strip().lower(), []).append(pid)
+        for npid, np in pages.items():
+            if npid == "hubroot_" or _is_blank(np["nodes"]):
+                continue
+            targets = empty.get(np["title"].strip().lower())
+            if not targets:
+                continue
+            target = targets.pop(0)
+            doc["pages"][target]["nodes"] = np["nodes"]
+            todo = [np["nodes"]]
+            while todo:
+                for n in _walk(todo.pop()):
+                    if n.get("t") == "db" and n.get("id") in dbs:
+                        doc["dbs"][n["id"]] = dbs[n["id"]]
+                    if n.get("t") == "page" and n.get("id") in pages and n["id"] not in doc["pages"] and n["id"] != "hubroot_":
+                        sub = dict(pages[n["id"]])
+                        sub["parent"] = target
+                        doc["pages"][n["id"]] = sub
+                        todo.append(sub["nodes"])
+            filled.append(doc["pages"][target]["title"])
+
+    if update(data_dir, apply) is None:
+        return []
+    return filled
+
+
 def seed(data_dir, log=None):
     """Make the first copy: your Notion pages (from the live link, or the hand copy in notion/hub.json) and the Trade Journal 2026 table
     (from the Notion export in import-done or import). Returns the saved document."""

@@ -188,3 +188,53 @@ class Readability(unittest.TestCase):
     def test_width_and_text_size_controls_are_remembered_in_this_browser(self):
         for needle in ('"sb.view"', "function applyView()", 'b.id=id', "Smaller text", "Bigger text", "SIZES"):
             self.assertIn(needle, self.JS)
+
+
+class FillFromNotion(unittest.TestCase):
+    """Pages that were copied as empty placeholders get the Notion content later; written pages are never touched."""
+    HUB2 = {"at": "t2", "root": "R", "pages": {
+        "R": {"title": "Trade Journal", "nodes": [{"t": "paragraph", "r": [{"x": "root"}]}]},
+        "p1": {"title": "CVD ACCUMULATION", "nodes": [{"t": "h2", "r": [{"x": "Key notes"}]}, {"t": "li", "r": [{"x": "wait for it"}]},
+                                                      {"t": "db", "title": "Steps", "cols": ["Name", "Level"], "rows": [["One", "1"]]}]},
+        "p2": {"title": "TWT CHECKLIST", "nodes": [{"t": "paragraph", "r": [{"x": "Notion text"}]}]},
+        "p3": {"title": "OG BACKTESTING DATA", "nodes": [{"t": "img", "img": "0123456789abcdef.png", "r": []}]}}}
+
+    def doc(self):
+        d = data_dir()
+        brain.seed(d)
+        def add(doc):
+            for pid, title, txt in (("cvd_accumulation", "CVD ACCUMULATION", None), ("twt_checklist", "TWT CHECKLIST", "I wrote this myself"),
+                                    ("og_backtesting_data", "OG BACKTESTING DATA", None)):
+                doc["pages"][pid] = {"title": title, "icon": "", "parent": doc["root"],
+                                     "nodes": [{"t": "paragraph", "r": [{"x": txt}] if txt else []}]}
+        brain.update(d, add)
+        return d
+
+    def test_empty_pages_are_filled_and_written_pages_are_not(self):
+        d = self.doc()
+        filled = brain.fill_from_hub(d, self.HUB2)
+        self.assertEqual(sorted(filled), ["CVD ACCUMULATION", "OG BACKTESTING DATA"])
+        doc = brain.load(d)
+        kinds = [n["t"] for n in doc["pages"]["cvd_accumulation"]["nodes"]]
+        self.assertEqual(kinds, ["h2", "li", "db"])
+        dbid = doc["pages"]["cvd_accumulation"]["nodes"][2]["id"]
+        self.assertEqual(doc["dbs"][dbid]["rows"][0]["v"]["title"], "One")
+        self.assertEqual(doc["pages"]["twt_checklist"]["nodes"][0]["r"][0]["x"], "I wrote this myself")
+        self.assertEqual(doc["pages"]["og_backtesting_data"]["nodes"][0]["t"], "img")
+
+    def test_running_it_twice_changes_nothing_more(self):
+        d = self.doc()
+        brain.fill_from_hub(d, self.HUB2)
+        rev = brain.load(d)["rev"]
+        self.assertEqual(brain.fill_from_hub(d, self.HUB2), [])
+        self.assertEqual(brain.load(d)["rev"], rev + 1)        # one more save, but the content is the same
+
+    def test_no_hub_or_no_document_is_fine(self):
+        self.assertEqual(brain.fill_from_hub(data_dir(hub=False), self.HUB2), [])
+        self.assertEqual(brain.fill_from_hub(self.doc(), {}), [])
+
+    def test_delete_buttons_and_the_refresh_button_exist(self):
+        for needle in ("function deletePageAsk(", "sb-tabx", "Delete this section", "Refresh pages from Notion", "/api/brain/fill"):
+            self.assertIn(needle, JS)
+        for needle in ("/api/brain/fill", "brain.fill_from_hub("):
+            self.assertIn(needle, SERVER)
