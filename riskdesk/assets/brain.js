@@ -182,10 +182,10 @@ function openVault(){
 function lockScreen(setMode,msg){
   var m=S.mount;m.textContent="";m.appendChild(sectionBar());
   var card=h("div","sb-lock");card.appendChild(h("div","sb-lockic","\u{1F512}"));card.appendChild(h("h2",null,"Thoughts + Emotions"));
-  card.appendChild(h("p","sb-locknote",setMode?"Choose a password for this private section. It is kept nowhere, so if you forget it these pages cannot be recovered. Once it is set, your Thoughts + Emotions page is copied here from Notion (read only, Notion is never changed) and locked.":"This section is locked. Enter your password to open it. It locks again when you leave Second Brain, and after 20 minutes of no use."));
-  var pw=h("input","sb-seli");pw.type="password";pw.placeholder=setMode?"New password (8 or more characters)":"Password";pw.setAttribute("autocomplete",setMode?"new-password":"current-password");card.appendChild(pw);
-  var pw2=null;if(setMode){pw2=h("input","sb-seli");pw2.type="password";pw2.placeholder="Type it again";pw2.setAttribute("autocomplete","new-password");card.appendChild(pw2)}
-  var err=h("div","sb-lockerr",msg||"");var btn=h("button","sb-new",setMode?"Set password and open":"Unlock");btn.type="button";
+  card.appendChild(h("p","sb-locknote",setMode?"Choose a PIN (4 digits is fine) or a longer password for this private section. It is kept nowhere, so if you forget it these pages cannot be recovered. Once it is set, your Thoughts + Emotions page is copied here from Notion (read only, Notion is never changed) and locked.":"This section is locked. Enter your password to open it. It locks again when you leave Second Brain, and after 20 minutes of no use."));
+  var pw=h("input","sb-seli");pw.type="password";pw.placeholder=setMode?"New PIN or password (4 or more, 4 digits is fine)":"PIN or password";pw.setAttribute("inputmode","numeric");pw.setAttribute("autocomplete",setMode?"new-password":"current-password");card.appendChild(pw);
+  var pw2=null;if(setMode){pw2=h("input","sb-seli");pw2.type="password";pw2.setAttribute("inputmode","numeric");pw2.placeholder="Type it again";pw2.setAttribute("autocomplete","new-password");card.appendChild(pw2)}
+  var err=h("div","sb-lockerr",msg||"");var btn=h("button","sb-new",setMode?"Set PIN and open":"Unlock");btn.type="button";
   function go(){
     err.textContent="";
     if(setMode&&pw.value!==pw2.value){err.textContent="The two passwords are not the same.";return}
@@ -212,7 +212,7 @@ function importPrivate(auto){
     S.doc=j.doc;S.rev=j.doc.rev;S.loc={page:S.doc.root};render();say("Copied "+Object.keys(S.doc.pages).length+" page(s) from Notion into the locked section.")})
   .catch(function(e){if(e.status===401)return lockedOut();say("Could not copy from Notion: "+e.message)})}
 function changePassword(){
-  var a=prompt("New password (8 or more characters). Do not forget it, it cannot be recovered:");if(!a)return;
+  var a=prompt("New PIN or password (4 or more characters, 4 digits is fine). Do not forget it, it cannot be recovered:");if(!a)return;
   var b=prompt("Type the new password again:");if(a!==b){say("The two passwords were not the same. Nothing changed.");return}
   settle().then(function(){return vaultFetch("/api/vault/password","POST",{password:a},S.tok)}).then(function(j){S.tok=j.token;say("Password changed.")}).catch(function(e){say("Could not change it: "+e.message)})}
 function pageView(body){

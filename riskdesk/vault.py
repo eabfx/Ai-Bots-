@@ -23,7 +23,7 @@ import brain
 
 ROUNDS = 600000
 IDLE_SECONDS = 20 * 60
-MIN_PASSWORD = 8
+MIN_PASSWORD = 4                      # a 4-digit PIN is allowed; a longer password is much harder to guess
 MAX_TRIES, TRY_WINDOW, LOCKOUT = 5, 600, 120
 ROOT = "vroot"
 

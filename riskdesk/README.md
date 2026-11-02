@@ -123,7 +123,7 @@ The Second Brain button (bottom left, white and black) opens a Notion-style work
 
 ### Thoughts + Emotions (password locked)
 
-Second Brain has a lock button, **Thoughts + Emotions**. The first time you open it you choose a password (at least 8 characters). RiskDesk then copies that page from Notion once, read only (nothing in Notion is changed), and keeps it in `trader\brain\vault.json`, encrypted with a key made from your password (PBKDF2-SHA256, 600,000 rounds, and an authenticated stream cipher built from HMAC-SHA256). The password is never stored. Wrong guesses are slowed down: after 5 wrong tries it waits 2 minutes.
+Second Brain has a lock button, **Thoughts + Emotions**. The first time you open it you choose a PIN or password (at least 4 characters, so a 4-digit PIN works; a longer one is much harder to guess). RiskDesk then copies that page from Notion once, read only (nothing in Notion is changed), and keeps it in `trader\brain\vault.json`, encrypted with a key made from your password (PBKDF2-SHA256, 600,000 rounds, and an authenticated stream cipher built from HMAC-SHA256). The password is never stored. Wrong guesses are slowed down: after 5 wrong tries it waits 2 minutes.
 
 - It locks again when you leave Second Brain, press Lock, or after 20 minutes of no use. The key only ever lives in memory.
 - **If you forget the password, the pages cannot be recovered.** Keep the password somewhere safe.

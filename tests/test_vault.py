@@ -79,7 +79,7 @@ class Passwords(unittest.TestCase):
     def test_short_wrong_and_repeated_passwords(self):
         d, v, now = fresh()
         with self.assertRaises(vault.VaultError):
-            v.setup("short")
+            v.setup("abc")
         v.setup("correct horse 9")
         with self.assertRaises(vault.VaultError):
             v.setup("another password")                                       # cannot be set twice
@@ -104,6 +104,18 @@ class Passwords(unittest.TestCase):
             v.unlock("correct horse 9")
         t2 = v.unlock("brand new pass 1")
         self.assertEqual(v.load(t2)["pages"][vault.ROOT]["nodes"][0]["r"][0]["x"], SECRET)
+
+
+class FourDigitPin(unittest.TestCase):
+    def test_a_four_digit_pin_works_and_three_characters_do_not(self):
+        d, v, _ = fresh()
+        with self.assertRaises(vault.VaultError):
+            v.setup("123")
+        tok = v.setup("4821")
+        v.lock(tok)
+        with self.assertRaises(vault.VaultError):
+            v.unlock("4822")
+        self.assertTrue(v.unlock("4821"))
 
 
 class Sessions(unittest.TestCase):
