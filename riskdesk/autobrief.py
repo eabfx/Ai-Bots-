@@ -76,8 +76,13 @@ class Keeper:
 
     def state(self):
         have = self.brief["at"] if self.brief else 0
-        return {"brief": self.brief, "error": self.error, "every": EVERY,
-                "next_at": (max(have + EVERY, self.tried + RETRY if self.error else 0) if have or self.tried else self.clock() + 30)}
+        if self.error:
+            nxt = max(have + EVERY, self.tried + RETRY)
+        elif have:
+            nxt = have + EVERY
+        else:
+            nxt = 0                                   # the first one is being written right now
+        return {"brief": self.brief, "error": self.error, "every": EVERY, "next_at": nxt}
 
     def start(self):
         def loop():
