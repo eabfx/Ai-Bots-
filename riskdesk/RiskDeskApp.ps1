@@ -12,6 +12,12 @@ if (-not (Up)) {
   for ($i = 0; $i -lt 40 -and -not (Up); $i++) { Start-Sleep -Milliseconds 750 }
 }
 if ($ServerOnly) { exit }
+# If RiskDesk was installed from Chrome ("Install RiskDesk.ai"), open that app so the taskbar shows the RiskDesk logo, not Chrome's.
+$chromeApp = Get-ChildItem (Join-Path ([Environment]::GetFolderPath("Programs")) "Chrome Apps") -Filter "RiskDesk*.lnk" | Select-Object -First 1
+if ($chromeApp) {
+  $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut($chromeApp.FullName)
+  if ($lnk.TargetPath -and (Test-Path $lnk.TargetPath)) { Start-Process -FilePath $lnk.TargetPath -ArgumentList $lnk.Arguments; exit }
+}
 $browser = @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
   "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",

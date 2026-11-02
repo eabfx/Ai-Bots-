@@ -725,6 +725,7 @@ class TerminalLook(Server):
         ps = (here / "RiskDeskApp.ps1").read_text()
         self.assertIn("http://127.0.0.1:8765/", ps)
         self.assertIn("--app=", ps)
+        self.assertIn("Chrome Apps", ps)
         self.assertIn("-ServerOnly", (here / "install-app.ps1").read_text())
         self.assertIn("RiskDeskApp.ps1", (here / "RiskDeskApp.vbs").read_text())
         self.assertGreater((here / "assets" / "riskdesk.ico").stat().st_size, 1000)
