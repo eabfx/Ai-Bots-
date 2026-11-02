@@ -699,3 +699,26 @@ class TablesAndButtons(unittest.TestCase):
     def test_second_brain_tables_are_left_alone(self):
         self.assertNotIn("\ntable{border-collapse:separate", self.PAGE)
         self.assertIn(".tool:not(#tab-brain) table{border-collapse:separate", self.PAGE)
+
+
+class TerminalLook(Server):
+    def test_the_fonts_are_served_from_this_app_not_the_internet(self):
+        for path in ("/fonts/geist.woff2", "/fonts/geist-mono.woff2"):
+            with urllib.request.urlopen("http://127.0.0.1:%d%s" % (self.port, path), timeout=10) as r:
+                self.assertEqual(r.headers.get("Content-Type"), "font/woff2")
+                self.assertGreater(len(r.read()), 10000)
+        _, _, page = self.get("/")
+        self.assertIn("url(/fonts/geist.woff2)", page)
+        self.assertNotIn("fonts.googleapis.com", page)
+
+    def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
+        _, _, page = self.get("/")
+        for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=8", "rdState"):
+            self.assertIn(needle, page)
+
+    def test_the_decorative_effects_are_switched_off_but_the_intro_stays(self):
+        _, _, page = self.get("/")
+        self.assertIn(".rip{display:none}", page)
+        self.assertIn(".rv-wait{opacity:1!important", page)
+        self.assertIn('id="intro"', page.replace("#intro", 'id="intro"'))
+
