@@ -344,22 +344,11 @@ class Brief(unittest.TestCase):
 
 
 class CalendarResilience(unittest.TestCase):
-    """A slow or blocked calendar host must not blank the desk: try the mirror, retry the connection, keep the last good copy."""
+    """A slow or blocked calendar host must not blank the desk: retry the connection, keep the last good copy."""
 
     def setUp(self):
         macro.clear_cache()
         self.addCleanup(macro.clear_cache)
-
-    def test_the_second_host_is_used_when_the_first_does_not_answer(self):
-        class Net(FakeNet):
-            def get(self, url, timeout=20):
-                if "//nfs." in url:
-                    self.calls.append(url)
-                    raise macro.MacroError("could not connect (_ssl.c:993: The handshake operation timed out)")
-                return FakeNet.get(self, url, timeout)
-        s = macro.snapshot(NOW, Net())
-        self.assertTrue(s["events"])
-        self.assertFalse([n for n in s["notes"] if "alendar" in n])
 
     def test_when_every_host_fails_the_last_good_calendar_is_shown_with_a_note(self):
         macro.snapshot(NOW, FakeNet())                                         # a good fetch, kept

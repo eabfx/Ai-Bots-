@@ -209,18 +209,12 @@ def parse_calendar(text, now):
 def fetch_calendar(net, now):
     events, notes = [], []
     for i, url in enumerate(CALENDAR_URLS):
-        err = None
-        for where in (url, url.replace("//nfs.", "//cdn-nfs.")):      # the same feed is also served from a second host
-            try:
-                events += parse_calendar(net.get(where), now)
-                err = None
-                break
-            except MacroError as e:
-                err = err or e
-        if err:
+        try:
+            events += parse_calendar(net.get(url), now)
+        except MacroError as e:
             if i == 0:                                    # next week's file may simply not be published yet
-                raise MacroError("the calendar feed said %s" % err)
-            notes.append(str(err))
+                raise MacroError("the calendar feed said %s" % e)
+            notes.append(str(e))
     seen, unique = set(), []
     for e in events:
         k = (e["t"], e["country"], e["title"])
