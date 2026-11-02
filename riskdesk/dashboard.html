@@ -554,6 +554,74 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
   .jhead .btnrow{margin-bottom:12px!important}
 }
 
+
+/* ===== motion pack: intro, buttons, ambient light. Everything here switches off for people who prefer reduced motion. ===== */
+:root{--glow:rgba(255,255,255,.2);--glowsoft:rgba(255,255,255,.07)}
+:root[data-theme="light"]{--glow:rgba(0,0,0,.22);--glowsoft:rgba(0,0,0,.05)}
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 34% at 22% 28%,var(--glowsoft),transparent 70%),radial-gradient(30% 30% at 78% 70%,rgba(34,197,94,.07),transparent 70%),radial-gradient(26% 26% at 70% 18%,rgba(239,68,68,.045),transparent 70%);
+  animation:ambient 32s ease-in-out infinite alternate}
+@keyframes ambient{0%{transform:translate3d(-2%,-1%,0) scale(1)}50%{transform:translate3d(3%,2%,0) scale(1.08)}100%{transform:translate3d(-1%,4%,0) scale(1.02)}}
+/* buttons */
+.btn,.tab,.seg button,nav button,.brainbtn,.themebtn{position:relative;overflow:hidden;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s,background .2s,color .2s,border-color .2s,opacity .2s}
+.btn:hover,.tab:hover,.seg button:hover,.brainbtn:hover,.themebtn:hover{transform:translateY(-2px);box-shadow:0 8px 22px -8px var(--glow)}
+.btn:active,.tab:active,.seg button:active,nav button:active,.brainbtn:active,.themebtn:active{transform:translateY(0) scale(.95);box-shadow:none;transition-duration:.07s}
+nav button:hover{background:var(--glowsoft)}
+.btn:not(.ghost)::after,.brainbtn::after{content:"";position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(100deg,transparent,rgba(128,128,128,.38),transparent);transform:skewX(-20deg);pointer-events:none;opacity:0}
+.btn:not(.ghost):hover::after,.brainbtn:hover::after{opacity:1;animation:sheen .85s ease}
+@keyframes sheen{from{left:-70%}to{left:130%}}
+nav button[aria-selected="true"],.seg button.on,.tab[aria-selected="true"]{animation:selpop .38s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes selpop{0%{transform:scale(.9)}100%{transform:scale(1)}}
+.brainbtn{box-shadow:0 0 0 0 var(--glow);animation:brainglow 3.6s ease-in-out infinite}
+.brainbtn:hover{animation-play-state:paused}
+@keyframes brainglow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 22px 2px var(--glow)}}
+.rip{position:absolute;border-radius:50%;background:currentColor;opacity:.28;transform:scale(0);pointer-events:none;animation:rip .65s ease-out forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+/* things that lift and glow when you point at them */
+.card,.stat,.h-tr,.t-gal>*{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .3s,border-color .25s}
+.card:hover{border-color:var(--hover);box-shadow:0 14px 38px -22px var(--glow)}
+.stat:hover,.h-tr:hover,.t-gal>*:hover{transform:translateY(-3px);box-shadow:0 14px 30px -18px var(--glow)}
+/* the logo: a live dot with a ring that keeps pinging, and the logo replays the intro when clicked */
+.logo{cursor:pointer;user-select:none}
+.logo .dot{position:relative;animation:dotbeat 2.4s ease-in-out infinite}
+.logo .dot::after{content:"";position:absolute;inset:-5px;border-radius:7px;border:1.5px solid var(--up);opacity:0;animation:dotring 2.4s ease-out infinite}
+@keyframes dotbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@keyframes dotring{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.7);opacity:0}}
+.logo:hover .dot{animation-duration:.9s}
+/* the page comes in after the intro: sidebar items slide in one by one */
+body.introing header .bar>*,body.introing main{opacity:0}
+body.reveal header .bar>*{animation:hdrin .6s cubic-bezier(.2,.8,.2,1) both}
+body.reveal header .bar>*:nth-child(1){animation-delay:.02s}
+body.reveal header .bar>*:nth-child(3){animation-delay:.4s}body.reveal header .bar>*:nth-child(4){animation-delay:.46s}
+body.reveal nav button{animation:hdrin .55s cubic-bezier(.2,.8,.2,1) both}
+body.reveal nav button:nth-child(1){animation-delay:.08s}body.reveal nav button:nth-child(2){animation-delay:.14s}body.reveal nav button:nth-child(3){animation-delay:.2s}
+body.reveal nav button:nth-child(4){animation-delay:.26s}body.reveal nav button:nth-child(5){animation-delay:.32s}body.reveal nav button:nth-child(6){animation-delay:.38s}body.reveal nav button:nth-child(7){animation-delay:.44s}
+body.reveal nav button[aria-selected="true"]{animation:hdrin .55s cubic-bezier(.2,.8,.2,1) .08s both}
+@keyframes hdrin{from{opacity:0;transform:translate(-14px,-8px)}to{opacity:1;transform:none}}
+/* the intro */
+#intro{position:fixed;inset:0;z-index:99999;cursor:pointer;color:#fff;font-family:var(--disp)}
+#intro .ih{position:absolute;left:0;right:0;height:50.2%;background:#050505;transition:transform .8s cubic-bezier(.76,0,.24,1) .05s}
+#intro .ih.t{top:0}#intro .ih.b{bottom:0}
+#intro.open .ih.t{transform:translateY(-101%)}#intro.open .ih.b{transform:translateY(101%)}
+#intro .ic{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .3s,transform .5s}
+#intro.open .ic{opacity:0;transform:scale(1.08)}
+#intro .ig{position:absolute;inset:0;background:radial-gradient(40% 36% at 50% 46%,rgba(34,197,94,.16),transparent 70%);opacity:0;animation:fadein 1.2s ease .2s forwards}
+#intro svg{width:92px;height:92px;overflow:visible}
+#intro .ring{fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round;stroke-dasharray:214;stroke-dashoffset:214;transform-origin:center;transform:rotate(-90deg);animation:wdraw214 1.1s cubic-bezier(.6,0,.2,1) .1s forwards}
+#intro .sq{fill:#fff;transform-box:fill-box;transform-origin:center;opacity:0;animation:sqin .7s cubic-bezier(.2,.9,.3,1.4) .45s forwards}
+#intro .pg{fill:none;stroke:#22c55e;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:wdraw60 .7s ease .95s forwards}
+@keyframes wdraw214{to{stroke-dashoffset:0}}@keyframes wdraw60{to{stroke-dashoffset:0}}
+@keyframes sqin{from{opacity:0;transform:scale(.2) rotate(-25deg)}to{opacity:1;transform:none}}
+#intro .iw{display:flex;font-size:clamp(34px,6vw,58px);font-weight:700;letter-spacing:-.03em}
+#intro .iw i{font-style:normal;display:inline-block;opacity:0;transform:translateY(60%);filter:blur(8px);animation:letter .6s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(.55s + var(--i)*.05s)}
+#intro .iw i.dim{color:rgba(255,255,255,.5)}
+@keyframes letter{to{opacity:1;transform:none;filter:blur(0)}}
+#intro .it{font:500 12px var(--mono);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.55);opacity:0;animation:fadein .8s ease 1.15s forwards}
+#intro .ib{width:min(260px,60vw);height:2px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden;margin-top:6px}
+#intro .ib i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#fff);box-shadow:0 0 14px #22c55e;transform:scaleX(0);transform-origin:left;animation:ibar 1.5s cubic-bezier(.5,0,.2,1) .2s forwards}
+@keyframes ibar{to{transform:scaleX(1)}}
+#intro.open .sk{opacity:0}#intro .sk{transition:opacity .2s;position:absolute;right:18px;bottom:14px;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+@media(prefers-reduced-motion:reduce){#intro{display:none!important}body::before{animation:none}body.introing header .bar>*,body.introing main{opacity:1}.rip{display:none}}
 </style>
 </head>
 <body>
@@ -573,6 +641,40 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <button class="themebtn" id="theme" type="button">Light mode</button>
 </div>
 </header>
+<script>
+/* intro: plays once per browser tab, a click or any key skips it, and clicking the logo plays it again */
+(function(){
+  var b=document.body,calm=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches,node=null,done=null,t1=0,t2=0;
+  function seen(v){try{if(v){sessionStorage.setItem("zd.intro","1");return}return sessionStorage.getItem("zd.intro")}catch(e){return null}}
+  function replayEnter(){var el=document.querySelector(".tool.active");if(!el)return;el.classList.remove("enter");void el.offsetWidth;el.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){el.classList.remove("enter")},2200)}
+  function finish(fast){
+    if(!node||done)return;done=1;clearTimeout(t1);
+    node.classList.add("open");b.classList.remove("introing");b.classList.remove("reveal");void b.offsetWidth;b.classList.add("reveal");replayEnter();
+    t2=setTimeout(function(){if(node&&node.parentNode)node.parentNode.removeChild(node);node=null;done=null;setTimeout(function(){b.classList.remove("reveal")},1400)},fast?500:1000)}
+  function play(){
+    if(calm||node)return;seen(true);
+    var d=document.createElement("div");d.id="intro";d.setAttribute("aria-hidden","true");
+    var word="RiskDesk.ai",L="";for(var i=0;i<word.length;i++){L+='<i'+(i>=7?' class="dim"':'')+' style="--i:'+i+'">'+word[i]+'</i>'}
+    d.innerHTML='<div class="ih t"></div><div class="ih b"></div><div class="ig"></div><div class="ic">'+
+      '<svg viewBox="0 0 80 80"><circle class="ring" cx="40" cy="40" r="34"/><rect class="sq" x="26" y="26" width="28" height="28" rx="7"/>'+
+      '<path class="pg" d="M30 46 L37 38 L42 43 L51 32" transform="translate(0 0)" style="stroke:#050505;stroke-width:2.6"/></svg>'+
+      '<div class="iw">'+L+'</div><div class="it">Signals only. Never orders.</div><div class="ib"><i></i></div></div><div class="sk">click to skip</div>';
+    done=null;b.classList.add("introing");b.appendChild(d);node=d;
+    d.addEventListener("click",function(){finish(true)});
+    document.addEventListener("keydown",function k(e){if(!node){document.removeEventListener("keydown",k);return}finish(true)});
+    t1=setTimeout(function(){finish(false)},2150)}
+  window.playIntro=play;
+  var logo=document.querySelector(".logo");if(logo){logo.addEventListener("click",function(){if(!node)play()});logo.setAttribute("title","Replay the intro")}
+  if(!seen()&&!calm)play();else b.classList.add("reveal"),setTimeout(function(){b.classList.remove("reveal")},1500);
+  /* a soft ripple from where you press, on the main buttons */
+  document.addEventListener("pointerdown",function(e){
+    var el=e.target.closest&&e.target.closest(".btn,.tab,.seg button,nav button,.brainbtn,.themebtn");
+    if(!el||el.disabled||calm)return;
+    var r=el.getBoundingClientRect(),d=Math.max(r.width,r.height)*2.2,x=document.createElement("span");
+    x.className="rip";x.style.width=x.style.height=d+"px";x.style.left=(e.clientX-r.left-d/2)+"px";x.style.top=(e.clientY-r.top-d/2)+"px";
+    el.appendChild(x);setTimeout(function(){if(x.parentNode)x.parentNode.removeChild(x)},700)},true);
+})();
+</script>
 
 <main>
 

@@ -549,3 +549,21 @@ class AllowedHosts(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req, timeout=10)
         self.assertEqual(cm.exception.code, 403)
+
+
+class MotionPack(unittest.TestCase):
+    """The intro, the button animations and the ambient light, and that they all switch off for reduced motion."""
+    PAGE = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+
+    def test_intro_buttons_and_ambient_light_exist(self):
+        for needle in ('id="intro"', "window.playIntro=play", 'sessionStorage.setItem("zd.intro"', "body::before{", "@keyframes ambient", "@keyframes sheen",
+                       ".rip{position:absolute", "pointerdown", "body.reveal header .bar>*", ".logo .dot::after", 'logo.addEventListener("click"'):
+            self.assertIn(needle, self.PAGE)
+
+    def test_reduced_motion_removes_all_of_it(self):
+        self.assertIn("@media(prefers-reduced-motion:reduce){#intro{display:none!important}", self.PAGE)
+        self.assertIn("matchMedia(\"(prefers-reduced-motion: reduce)\").matches,node=null", self.PAGE)
+
+    def test_the_intro_can_be_skipped_and_never_blocks_for_long(self):
+        for needle in ('d.addEventListener("click",function(){finish(true)})', "document.addEventListener(\"keydown\"", "t1=setTimeout(function(){finish(false)},2150)"):
+            self.assertIn(needle, self.PAGE)
