@@ -130,3 +130,11 @@ Second Brain has a lock button, **Thoughts + Emotions**. The first time you open
 - Pictures on that Notion page are not copied (they would sit outside the lock). Text, tables, lists and sub-pages are.
 - "Copy from Notion (read only)" inside the lock never replaces what you wrote: a second copy arrives as a new sub-page.
 - You can write and edit in it exactly like the rest of Second Brain, and change the password from inside.
+
+
+## Look and keys
+
+RiskDesk uses a terminal look: flat black, square panels with small title bars, dense mono numbers, a top bar and a status bar (Dublin time, sessions, when prices and the AI read were last updated). The Geist and Geist Mono fonts are bundled in `assets/fonts`, so nothing is loaded from the internet.
+
+- `1` to `8` jump to Home, Macro, Journal, Backtest, Trades, Alerts, Connections and Second Brain (when you are not typing in a box).
+- `` ` `` or `/` opens the command box: type a tab name, `brief` (write the market read now), `refresh` or `theme`.

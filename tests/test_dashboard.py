@@ -722,3 +722,8 @@ class TerminalLook(Server):
         self.assertIn(".rv-wait{opacity:1!important", page)
         self.assertIn('id="intro"', page.replace("#intro", 'id="intro"'))
 
+    def test_home_has_ticker_tiles_and_a_quote_monitor_built_from_live_prices(self):
+        _, _, page = self.get("/")
+        for needle in ('id="h-tiles"', 'id="h-qm"', "Quote monitor", "function tilesRender", "function qmRender", "hgrid3"):
+            self.assertIn(needle, page)
+

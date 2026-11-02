@@ -902,8 +902,8 @@ table{font:400 12px var(--mono)}
 .hhead h2{font:600 18px var(--sans);letter-spacing:-.01em;margin:4px 0 0}
 .hhead .eyebrow,.hhead small{font:500 10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase}
 .hnums{gap:8px;margin:8px 0 10px}
-.hnum{padding:9px 12px;background:var(--panel)}
-.hnum .v{font:600 20px var(--mono);margin-top:3px}
+.hnum{padding:7px 11px;background:var(--panel)}
+.hnum .v{font:600 18px var(--mono);margin-top:2px}
 .hpanel{padding:0;background:var(--panel);overflow:hidden}
 .hp-h{margin:0;padding:6px 12px;min-height:30px;border-bottom:1px solid var(--line);background:var(--panel2)}
 .hp-h h3{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text)}
@@ -945,6 +945,30 @@ input[type=checkbox]{accent-color:var(--up);width:14px;height:14px}
 .chatbtn .bot{width:18px;height:18px}
 .chatbtn,#chat-btn{position:fixed!important;z-index:60;left:auto!important;right:14px!important;bottom:36px!important}
 .chat.docked{border-radius:3px}
+
+/* ticker tiles, quote monitor, three-column row */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:0 0 8px}
+.tile{appearance:none;border:0;border-radius:0!important;background:var(--panel);color:var(--text);text-align:left;padding:8px 11px;cursor:pointer;display:flex;flex-direction:column;gap:1px;min-width:0}
+.tile:hover{background:var(--panel2)}
+.tile .tn{font:500 10.5px var(--mono);color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.tile .tp{font:600 17px var(--mono);letter-spacing:-.01em;padding:0 2px;margin:0 -2px;width:max-content}
+.tile .tc{font:500 11.5px var(--mono)}.tile .tc.up{color:var(--up)}.tile .tc.down{color:var(--down)}.tile .tc.flat{color:var(--muted)}
+.hgrid3{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1.1fr) minmax(0,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:1180px){.hgrid3{grid-template-columns:1fr}}
+.hgrid3 .hpanel{margin:0}.hgrid3 .hscroll{max-height:372px;overflow:auto;padding-right:2px}
+.qmwrap{margin:0!important;overflow:auto;max-height:372px}
+table.qm{font:12px var(--mono)}
+table.qm th{position:sticky;top:0}table.qm th.r,table.qm td.r{text-align:right}
+table.qm td{padding:5px 9px;white-space:nowrap}
+table.qm tbody tr{cursor:pointer}
+table.qm td.qn{font-weight:600;color:var(--text)}
+table.qm td.up{color:var(--up)}table.qm td.down{color:var(--down)}table.qm td.flat{color:var(--muted)}
+table.qm td.qr{width:70px}
+.qbar{position:relative;height:3px;background:var(--line);min-width:56px}.qbar i{position:absolute;top:-3px;width:2px;height:9px;background:var(--text);margin-left:-1px}
+.qcf{margin-left:6px;color:var(--muted);font-size:11px}
+.hscroll .it{padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.4}
+.hscroll .it .meta{font:10.5px var(--mono);color:var(--muted)}
+.hcal{padding:5px 0}
 /* logo spacing so the bar reads like a terminal */
 .hright{gap:10px}
 .mrow{gap:8px}
@@ -1106,8 +1130,19 @@ input[type=checkbox]{accent-color:var(--up);width:14px;height:14px}
 <div class="hright"><span class="hclock" id="h-clock"></span><span class="mute" id="h-asof" style="font-size:12px"></span><button class="btn small ghost" id="home-refresh" type="button">Refresh</button></div>
 </div>
 <div class="err" id="h-err" style="display:none"></div>
-<div id="h-sessions"></div>
+<div id="h-sessions" hidden></div>
+<div class="tiles" id="h-tiles" aria-label="Prices"></div>
 <div class="hnums" id="h-nums"></div>
+<div class="hgrid3">
+<div class="hpanel"><div class="hp-h"><h3>Quote monitor</h3><span class="mute" id="qm-note" style="font-size:11px"></span></div><div class="qmwrap"><table class="qm" id="h-qm"></table></div></div>
+<div class="hpanel"><div class="hp-h"><h3>News feed</h3></div><div class="news hscroll" id="h-news"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Calendar</h3><button class="btn small ghost" id="h-cal-go" type="button">Full week</button></div><div id="h-cal" class="hscroll"></div></div>
+</div>
+<div class="hgrid">
+<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button" title="The AI market read and bias also write themselves every hour">Write today's brief</button></div>
+<div class="err" id="h-brief-err" style="display:none"></div><div class="hmnote" id="h-mk-note"></div><div class="hmk" id="h-mkts"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Capital flow</h3></div><div id="h-flow"></div></div>
+</div>
 <div class="hgrid2">
 <div class="hpanel"><div class="hp-h"><h3>Today's plan</h3><span class="mute" id="pl-saved" style="font-size:12px"></span></div>
 <textarea id="pl-text" maxlength="800" rows="6" placeholder="What are you trading today, which levels matter, what would make you stand aside? (kept in this browser, one plan per day)"></textarea></div>
@@ -1116,20 +1151,11 @@ input[type=checkbox]{accent-color:var(--up);width:14px;height:14px}
 <div id="ck-editor" hidden><textarea id="ck-rules" maxlength="1200" rows="7" aria-label="Checklist rules, one per line"></textarea>
 <div class="btnrow"><button class="btn small" id="ck-save" type="button">Save rules</button><button class="btn small ghost" id="ck-reset" type="button">Reset to default</button></div></div></div>
 </div>
-<div class="hgrid">
-<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button" title="The AI market read and bias also write themselves every hour">Write today's brief</button></div>
-<div class="err" id="h-brief-err" style="display:none"></div><div class="hmnote" id="h-mk-note"></div><div class="hmk" id="h-mkts"></div></div>
-<div class="hpanel"><div class="hp-h"><h3>Capital flow</h3></div><div id="h-flow"></div></div>
-</div>
-<div class="hticker" id="h-ticker" aria-label="Prices"></div>
 <div class="hgrid2">
-<div class="hpanel"><div class="hp-h"><h3>News feed</h3></div><div class="news hscroll" id="h-news"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Currency strength</h3></div><div id="h-strength"></div></div>
-</div>
-<div class="hgrid2">
-<div class="hpanel"><div class="hp-h"><h3>Calendar</h3><button class="btn small ghost" id="h-cal-go" type="button">Full week</button></div><div id="h-cal"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Assistant</h3></div><div id="h-assist-box"></div></div>
 </div>
+<div class="hticker" id="h-ticker" aria-label="Prices" hidden></div>
 </section>
 
 <section class="tool" id="tab-trades" role="tabpanel" hidden>
@@ -2868,6 +2894,42 @@ function homeNums(){
   card("Win rate, 30 days",m30.winrate===null?"-":fmt(m30.winrate,1)+"%",m30.planned?"plan followed "+Math.round(m30.followed/m30.planned*100)+"%":m30.n?pl(m30.n,"trade"):"no trades","","journal");
   if(pfTouched){propCalc();card("Prop room",money(pfRoom),"most you can lose now",pfRoom>0?"":"down","trades")}
   else card("Prop room","Set up","enter your firm's rules","","trades")}
+/* ticker tiles and the quote monitor (the dense table), both from the same live prices */
+var TILE_NAMES={XAUUSD:"Gold",NQ:"Nasdaq",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",DXY:"Dollar",US10Y:"US 10Y",VIX:"VIX",SPX:"S&P 500",OIL:"Crude"};
+function tilesRender(d){
+  var box=$("h-tiles");if(!box)return;box.textContent="";
+  d.quotes.forEach(function(q){
+    var t=el("button","tile");t.type="button";t.title=q.name+" - open the macro desk";
+    t.appendChild(el("span","tn",TILE_NAMES[q.key]||q.key));
+    var px=el("span","tp",fmt(q.price,q.digits)),lp=lastTile[q.key];
+    if(lp!==undefined&&lp!==q.price)px.classList.add(q.price>lp?"tickup":"tickdn");lastTile[q.key]=q.price;t.appendChild(px);
+    t.appendChild(el("span","tc "+pctClass(q.pct),pctText(q.pct)));
+    t.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};box.appendChild(t)})}
+var lastTile={};
+function qmRender(d){
+  var tb=$("h-qm");if(!tb)return;tb.textContent="";
+  var th=el("thead"),hr=el("tr");["Market","Last","Chg","%","5d","1m","Range","AI bias"].forEach(function(h,i){var c=el("th",i>0&&i<6?"r":"",h);hr.appendChild(c)});th.appendChild(hr);tb.appendChild(th);
+  var body=el("tbody"),lab={};MARKETS.forEach(function(m){lab[m[0]]=m[2]});
+  var bi=macroBrief&&macroBrief.bias||{};
+  d.quotes.forEach(function(q){
+    var sp=(q.spark||[]).filter(function(v){return isFinite(v)}),tr=el("tr"),cls=pctClass(q.pct);
+    function td(txt,c){var x=el("td",c||"",txt);tr.appendChild(x);return x}
+    var n=td(TILE_NAMES[q.key]||q.key);n.title=q.name;n.className="qn";
+    td(fmt(q.price,q.digits),"r");
+    td(q.change===null||q.change===undefined?"-":(q.change>0?"+":"")+fmt(q.change,q.digits),"r "+cls);
+    td(pctText(q.pct),"r "+cls);
+    var f5=sp.length>=6?(q.price/sp[sp.length-6]-1)*100:null,f1=sp.length>=15?(q.price/sp[0]-1)*100:null;
+    td(f5===null?"-":pctText(f5),"r "+(f5===null?"":pctClass(f5)));td(f1===null?"-":pctText(f1),"r "+(f1===null?"":pctClass(f1)));
+    var rg=td("","qr");
+    if(sp.length>=10){var lo=Math.min.apply(null,sp.concat([q.price])),hi=Math.max.apply(null,sp.concat([q.price])),pos=hi>lo?(q.price-lo)/(hi-lo)*100:50,
+      bar=el("div","qbar"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";bar.appendChild(dot);rg.appendChild(bar);rg.title="Position in the 1 month range"}
+    var a=bi[lab[q.key]],bc=td("");
+    if(a){bc.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat"),a.bias));
+      if(a.confidence!==null&&a.confidence!==undefined)bc.appendChild(el("span","qcf",a.confidence+"%"))}
+    tr.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};
+    body.appendChild(tr)});
+  tb.appendChild(body);
+  var nt=$("qm-note");if(nt)nt.textContent=d.quotes.length+" markets";}
 var lastPx={};      /* the last price shown for each market, so a change can flash */
 function homeRender(d){
   $("h-asof").textContent="Prices as of "+d.as_of;briefNote();
@@ -2888,6 +2950,7 @@ function homeRender(d){
   var mo=el("div","hmood");mo.appendChild(el("span","k","Mood"));mo.appendChild(el("b",d.mood.label==="Risk-on"?"up":d.mood.label==="Risk-off"?"down":"flat",d.mood.label));fl.appendChild(mo);
   fl.appendChild(el("div","jsub","From "+d.mood.reasons.join(", ")+". A plain rule on the day's moves, not AI."));
   var fr=el("div");fr.style.marginTop="10px";flowRows(fr,d,8);fl.appendChild(fr);
+  tilesRender(d);qmRender(d);
   var tk=$("h-ticker");tk.textContent="";
   d.quotes.forEach(function(q){var sp=el("span");sp.appendChild(el("b",null,q.key));sp.appendChild(document.createTextNode(fmt(q.price,q.digits)+" "));sp.appendChild(el("em",pctClass(q.pct),pctText(q.pct)));tk.appendChild(sp)});
   var nw=$("h-news");nw.textContent="";
@@ -3075,7 +3138,7 @@ jLoad();
 })();
 </script>
 <div id="cmdhelp" role="listbox" aria-label="Commands"></div>
-<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span class="sp"></span><span>Signals only. No orders are ever placed.</span></div>
+<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span class="sp"></span><span>Signals only. No orders.</span></div>
 <script>
 /* terminal bar: numbered tabs, a command box (` focuses it), a status bar */
 (function(){
