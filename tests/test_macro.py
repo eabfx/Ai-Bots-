@@ -409,3 +409,34 @@ class CalendarResilience(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MarketBias(unittest.TestCase):
+    GOOD = "Bias: Bearish\nConviction: High\nSentiment: Yields up 3%.\nFundamentals: Hot CPI.\nChanges if: CPI revised."
+
+    def test_a_part_with_the_shape_is_read(self):
+        got = macro.parse_market(self.GOOD)
+        self.assertEqual(got, {"bias": "bearish", "conviction": "high", "sentiment": "Yields up 3%.",
+                               "fundamentals": "Hot CPI.", "changes": "CPI revised."})
+
+    def test_bold_and_odd_case_are_tolerated(self):
+        got = macro.parse_market("**Bias:** BULLISH\n**Conviction:** medium\n**Sentiment:** ok")
+        self.assertEqual((got["bias"], got["conviction"], got["sentiment"]), ("bullish", "medium", "ok"))
+
+    def test_text_without_a_bias_is_not_a_bias(self):
+        self.assertIsNone(macro.parse_market("Gold held near highs."))
+        self.assertIsNone(macro.parse_market("Bias: maybe up"))
+        self.assertIsNone(macro.parse_market(""))
+
+    def test_a_missing_conviction_is_blank_not_invented(self):
+        self.assertEqual(macro.parse_market("Bias: Neutral")["conviction"], "")
+
+    def test_biases_only_lists_the_markets_that_have_one(self):
+        out = macro.biases({"Gold and MGC": self.GOOD, "EURUSD": "Quiet.", "Tone": "Bias: Bullish"})
+        self.assertEqual(list(out), ["Gold and MGC"])
+
+    def test_the_prompt_forbids_targets_and_orders(self):
+        low = macro.BRIEF_SYSTEM.lower()
+        self.assertIn("do not predict exact prices", low)
+        self.assertIn("not a forecast", low)
+

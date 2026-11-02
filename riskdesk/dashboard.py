@@ -193,9 +193,11 @@ class Handler(BaseHTTPRequestHandler):
                 snap = macro.snapshot(now, self.macro_net)
                 pv = coach.provider(self.config_path)
                 answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, str(body.get("focus") or "")), pv,
-                                        self.coach_post, 1200)
-                doc = self.brief_keeper.store(answer, snap["as_of"], macro.split_brief(answer)) if self.brief_keeper else {}
-                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": macro.split_brief(answer), "at": doc.get("at")})
+                                        self.coach_post, 1800)
+                parts = macro.split_brief(answer)
+                doc = self.brief_keeper.store(answer, snap["as_of"], parts) if self.brief_keeper else {}
+                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": parts,
+                                            "bias": macro.biases(parts), "at": doc.get("at"), "auto": False})
             elif path == "/api/chat":
                 now = z.parse_now(str(body.get("now") or "") or None)
                 msgs = coach.clean_messages(body.get("messages"))

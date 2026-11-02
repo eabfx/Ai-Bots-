@@ -484,6 +484,17 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hm svg{width:100%;height:38px;display:block;margin:4px 0}
 .hm .read{font-size:12.5px;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);white-space:pre-wrap}
 .hm .read.none{color:var(--muted)}
+.aib{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.aih{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.aih .k{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.aipill{font:700 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 11px;border-radius:99px;border:1px solid currentColor}
+.aipill.up{color:var(--up);background:color-mix(in srgb,var(--up) 14%,transparent)}.aipill.down{color:var(--down);background:color-mix(in srgb,var(--down) 14%,transparent)}.aipill.flat{color:var(--flat)}
+.aiconv{display:inline-flex;align-items:center;gap:3px}.aiconv i{width:14px;height:5px;border-radius:99px;background:var(--line)}
+.aiconv i.on.up{background:var(--up)}.aiconv i.on.down{background:var(--down)}.aiconv i.on.flat{background:var(--flat)}
+.aiconv em{font:500 10px var(--mono);font-style:normal;color:var(--muted);margin-left:5px;text-transform:uppercase;letter-spacing:.08em}
+.aiy{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:12.5px;line-height:1.5;margin-top:5px}
+.aiy b{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.aib .read{font-size:12.5px;line-height:1.5;white-space:pre-wrap}.aib .read.none{color:var(--muted)}
 .hmnote{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5}
 .hfacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;margin:8px 0 4px;font:500 11px var(--mono)}
 .hfacts .hf{display:flex;flex-direction:column;gap:1px}.hfacts .hf i{font-style:normal;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
@@ -904,7 +915,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
 <div class="btnrow"><button class="btn small" id="ck-save" type="button">Save rules</button><button class="btn small ghost" id="ck-reset" type="button">Reset to default</button></div></div></div>
 </div>
 <div class="hgrid">
-<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button" title="The market read also writes itself every hour">Write today's brief</button></div>
+<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button" title="The AI market read and bias also write themselves every hour">Write today's brief</button></div>
 <div class="err" id="h-brief-err" style="display:none"></div><div class="hmnote" id="h-mk-note"></div><div class="hmk" id="h-mkts"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Capital flow</h3></div><div id="h-flow"></div></div>
 </div>
@@ -2426,13 +2437,29 @@ function mkFacts(q){
     var lab=el("div","hrl");lab.appendChild(el("span",null,fmt(lo,q.digits)));lab.appendChild(el("span",null,fmt(hi,q.digits)));
     var tr=el("div","hrt"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";tr.appendChild(dot);rg.appendChild(tr);rg.appendChild(lab);box.appendChild(rg)}
   return box}
+/* the AI's bias for one market: a lean, with its conviction and the sentiment and fundamentals behind it */
+function aiBias(m,home){
+  var box=el("div","aib"),a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]],part=macroBrief&&macroBrief.parts&&macroBrief.parts[m[2]];
+  var hd=el("div","aih");hd.appendChild(el("span","k","AI bias"));
+  if(!a){
+    if(part){hd.appendChild(el("span","aipill flat","No bias given"));box.appendChild(hd);box.appendChild(el("div","read",part));return box}
+    hd.appendChild(el("span","aipill flat","Waiting"));box.appendChild(hd);
+    box.appendChild(el("div","read none","The AI is reading the market. The bias appears here when the next read is written."));return box}
+  var cls=a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat";
+  hd.appendChild(el("span","aipill "+cls,(a.bias==="bullish"?"\u25B2 ":a.bias==="bearish"?"\u25BC ":"\u25C6 ")+a.bias));
+  var lv={low:1,medium:2,high:3}[a.conviction]||0;
+  if(lv){var cv=el("span","aiconv");cv.title="Conviction: "+a.conviction;for(var i=1;i<=3;i++)cv.appendChild(el("i",i<=lv?"on "+cls:""));cv.appendChild(el("em",null,a.conviction));hd.appendChild(cv)}
+  box.appendChild(hd);
+  [["Sentiment",a.sentiment],["Fundamentals",a.fundamentals],["Changes if",a.changes]].forEach(function(r){
+    if(!r[1])return;var row=el("div","aiy");row.appendChild(el("b",null,r[0]));row.appendChild(el("span",null,r[1]));box.appendChild(row)});
+  return box}
 /* the hourly market read: written by RiskDesk itself every hour from live data, so it is here when you open the page */
 var briefNext=0,briefErr="";
 function briefNote(){
   var n=$("h-mk-note");if(!n)return;
   var t=function(ms){var d=new Date(ms);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)};
   var txt="Live prices from Yahoo, refreshed every minute"+(macroData?" (last "+macroData.as_of+")":"")+". ";
-  if(macroBrief&&macroBrief.at){txt+="Market read written "+t(macroBrief.at*1000)+(macroBrief.auto?" automatically":"")+(briefNext?", next one about "+t(briefNext*1000):"")+"."}
+  if(macroBrief&&macroBrief.at){txt+="Market read and bias written "+t(macroBrief.at*1000)+(macroBrief.auto?" automatically":"")+(briefNext?", next one about "+t(briefNext*1000):"")+"."}
   else if(briefErr)txt+=briefErr;
   else txt+="The first market read is being written.";
   n.textContent=txt}
@@ -2491,12 +2518,7 @@ function macroRender(d){
     if(q)top.appendChild(el("span","mute",pctText(q.pct)));c.appendChild(top);
     var px=el("div","px",q?fmt(q.price,q.digits):"-");if(q)px.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";c.appendChild(px);
     if(q){c.appendChild(sparkline(q.spark,pctClass(q.pct)));c.appendChild(el("div","mute",q.name+", last month"+(q.when?", updated "+q.when:"")))}
-    var bias=el("div","bias");bias.appendChild(el("span",null,"Your bias"));
-    var cur=store("zd.bias."+m[0]);
-    ["bullish","neutral","bearish"].forEach(function(v){var b=el("button","bbtn "+v+(cur===v?" on":""),v);b.type="button";
-      b.onclick=function(){store("zd.bias."+m[0],cur===v?"":v);renderAll(d)};bias.appendChild(b)});
-    c.appendChild(bias);
-    if(macroBrief&&macroBrief.parts&&macroBrief.parts[m[2]])c.appendChild(el("div","read",macroBrief.parts[m[2]]));
+    c.appendChild(aiBias(m,false));
     var ask=el("button","btn ghost small","Ask the assistant");ask.type="button";ask.style.marginTop="10px";
     ask.onclick=function(){chatOpen(true);chatSend("What is going on with "+m[1]+" right now, and what should I check on my own charts?")};
     c.appendChild(ask);mk.appendChild(c)});
@@ -2574,12 +2596,7 @@ function homeRender(d){
     c.appendChild(el("div","px "+(q?pctClass(q.pct):""),q?fmt(q.price,q.digits):"-"));
     if(q)c.appendChild(sparkline(q.spark,pctClass(q.pct)));
     if(q)c.appendChild(mkFacts(q));
-    var bias=el("div","bias"),cur=store("zd.bias."+m[0]);bias.appendChild(el("span",null,"Your bias"));
-    ["bullish","neutral","bearish"].forEach(function(v){var b=el("button","bbtn "+v+(cur===v?" on":""),v);b.type="button";
-      b.onclick=function(){store("zd.bias."+m[0],cur===v?"":v);renderAll(d)};bias.appendChild(b)});
-    c.appendChild(bias);
-    var part=macroBrief&&macroBrief.parts&&macroBrief.parts[m[2]];
-    c.appendChild(el("div","read"+(part?"":" none"),part||"No AI read yet. Press Write today's brief."));
+    c.appendChild(aiBias(m,true));
     mk.appendChild(c)});
   var fl=$("h-flow");fl.textContent="";
   var mo=el("div","hmood");mo.appendChild(el("span","k","Mood"));mo.appendChild(el("b",d.mood.label==="Risk-on"?"up":d.mood.label==="Risk-off"?"down":"flat",d.mood.label));fl.appendChild(mo);
@@ -2732,7 +2749,7 @@ function chatRender(){
   log.scrollTop=log.scrollHeight}
 function chatContext(){
   var c={tab:tabNow},b=[];
-  ["XAUUSD","NQ","EURUSD","GBPUSD"].forEach(function(k){var v=store("zd.bias."+k);if(v)b.push(k+" "+v)});if(b.length)c.bias=b.join(", ");
+  MARKETS.forEach(function(m){var a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]];if(a)b.push(m[0]+" "+a.bias+(a.conviction?" ("+a.conviction+")":""))});if(b.length)c.bias="AI bias today: "+b.join(", ");
   return c}
 function chatSend(text){
   text=(text||"").trim();if(!text||chatBusy)return;

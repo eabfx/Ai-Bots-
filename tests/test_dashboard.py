@@ -264,6 +264,28 @@ class MacroRoutes(Server):
         self.assertIn("focus on: gold into the PCE", text)
         self.assertIn("macro brief", sent["system"])
 
+    def test_the_ai_gives_a_bias_for_each_market_and_it_is_kept(self):
+        answer = ("Tone: Calm.\n\nGold and MGC:\nBias: Bullish\nConviction: Medium\nSentiment: Dollar -0.4%, VIX up.\n"
+                  "Fundamentals: PCE below forecast.\nChanges if: yields jump.\n\nNasdaq (NQ):\nBias: Neutral\nConviction: Low\n"
+                  "Sentiment: Mixed.\nFundamentals: Jobs data due.\nChanges if: a beat.")
+        self.server.RequestHandlerClass.coach_post = staticmethod(lambda u, h, b: (
+            200, json.dumps({"content": [{"type": "text", "text": answer}]})))
+        code, doc = self.post("/api/macro/brief", {"now": self.NOW})
+        self.assertEqual(code, 200)
+        gold = doc["bias"]["Gold and MGC"]
+        self.assertEqual((gold["bias"], gold["conviction"]), ("bullish", "medium"))
+        self.assertEqual(gold["fundamentals"], "PCE below forecast.")
+        self.assertEqual(doc["bias"]["Nasdaq (NQ)"]["bias"], "neutral")
+        _, _, js = self.get("/api/macro/brief")
+        self.assertEqual(json.loads(js)["brief"]["bias"]["Gold and MGC"]["bias"], "bullish")
+
+    def test_the_brief_asks_for_a_bias_from_sentiment_and_fundamentals_with_the_trend(self):
+        self.post("/api/macro/brief", {"now": self.NOW})
+        sent = self.sent[0][2]
+        for needle in ("Bias: Bullish or Bearish or Neutral", "Sentiment:", "Fundamentals:", "Changes if"):
+            self.assertIn(needle, sent["system"])
+        self.assertIn("MOOD by a plain rule", sent["messages"][0]["content"])
+
     def test_the_brief_without_a_key_is_a_plain_400(self):
         os.remove(os.path.join(self.tmp.name, "anthropic_key.txt"))
         code, doc = self.post("/api/macro/brief", {"now": self.NOW})
@@ -361,7 +383,7 @@ class MacroRoutes(Server):
     def test_the_page_has_the_macro_tab_and_the_chat_box(self):
         _, _, body = self.get("/")
         for needle in ('data-tab="macro"', 'id="tab-macro"', "Capital flow", "Economic calendar", "AI macro brief",
-                       'id="chat-btn"', "/api/chat", "/api/macro/brief", "noopener noreferrer", "Your bias"):
+                       'id="chat-btn"', "/api/chat", "/api/macro/brief", "noopener noreferrer", "function aiBias"):
             self.assertIn(needle, body)
         self.assertNotIn("innerHTML", body.split("/* ---------------- macro desk")[1])    # outside text is only ever set as text
 

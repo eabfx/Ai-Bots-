@@ -47,7 +47,8 @@ class Keeper:
 
     def store(self, answer, as_of, parts, auto=False):
         """Keep a brief that was just written (by the button or by the hourly job) so the next page load has it."""
-        doc = {"answer": answer, "as_of": as_of, "parts": parts or {}, "at": self.clock(), "auto": bool(auto)}
+        doc = {"answer": answer, "as_of": as_of, "parts": parts or {}, "bias": macro.biases(parts), "at": self.clock(),
+               "auto": bool(auto)}
         with self.lock:
             self.brief = doc
             self.error = ""
@@ -68,7 +69,7 @@ class Keeper:
                 return None
             now = macro.z.parse_now(None)
             snap = macro.snapshot(now, self.net, True)
-            answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, ""), pv, self.post, 1200)
+            answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, ""), pv, self.post, 1800)
             return self.store(answer, snap["as_of"], macro.split_brief(answer), auto=True)
         except Exception as e:                                  # the background job must never die
             self.error = "%s: %s" % (type(e).__name__, e)
