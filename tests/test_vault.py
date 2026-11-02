@@ -184,7 +184,10 @@ class Wiring(unittest.TestCase):
             self.assertIn(needle, JS)
 
     def test_the_password_is_never_stored_in_the_page_or_the_server_state(self):
-        self.assertNotIn("localStorage", JS)
+        for line in JS.splitlines():                                           # the only thing kept in the browser is the page view (width, text size)
+            if "localStorage" in line:
+                self.assertIn("sb.view", line)
+                self.assertNotIn("assword", line)
         self.assertNotIn("sessionStorage", JS)
 
 

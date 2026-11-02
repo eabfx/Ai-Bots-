@@ -131,11 +131,26 @@ function render(){
   crumbs().forEach(function(c,i,all){
     if(i)cr.appendChild(h("span","sb-sep","/"));
     if(c.loc&&i<all.length-1){var b=h("button","sb-crumb",c.label);b.type="button";b.onclick=function(){go(c.loc)};cr.appendChild(b)}else cr.appendChild(h("span","sb-crumb cur",c.label))});
-  top.appendChild(cr);STATUS=h("span","sb-status",S.dirty?"Saving...":"Saved");top.appendChild(STATUS);m.appendChild(top);
+  top.appendChild(cr);top.appendChild(viewControls());STATUS=h("span","sb-status",S.dirty?"Saving...":"Saved");top.appendChild(STATUS);m.appendChild(top);
   m.appendChild(sectionBar());
   var body=h("div","sb-body");m.appendChild(body);
   if(S.loc.row)rowPage(body);else pageView(body);
-  window.scrollTo(0,y)}
+  applyView();window.scrollTo(0,y)}
+/* how the page is shown: full width or a narrow column, and the text size. Kept in this browser only. */
+var SIZES=[0.9,1,1.12,1.25,1.4],VIEW=(function(){try{var v=JSON.parse(localStorage.getItem("sb.view")||"{}");return{wide:v.wide!==false,size:Math.max(0,Math.min(SIZES.length-1,v.size===undefined?1:+v.size||0))}}catch(e){return{wide:true,size:1}}})();
+function viewControls(){
+  var box=h("div","sb-view");box.id="sb-viewbox";
+  function btn(id,label,fn,title){var b=h("button","sb-mini",label);b.type="button";b.id=id;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;box.appendChild(b)}
+  btn("sb-vw","",function(){VIEW.wide=!VIEW.wide;saveView();applyView()},"Switch between a full-width page and a narrow column");
+  btn("sb-vm","A\u2212",function(){if(VIEW.size>0){VIEW.size--;saveView();applyView()}},"Smaller text");
+  btn("sb-vp","A+",function(){if(VIEW.size<SIZES.length-1){VIEW.size++;saveView();applyView()}},"Bigger text");
+  return box}
+function saveView(){try{localStorage.setItem("sb.view",JSON.stringify(VIEW))}catch(e){}}
+function applyView(){
+  var m=S.mount;if(!m)return;
+  m.classList.toggle("sbv-narrow",!VIEW.wide);m.style.setProperty("--sbs",String(SIZES[VIEW.size]));
+  var w=document.getElementById("sb-vw"),a=document.getElementById("sb-vm"),b=document.getElementById("sb-vp");
+  if(w)w.textContent=VIEW.wide?"Narrow page":"Wide page";if(a)a.disabled=VIEW.size===0;if(b)b.disabled=VIEW.size===SIZES.length-1}
 /* the sections of your journal as buttons: Home, then every page that sits directly under it, in the order they appear */
 function sectionIds(){
   var root=S.doc.root,seen={},out=[];

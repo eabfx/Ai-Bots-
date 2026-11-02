@@ -174,3 +174,17 @@ class Wiring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Readability(unittest.TestCase):
+    CSS = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets", "brain.css"), encoding="utf-8").read()
+    JS = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets", "brain.js"), encoding="utf-8").read()
+
+    def test_pages_use_the_full_width_and_columns_wrap_instead_of_squeezing(self):
+        self.assertIn(".sb-body{max-width:min(100%,1560px)", self.CSS)
+        self.assertIn(".bk-cols{display:flex;flex-wrap:wrap", self.CSS)
+        self.assertIn(".bk-col:has(.bk-tbl){flex:2 1 560px}", self.CSS)
+
+    def test_width_and_text_size_controls_are_remembered_in_this_browser(self):
+        for needle in ('"sb.view"', "function applyView()", 'b.id=id', "Smaller text", "Bigger text", "SIZES"):
+            self.assertIn(needle, self.JS)
