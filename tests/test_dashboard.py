@@ -711,6 +711,14 @@ class TerminalLook(Server):
         self.assertIn("url(/fonts/geist.woff2)", page)
         self.assertNotIn("fonts.googleapis.com", page)
 
+    def test_phone_and_tablet_rules_keep_the_tabs_reachable_and_content_clear_of_the_bar(self):
+        _, _, page = self.get("/")
+        for needle in ("@media(min-width:641px) and (max-width:900px)", "padding-bottom:calc(56px + env(safe-area-inset-bottom))",
+                       "grid-template-columns:repeat(2,minmax(0,1fr))", "border-width:1px 0 0 1px"):
+            self.assertIn(needle, page)
+        # the old rule that zeroed the bottom padding on every screen under 900px would hide content behind the phone bar
+        self.assertNotIn("@media(max-width:900px){#statusbar{display:none}body{padding-bottom:0}", page)
+
     def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
         _, _, page = self.get("/")
         for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=8", "rdState"):
