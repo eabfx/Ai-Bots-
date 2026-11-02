@@ -2,6 +2,8 @@
 
 A personal trading dashboard: macro desk, journal, backtest log, risk calculators, prop firm tracker, alerts and an AI assistant. Signals only: it never places an order. The Zones finder is a separate project in `../zones-app`.
 
+**Open it like an app (Windows):** run `powershell -ExecutionPolicy Bypass -File riskdesk\install-app.ps1` once. You get a RiskDesk icon on the Desktop and in the Start menu that opens it in its own window (no browser tabs), starting the server quietly if needed. The server also starts at sign-in so prices and the hourly AI read keep going. Remove with `-Remove`.
+
 Start it on Windows by double-clicking `RiskDesk.bat` in this folder, or from the repo's top folder:
 
     py riskdesk\dashboard.py
@@ -16,7 +18,8 @@ then open http://127.0.0.1:8765.
 | `dashboard.html` | the page: Home, Macro, Journal, Backtest, Trades, Alerts, Connections and the AI assistant |
 | `coach.py` | the Journal coach and the chat box. Asks Claude or Gemini when you press a button or send a message |
 | `macro.py` | the Macro desk: prices, economic calendar, headlines, sessions and the AI brief |
-| `RiskDesk.bat` | the Windows launcher |
+| `RiskDesk.bat` | the Windows launcher (shows a console) |
+| `install-app.ps1`, `RiskDeskApp.ps1`, `RiskDeskApp.vbs` | the app icon: Desktop and Start menu shortcuts, quiet start, own window |
 
 Your own settings, saved charts and API keys live in the `trader` folder at the top of the repo, which git leaves
 out: `config.json`, `gemini_key.txt` or `anthropic_key.txt`.

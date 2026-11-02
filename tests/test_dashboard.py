@@ -719,6 +719,16 @@ class TerminalLook(Server):
         # the old rule that zeroed the bottom padding on every screen under 900px would hide content behind the phone bar
         self.assertNotIn("@media(max-width:900px){#statusbar{display:none}body{padding-bottom:0}", page)
 
+    def test_the_windows_app_launcher_is_shipped_and_points_at_the_server(self):
+        import pathlib
+        here = pathlib.Path(__file__).resolve().parent.parent / "riskdesk"
+        ps = (here / "RiskDeskApp.ps1").read_text()
+        self.assertIn("http://127.0.0.1:8765/", ps)
+        self.assertIn("--app=", ps)
+        self.assertIn("-ServerOnly", (here / "install-app.ps1").read_text())
+        self.assertIn("RiskDeskApp.ps1", (here / "RiskDeskApp.vbs").read_text())
+        self.assertGreater((here / "assets" / "riskdesk.ico").stat().st_size, 1000)
+
     def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
         _, _, page = self.get("/")
         for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=8", "rdState"):
