@@ -30,7 +30,29 @@ function say(msg,undo){
 
 /* ---------- saving ---------- */
 function setStatus(s,bad){if(STATUS){STATUS.textContent=s;STATUS.className="sb-status"+(bad?" bad":"")}}
-function touch(){if(S.conflict)return;S.dirty=true;setStatus("Saving...");clearTimeout(S.timer);S.timer=setTimeout(flush,700)}
+function touch(){if(S.conflict)return;undoNote();S.dirty=true;setStatus("Saving...");clearTimeout(S.timer);S.timer=setTimeout(flush,700)}
+/* undo and redo: a copy of the page before each burst of changes (typing counts as one step), kept in this browser tab only */
+var U={undo:[],redo:[],snap:"",grp:null},U_MAX=40,U_CHARS=30000000;
+function undoReset(){clearTimeout(U.grp);U.grp=null;U.undo=[];U.redo=[];try{U.snap=JSON.stringify(S.doc)}catch(e){U.snap=""}syncUndo()}
+function undoNote(){
+  if(U.grp===null){
+    U.undo.push(U.snap);U.redo=[];
+    var tot=0;U.undo.forEach(function(x){tot+=x.length});
+    while(U.undo.length>U_MAX||(tot>U_CHARS&&U.undo.length>1)){tot-=U.undo.shift().length}}
+  clearTimeout(U.grp);U.grp=setTimeout(function(){U.grp=null;U.snap=JSON.stringify(S.doc);syncUndo()},1200);syncUndo()}
+function undoSettle(){if(U.grp!==null){clearTimeout(U.grp);U.grp=null;U.snap=JSON.stringify(S.doc)}}
+function undoApply(str){
+  var rev=S.doc.rev;S.doc=JSON.parse(str);S.doc.rev=rev;U.snap=str;
+  if(!S.doc.pages[S.loc.page]&&!S.loc.row)S.loc={page:S.doc.root};
+  S.dirty=true;setStatus("Saving...");clearTimeout(S.timer);S.timer=setTimeout(flush,400);render();syncUndo()}
+function doUndo(){undoSettle();if(!U.undo.length)return;U.redo.push(JSON.stringify(S.doc));undoApply(U.undo.pop())}
+function doRedo(){undoSettle();if(!U.redo.length)return;U.undo.push(JSON.stringify(S.doc));undoApply(U.redo.pop())}
+function syncUndo(){var a=document.getElementById("sb-undo"),b=document.getElementById("sb-redo");if(a)a.disabled=!U.undo.length;if(b)b.disabled=!U.redo.length}
+document.addEventListener("keydown",function(e){
+  if(!(e.ctrlKey||e.metaKey)||e.altKey||!S.mount||!S.mount.isConnected||!S.mount.offsetParent)return;
+  var k=(e.key||"").toLowerCase();if(k!=="z"&&k!=="y")return;
+  var t=e.target;if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))return;
+  e.preventDefault();if(k==="y"||e.shiftKey)doRedo();else doUndo()});
 function flush(){
   clearTimeout(S.timer);
   if(!S.dirty)return Promise.resolve();
@@ -125,22 +147,27 @@ function crumbs(){
   while(id&&S.doc.pages[id]&&guard++<20){out.unshift({label:S.doc.pages[id].title||"Untitled",loc:{page:id}});id=S.doc.pages[id].parent}
   return out}
 function go(loc){flush();S.loc=loc;render();window.scrollTo(0,0)}
+/* the page is a left column of sections and the page itself on the right */
+function shell(m){
+  m.textContent="";var lay=h("div","sb-layout");lay.appendChild(sectionBar());var main=h("div","sb-main");lay.appendChild(main);m.appendChild(lay);return main}
 function render(){
   popClose();ELS.clear();var y=window.scrollY,m=S.mount;m.textContent="";
   var top=h("div","sb-top"),cr=h("div","sb-crumbs");
   crumbs().forEach(function(c,i,all){
     if(i)cr.appendChild(h("span","sb-sep","/"));
     if(c.loc&&i<all.length-1){var b=h("button","sb-crumb",c.label);b.type="button";b.onclick=function(){go(c.loc)};cr.appendChild(b)}else cr.appendChild(h("span","sb-crumb cur",c.label))});
-  top.appendChild(cr);top.appendChild(viewControls());STATUS=h("span","sb-status",S.dirty?"Saving...":"Saved");top.appendChild(STATUS);m.appendChild(top);
-  m.appendChild(sectionBar());
-  var body=h("div","sb-body");m.appendChild(body);
+  top.appendChild(cr);top.appendChild(viewControls());STATUS=h("span","sb-status",S.dirty?"Saving...":"Saved");top.appendChild(STATUS);
+  var main=shell(m);main.appendChild(top);
+  var body=h("div","sb-body");main.appendChild(body);
   if(S.loc.row)rowPage(body);else pageView(body);
-  applyView();window.scrollTo(0,y)}
+  applyView();syncUndo();window.scrollTo(0,y)}
 /* how the page is shown: full width or a narrow column, and the text size. Kept in this browser only. */
 var SIZES=[0.9,1,1.12,1.25,1.4],VIEW=(function(){try{var v=JSON.parse(localStorage.getItem("sb.view")||"{}");return{wide:v.wide!==false,size:Math.max(0,Math.min(SIZES.length-1,v.size===undefined?1:+v.size||0))}}catch(e){return{wide:true,size:1}}})();
 function viewControls(){
   var box=h("div","sb-view");box.id="sb-viewbox";
   function btn(id,label,fn,title){var b=h("button","sb-mini",label);b.type="button";b.id=id;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;box.appendChild(b)}
+  btn("sb-undo","\u21B6 Undo",doUndo,"Undo the last change (Ctrl+Z)");
+  btn("sb-redo","\u21B7 Redo",doRedo,"Redo (Ctrl+Y)");
   btn("sb-vw","",function(){VIEW.wide=!VIEW.wide;saveView();applyView()},"Switch between a full-width page and a narrow column");
   btn("sb-vm","A\u2212",function(){if(VIEW.size>0){VIEW.size--;saveView();applyView()}},"Smaller text");
   btn("sb-vp","A+",function(){if(VIEW.size<SIZES.length-1){VIEW.size++;saveView();applyView()}},"Bigger text");
@@ -156,7 +183,7 @@ function refreshFromNotion(btn){
   settle().then(function(){return fetch("/api/brain/fill",{method:"POST",headers:{"X-Requested-With":HDRS["X-Requested-With"],"Content-Type":HDRS["Content-Type"]},body:JSON.stringify({refresh:true})})})
    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"failed");return j})})
    .then(function(j){return fetch("/api/brain").then(function(r){return r.json()}).then(function(d){
-      S.doc=d.doc;S.rev=d.doc.rev||0;S.conflict=false;if(!S.doc.pages[S.loc.page])S.loc={page:S.doc.root};render();
+      S.doc=d.doc;S.rev=d.doc.rev||0;S.conflict=false;undoReset();if(!S.doc.pages[S.loc.page])S.loc={page:S.doc.root};render();
       say(j.filled.length?"Filled from Notion: "+j.filled.join(", ")+".":"Nothing new to fill: every page already has content. Pages you edited are never overwritten.")})})
    .catch(function(e){say("Could not read Notion: "+e.message);if(btn){btn.disabled=false;btn.textContent="Refresh pages from Notion"}})}
 function deletePageAsk(id){
@@ -172,7 +199,7 @@ function sectionIds(){
   pageKids(root).forEach(function(k){if(!seen[k]){seen[k]=1;out.push(k)}});
   return out}
 function sectionBar(){
-  var bar=h("div","sb-tabs"),root=S.doc.root;
+  var bar=h("nav","sb-tabs sb-side"),root=S.doc.root;bar.setAttribute("aria-label","Sections");bar.appendChild(h("div","sb-sidehead","Sections"));
   var at=S.loc.row?(S.loc.from||root):S.loc.page,top=root,id=at,guard=0;
   while(id&&id!==root&&guard++<20){top=id;id=S.doc.pages[id]&&S.doc.pages[id].parent;if(!S.doc.pages[id]&&id!==root){top=root;break}}
   function tab(label,target,on,deletable){
@@ -182,10 +209,16 @@ function sectionBar(){
     x.onclick=function(e){e.stopPropagation();var parent=deletePageAsk(target);if(parent){go({page:on?root:at||root})}};
     w.appendChild(b);w.appendChild(x);bar.appendChild(w)}
   tab((S.space==="vault"?"\u{1F512} ":"\u{1F3E0} ")+(S.doc.pages[root].title||"Home"),root,top===root&&!S.loc.row&&at===root);
-  sectionIds().forEach(function(k){var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k,true)});
+  sectionIds().forEach(function(k){
+    var p=S.doc.pages[k];tab((p.icon?p.icon+" ":"")+(p.title||"Untitled"),k,top===k,true);
+    if(top===k){                                       /* the pages inside the open section, indented under it */
+      var seen={};walkNodes(p.nodes,function(n){
+        if(n.t==="page"&&n.id&&S.doc.pages[n.id]&&S.doc.pages[n.id].parent===k&&!seen[n.id]){
+          seen[n.id]=1;var sp=S.doc.pages[n.id],sb=h("button","sb-tab sub"+(at===n.id&&!S.loc.row?" on":""),(sp.icon?sp.icon+" ":"")+(sp.title||"Untitled"));
+          sb.type="button";sb.onclick=function(){go({page:n.id})};bar.appendChild(sb)}})}});
   var add=h("button","sb-tab add","+ New section");add.type="button";
   add.onclick=function(){var id2=newPage(root,"Untitled");S.doc.pages[root].nodes.push({t:"page",id:id2,title:"Untitled"});touch();go({page:id2})};
-  bar.appendChild(add);
+  bar.appendChild(add);bar.appendChild(h("div","sb-sidegap"));
   if(S.space==="brain"){
     var rf=h("button","sb-tab ctl","Refresh pages from Notion");rf.type="button";rf.title="Reads your Notion again (read only) and fills pages that are still empty. Pages you have written in are never touched.";
     rf.onclick=function(){refreshFromNotion(rf)};bar.appendChild(rf);
@@ -202,7 +235,7 @@ function vaultFetch(path,method,body,tok){
 function openVault(){
   flush();vaultFetch("/api/vault/status","GET").then(function(j){lockScreen(!j.set,"")}).catch(function(e){say("Could not reach the locked section: "+e.message)})}
 function lockScreen(setMode,msg){
-  var m=S.mount;m.textContent="";m.appendChild(sectionBar());
+  var m=S.mount,main=shell(m);
   var card=h("div","sb-lock");card.appendChild(h("div","sb-lockic","\u{1F512}"));card.appendChild(h("h2",null,"Thoughts + Emotions"));
   card.appendChild(h("p","sb-locknote",setMode?"Choose a PIN (4 digits is fine) or a longer password for this private section. It is kept nowhere, so if you forget it these pages cannot be recovered. Once it is set, your Thoughts + Emotions page is copied here from Notion (read only, Notion is never changed) and locked.":"This section is locked. Enter your password to open it. It locks again when you leave Second Brain, and after 20 minutes of no use."));
   var pw=h("input","sb-seli");pw.type="password";pw.placeholder=setMode?"New PIN or password (4 or more, 4 digits is fine)":"PIN or password";pw.setAttribute("inputmode","numeric");pw.setAttribute("autocomplete",setMode?"new-password":"current-password");card.appendChild(pw);
@@ -215,13 +248,13 @@ function lockScreen(setMode,msg){
     vaultFetch(setMode?"/api/vault/setup":"/api/vault/unlock","POST",{password:pw.value}).then(function(j){pw.value="";if(pw2)pw2.value="";return enterVault(j.token,setMode)})
       .catch(function(e){btn.disabled=false;err.textContent=e.message;pw.select()})}
   btn.onclick=go;[pw,pw2].forEach(function(x){if(x)x.onkeydown=function(e){if(e.key==="Enter")go()}});
-  card.appendChild(btn);card.appendChild(err);m.appendChild(card);setTimeout(function(){pw.focus()},0)}
+  card.appendChild(btn);card.appendChild(err);main.appendChild(card);setTimeout(function(){pw.focus()},0)}
 function enterVault(token,first){
   return vaultFetch("/api/vault/doc","GET",null,token).then(function(j){
-    S.home={doc:S.doc,rev:S.rev,loc:S.loc};S.space="vault";S.api="/api/vault/doc";S.tok=token;S.doc=j.doc;S.rev=j.doc.rev||0;S.loc={page:S.doc.root};S.conflict=false;S.dirty=false;
+    S.home={doc:S.doc,rev:S.rev,loc:S.loc};S.space="vault";S.api="/api/vault/doc";S.tok=token;S.doc=j.doc;S.rev=j.doc.rev||0;S.loc={page:S.doc.root};S.conflict=false;S.dirty=false;undoReset();
     render();if(first)importPrivate(true)})}
 function restoreHome(){
-  if(!S.home)return;S.space="brain";S.api="/api/brain";S.tok="";S.doc=S.home.doc;S.rev=S.home.rev;S.loc=S.home.loc;S.home=null;S.dirty=false;S.conflict=false}
+  if(!S.home)return;S.space="brain";S.api="/api/brain";S.tok="";S.doc=S.home.doc;S.rev=S.home.rev;S.loc=S.home.loc;S.home=null;S.dirty=false;S.conflict=false;undoReset()}
 function leaveVault(quiet){
   if(S.space!=="vault")return Promise.resolve();
   var tok=S.tok;return settle().then(function(){return vaultFetch("/api/vault/lock","POST",{}, tok).catch(function(){})}).then(function(){restoreHome();if(!quiet&&S.mount&&S.mount.isConnected)render()})}
@@ -231,7 +264,7 @@ function importPrivate(auto){
   if(!auto&&!confirm("Copy Thoughts + Emotions from Notion into this locked section? Notion is only read. Anything already here stays, and the copy arrives as a new sub-page."))return;
   say("Copying from Notion (read only). This can take a minute...");
   settle().then(function(){return vaultFetch("/api/vault/import","POST",{},S.tok)}).then(function(j){
-    S.doc=j.doc;S.rev=j.doc.rev;S.loc={page:S.doc.root};render();say("Copied "+Object.keys(S.doc.pages).length+" page(s) from Notion into the locked section.")})
+    S.doc=j.doc;S.rev=j.doc.rev;S.loc={page:S.doc.root};undoReset();render();say("Copied "+Object.keys(S.doc.pages).length+" page(s) from Notion into the locked section.")})
   .catch(function(e){if(e.status===401)return lockedOut();say("Could not copy from Notion: "+e.message)})}
 function changePassword(){
   var a=prompt("New PIN or password (4 or more characters, 4 digits is fine). Do not forget it, it cannot be recovered:");if(!a)return;
@@ -951,7 +984,7 @@ function show(mount){
   if(S.doc){render();return}
   mount.textContent="";mount.appendChild(h("div","sb-empty","Opening Second Brain. The first time it copies your Notion journal, which can take a few seconds..."));
   fetch("/api/brain").then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"could not load");return j})}).then(function(j){
-    S.doc=j.doc;S.rev=j.doc.rev||0;S.loc={page:S.doc.root};S.conflict=false;render();
+    S.doc=j.doc;S.rev=j.doc.rev||0;S.loc={page:S.doc.root};S.conflict=false;undoReset();render();
     if(j.seeded){var rows=0;Object.keys(S.doc.dbs).forEach(function(k){rows+=S.doc.dbs[k].rows.length});say("Copied from your Notion: "+Object.keys(S.doc.pages).length+" pages and "+rows+" table rows. Edits here never change Notion.")}
   }).catch(function(e){mount.textContent="";var d=h("div","sb-empty","Second Brain could not open: "+e.message);var b=h("button","sb-tool","Try again");b.type="button";b.onclick=function(){show(mount)};d.appendChild(h("br"));d.appendChild(b);mount.appendChild(d)})}
 function css(){

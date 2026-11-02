@@ -238,3 +238,19 @@ class FillFromNotion(unittest.TestCase):
             self.assertIn(needle, JS)
         for needle in ("/api/brain/fill", "brain.fill_from_hub("):
             self.assertIn(needle, SERVER)
+
+
+class SidebarAndUndo(unittest.TestCase):
+    CSS = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets", "brain.css"), encoding="utf-8").read()
+
+    def test_sections_are_a_left_column_and_collapse_on_phones(self):
+        for needle in ("function shell(", "sb-layout", "sb-main", "sb-side", "sb-sidehead", "sb-tab sub"):
+            self.assertIn(needle, JS)
+        for needle in (".sb-layout{display:grid;grid-template-columns:236px", ".sb-side{", "position:sticky", "@media(max-width:900px){\n  .sb-layout{grid-template-columns:1fr"):
+            self.assertIn(needle, self.CSS)
+
+    def test_undo_and_redo_buttons_and_keys(self):
+        for needle in ('btn("sb-undo"', 'btn("sb-redo"', "function doUndo()", "function doRedo()", "function undoNote()", "function undoReset()", "U_MAX=40",
+                       'k!=="z"&&k!=="y"', "isContentEditable"):
+            self.assertIn(needle, JS)
+        self.assertGreaterEqual(JS.count("undoReset()"), 6)       # every place a different document is loaded starts a fresh history
