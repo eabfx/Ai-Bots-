@@ -343,5 +343,80 @@ class Brief(unittest.TestCase):
         self.assertIn("DATA PROBLEMS", text)
 
 
+class CalendarResilience(unittest.TestCase):
+    """A slow or blocked calendar host must not blank the desk: try the mirror, retry the connection, keep the last good copy."""
+
+    def setUp(self):
+        macro.clear_cache()
+        self.addCleanup(macro.clear_cache)
+
+    def test_the_second_host_is_used_when_the_first_does_not_answer(self):
+        class Net(FakeNet):
+            def get(self, url, timeout=20):
+                if "//nfs." in url:
+                    self.calls.append(url)
+                    raise macro.MacroError("could not connect (_ssl.c:993: The handshake operation timed out)")
+                return FakeNet.get(self, url, timeout)
+        s = macro.snapshot(NOW, Net())
+        self.assertTrue(s["events"])
+        self.assertFalse([n for n in s["notes"] if "alendar" in n])
+
+    def test_when_every_host_fails_the_last_good_calendar_is_shown_with_a_note(self):
+        macro.snapshot(NOW, FakeNet())                                         # a good fetch, kept
+        s = macro.snapshot(NOW, FakeNet(fail=["calendar"]), force=True)
+        self.assertTrue(s["events"])
+        self.assertTrue([n for n in s["notes"] if n.startswith("Calendar: the calendar feed did not answer")])
+        self.assertIn("last saved copy", " ".join(s["notes"]))
+
+    def test_with_nothing_saved_it_still_says_unavailable(self):
+        s = macro.snapshot(NOW, FakeNet(fail=["calendar"]))
+        self.assertEqual(s["events"], [])
+        self.assertTrue([n for n in s["notes"] if n.startswith("Calendar unavailable")])
+
+    def test_the_last_calendar_survives_a_restart_on_disk(self):
+        import tempfile
+
+        class Disk(FakeNet):
+            key_dir = tempfile.mkdtemp()
+        macro.snapshot(NOW, Disk())
+        macro.clear_cache()                                                    # a new run of the program
+        bad = Disk(fail=["calendar"])
+        s = macro.snapshot(NOW, bad)
+        self.assertTrue(s["events"])
+        self.assertIn("from ", " ".join(n for n in s["notes"] if n.startswith("Calendar")))
+
+    def test_a_dropped_connection_is_retried_once_but_a_real_refusal_is_not(self):
+        import urllib.error
+        import urllib.request
+        calls = []
+
+        class R:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b"ok"
+
+        def flaky(req, timeout=0):
+            calls.append(1)
+            if len(calls) == 1:
+                raise urllib.error.URLError("handshake timed out")
+            return R()
+        real, sleep = urllib.request.urlopen, macro.time.sleep
+        urllib.request.urlopen, macro.time.sleep = flaky, lambda x: None
+        try:
+            self.assertEqual(macro.Net().get("https://example.com/x"), "ok")
+            self.assertEqual(len(calls), 2)
+            del calls[:]
+
+            def refuse(req, timeout=0):
+                calls.append(1)
+                raise urllib.error.HTTPError(req.full_url, 429, "x", {}, None)
+            urllib.request.urlopen = refuse
+            with self.assertRaises(macro.MacroError):
+                macro.Net().get("https://example.com/x")
+            self.assertEqual(len(calls), 1)
+        finally:
+            urllib.request.urlopen, macro.time.sleep = real, sleep
+
+
 if __name__ == "__main__":
     unittest.main()

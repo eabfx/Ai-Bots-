@@ -93,17 +93,24 @@ class Net:
         url = "https://api.twelvedata.com/quote?symbol=%s&apikey=%s" % (urllib.parse.quote(symbol, safe=""), urllib.parse.quote(key, safe=""))
         return self.get(url)
 
-    def get(self, url, timeout=20):
+    def get(self, url, timeout=15, attempts=2):
+        """One request, tried again once when the connection itself fails (a slow handshake or a dropped packet). A real
+        answer such as HTTP 429 is not retried."""
         req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", "replace")
-        except urllib.error.HTTPError as e:
-            code = e.code
-            e.close()
-            raise MacroError("HTTP %d" % code)
-        except (urllib.error.URLError, OSError) as e:
-            raise MacroError("could not connect (%s)" % getattr(e, "reason", e))
+        last = None
+        for n in range(attempts):
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return r.read().decode("utf-8", "replace")
+            except urllib.error.HTTPError as e:
+                code = e.code
+                e.close()
+                raise MacroError("HTTP %d" % code)
+            except (urllib.error.URLError, OSError) as e:
+                last = e
+                if n + 1 < attempts:
+                    time.sleep(1.5)
+        raise MacroError("could not connect (%s)" % getattr(last, "reason", last))
 
 
 # ---------------------------------------------------------------- prices
@@ -202,12 +209,18 @@ def parse_calendar(text, now):
 def fetch_calendar(net, now):
     events, notes = [], []
     for i, url in enumerate(CALENDAR_URLS):
-        try:
-            events += parse_calendar(net.get(url), now)
-        except MacroError as e:
+        err = None
+        for where in (url, url.replace("//nfs.", "//cdn-nfs.")):      # the same feed is also served from a second host
+            try:
+                events += parse_calendar(net.get(where), now)
+                err = None
+                break
+            except MacroError as e:
+                err = err or e
+        if err:
             if i == 0:                                    # next week's file may simply not be published yet
-                raise MacroError("the calendar feed said %s" % e)
-            notes.append(str(e))
+                raise MacroError("the calendar feed said %s" % err)
+            notes.append(str(err))
     seen, unique = set(), []
     for e in events:
         k = (e["t"], e["country"], e["title"])
@@ -258,6 +271,38 @@ def cached(kind, make, force=False, clock=time.time):
     value = make()
     _cache[kind] = (clock(), value)
     return value
+
+
+def _calendar_file(net):
+    folder = getattr(net, "key_dir", None)
+    return os.path.join(folder, "macro_calendar.json") if folder else None
+
+
+def save_calendar(net, events):
+    """Keep the last calendar that came back, so a feed that is down does not leave the desk without one."""
+    path = _calendar_file(net)
+    if not path:
+        return
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8") as fh:
+            json.dump({"saved": time.time(), "events": events}, fh)
+        os.replace(path + ".tmp", path)
+    except (OSError, TypeError, ValueError):
+        pass
+
+
+def load_calendar(net):
+    path = _calendar_file(net)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        events = doc.get("events")
+        if isinstance(events, list) and all(isinstance(e, dict) and isinstance(e.get("t"), (int, float)) for e in events):
+            return events, doc.get("saved") or 0
+    except (OSError, TypeError, ValueError, AttributeError):
+        pass
+    return None
 
 
 def clear_cache():
@@ -313,14 +358,39 @@ def snapshot(now, net=None, force=False):
                     moves[c] = sign * pct
             return strength(moves)
 
+        stale = []
+
+        def calendar():
+            """The live calendar. When the feed does not answer, the last good copy (this session, or the file kept on disk)."""
+            try:
+                events = fetch_calendar(net, now)
+            except MacroError as e:
+                old = (_cache.get("calendar") or (0, None))[1]
+                saved = 0
+                if old is None:
+                    loaded = load_calendar(net)
+                    old, saved = loaded if loaded else (None, 0)
+                if old is None:
+                    raise
+                stale.append("the calendar feed did not answer (%s). Showing the last saved copy%s" % (
+                    e, " from " + z.to_dublin(saved).strftime("%a %H:%M") if saved else ""))
+                return old
+            save_calendar(net, events)
+            return events
+
         results = {}
-        for kind, make in (("quotes", quotes), ("calendar", lambda: fetch_calendar(net, now)), ("headlines", heads),
+        for kind, make in (("quotes", quotes), ("calendar", calendar), ("headlines", heads),
                            ("strength", strengths)):
             try:
                 results[kind] = cached(kind, make, force)
             except (MacroError, z.ZoneError) as e:
                 results[kind] = None
                 notes.append("%s unavailable: %s" % (kind.capitalize(), e))
+    if stale:                                              # try the feed again in a minute, not after the usual 15
+        hit = _cache.get("calendar")
+        if hit:
+            _cache["calendar"] = (hit[0] - TTL["calendar"] + 60, hit[1])
+        notes.append("Calendar: " + stale[0])
     quotes, qbad = results["quotes"] or ([], [])
     heads, hbad = results["headlines"] or ([], [])
     events = results["calendar"] or []
