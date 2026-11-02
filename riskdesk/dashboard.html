@@ -566,7 +566,7 @@ body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none
 .btn,.tab,.seg button,nav button,.brainbtn,.themebtn{position:relative;overflow:hidden;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s,background .2s,color .2s,border-color .2s,opacity .2s}
 .btn:hover,.tab:hover,.seg button:hover,.brainbtn:hover,.themebtn:hover{transform:translateY(-2px);box-shadow:0 8px 22px -8px var(--glow)}
 .btn:active,.tab:active,.seg button:active,nav button:active,.brainbtn:active,.themebtn:active{transform:translateY(0) scale(.95);box-shadow:none;transition-duration:.07s}
-nav button:hover{background:var(--glowsoft)}
+nav button:not([aria-selected="true"]):hover{background:var(--glowsoft)}
 .btn:not(.ghost)::after,.brainbtn::after{content:"";position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(100deg,transparent,rgba(128,128,128,.38),transparent);transform:skewX(-20deg);pointer-events:none;opacity:0}
 .btn:not(.ghost):hover::after,.brainbtn:hover::after{opacity:1;animation:sheen .85s ease}
 @keyframes sheen{from{left:-70%}to{left:130%}}
@@ -622,6 +622,55 @@ body.reveal nav button[aria-selected="true"]{animation:hdrin .55s cubic-bezier(.
 @keyframes ibar{to{transform:scaleX(1)}}
 #intro.open .sk{opacity:0}#intro .sk{transition:opacity .2s;position:absolute;right:18px;bottom:14px;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35)}
 @media(prefers-reduced-motion:reduce){#intro{display:none!important}body::before{animation:none}body.introing header .bar>*,body.introing main{opacity:1}.rip{display:none}}
+
+/* ===== layout pack: sliding menu highlight and icons, live sessions, light that follows the cursor, reveal on scroll ===== */
+nav{position:relative}
+nav button{z-index:1}
+.navglide{position:absolute;left:0;top:0;width:0;height:0;border-radius:10px;background:var(--accent);z-index:0;pointer-events:none;opacity:0;
+  transition:transform .42s cubic-bezier(.3,1.25,.4,1),width .35s cubic-bezier(.3,1,.4,1),height .35s cubic-bezier(.3,1,.4,1),opacity .2s}
+nav.has-glide .navglide{opacity:1}
+nav.has-glide button[aria-selected="true"]{background:transparent;animation:none}
+nav button .ni{display:none}
+@media(min-width:901px){
+  nav button{display:flex;align-items:center;gap:11px}
+  nav button .ni{display:block;width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.8;transition:transform .25s cubic-bezier(.3,1.4,.4,1)}
+  nav button:hover .ni{transform:translateX(2px) scale(1.12)}
+  nav button[aria-selected="true"] .ni{opacity:1}
+  .brainbtn{display:flex;align-items:center;gap:10px}
+  .brainbtn .ni{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  header::before{content:"";position:absolute;left:0;right:0;top:0;height:220px;background:radial-gradient(120% 100% at 30% 0%,var(--glowsoft),transparent 70%);pointer-events:none;z-index:-1}
+}
+.brainbtn .ni{display:none}
+@media(min-width:901px){.brainbtn .ni{display:block}}
+/* sessions panel (sidebar, wide screens only) */
+.sess{display:none}
+@media(min-width:901px){
+  .sess{display:block;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 4px 4px;background:linear-gradient(180deg,var(--glowsoft),transparent)}
+  .sess .st{font:600 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between}
+  .sess .sr{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px}
+  .sess .sd{width:7px;height:7px;border-radius:50%;background:var(--flat);flex:none;opacity:.55;position:relative}
+  .sess .sr.on .sd{background:var(--up);opacity:1;box-shadow:0 0 8px var(--up)}
+  .sess .sr.on .sd::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--up);animation:dotring 2s ease-out infinite}
+  .sess .sn{flex:1;color:var(--text);white-space:nowrap}.sess .sr:not(.on) .sn{color:var(--muted)}
+  .sess .sw{font:500 10.5px var(--mono);color:var(--muted);white-space:nowrap}.sess .sr.on .sw{color:var(--up)}
+}
+/* a soft light that follows the pointer inside cards */
+.card,.stat,.ticket{background-image:radial-gradient(380px circle at var(--mx,-999px) var(--my,-999px),var(--glowsoft),transparent 62%)}
+.card:hover,.stat:hover{border-color:var(--hover)}
+/* cards: a small accent bar draws in beside each heading, tables light up row by row, ticks pop */
+.card>.eyebrow:first-child::before,.card>h2:first-child::before,.card>h3:first-child::before{content:"";display:inline-block;width:3px;height:.95em;margin-right:9px;vertical-align:-.12em;border-radius:2px;background:var(--accent);transform:scaleY(0);transform-origin:bottom;transition:transform .5s cubic-bezier(.2,.9,.3,1.2) .15s}
+.tool.enter .card>.eyebrow:first-child::before,.tool.enter .card>h2:first-child::before,.tool.enter .card>h3:first-child::before,.card:hover>.eyebrow:first-child::before,.card:hover>h2:first-child::before,.card:hover>h3:first-child::before{transform:scaleY(1)}
+tbody tr{transition:background .2s}
+tbody tr:hover td{background:var(--glowsoft)}
+input[type=checkbox]:checked{animation:tickpop .32s cubic-bezier(.3,1.6,.4,1)}
+@keyframes tickpop{0%{transform:scale(.7)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0 0 3px var(--glowsoft);transition:box-shadow .2s,border-color .2s}
+/* the greeting shines once, numbers count up (script), and things below the fold rise as you scroll to them */
+#h-greet,#h-hello{background:linear-gradient(100deg,var(--text) 40%,var(--up) 50%,var(--text) 60%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shine 2.4s ease .3s 1 both}
+@keyframes shine{from{background-position:120% 0}to{background-position:-20% 0}}
+.rv-wait{opacity:0;transform:translateY(26px)}
+.rv-in{opacity:1;transform:none;transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
+@media(prefers-reduced-motion:reduce){.rv-wait{opacity:1;transform:none}#h-greet,#h-hello{animation:none;-webkit-text-fill-color:currentColor;background:none}.navglide{transition:none}}
 </style>
 </head>
 <body>
@@ -673,6 +722,76 @@ body.reveal nav button[aria-selected="true"]{animation:hdrin .55s cubic-bezier(.
     var r=el.getBoundingClientRect(),d=Math.max(r.width,r.height)*2.2,x=document.createElement("span");
     x.className="rip";x.style.width=x.style.height=d+"px";x.style.left=(e.clientX-r.left-d/2)+"px";x.style.top=(e.clientY-r.top-d/2)+"px";
     el.appendChild(x);setTimeout(function(){if(x.parentNode)x.parentNode.removeChild(x)},700)},true);
+})();
+</script>
+<script>
+(function(){
+  var calm=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var $$=function(q,r){return[].slice.call((r||document).querySelectorAll(q))};
+  /* icons in the menu (wide screens show them) */
+  var IC={home:"M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",macro:"M3 17l5-6 4 3 5-8 4 4M3 21h18",journal:"M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4zM5 17a3 3 0 013-3h11",
+    backtest:"M4 12a8 8 0 108-8M4 4v5h5M12 8v4l3 2",trades:"M7 7h12l-3-3M17 17H5l3 3",alerts:"M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0",
+    connect:"M9 7V3M15 7V3M7 7h10v4a5 5 0 01-10 0V7zM12 16v5",brain:"M9 4a3 3 0 00-3 3v1a3 3 0 00-2 3 3 3 0 002 3 3 3 0 003 4h1V4H9zM15 4a3 3 0 013 3v1a3 3 0 012 3 3 3 0 01-2 3 3 3 0 01-3 4h-1V4h1z"};
+  function icon(name){var n="http://www.w3.org/2000/svg",s=document.createElementNS(n,"svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("class","ni");s.setAttribute("aria-hidden","true");
+    var p=document.createElementNS(n,"path");p.setAttribute("d",IC[name]||IC.home);s.appendChild(p);return s}
+  $$("nav button[data-tab],.brainbtn[data-tab]").forEach(function(b){if(!b.querySelector(".ni"))b.insertBefore(icon(b.getAttribute("data-tab")),b.firstChild)});
+  /* the highlight that glides to whichever menu item is selected */
+  var nav=document.getElementById("nav"),glide=null;
+  function place(){
+    if(!nav||calm)return;var sel=nav.querySelector('button[aria-selected="true"]');if(!sel||!sel.offsetWidth){return}
+    if(!glide){glide=document.createElement("span");glide.className="navglide";nav.insertBefore(glide,nav.firstChild)}
+    glide.style.width=sel.offsetWidth+"px";glide.style.height=sel.offsetHeight+"px";
+    glide.style.transform="translate("+sel.offsetLeft+"px,"+sel.offsetTop+"px)";nav.classList.add("has-glide")}
+  if(nav){new MutationObserver(place).observe(nav,{attributes:true,attributeFilter:["aria-selected"],subtree:true});
+    window.addEventListener("resize",place);setTimeout(place,60);setTimeout(place,900);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(place)}
+  /* live market sessions */
+  var bar=document.querySelector("header .bar"),brain=bar&&bar.querySelector(".brainbtn");
+  var SESS=[["Sydney","Australia/Sydney",7,0,16,0],["Tokyo","Asia/Tokyo",9,0,18,0],["London","Europe/London",8,0,16,30],["New York","America/New_York",8,0,17,0]];
+  function parts(tz,d){var f=new Intl.DateTimeFormat("en-GB",{timeZone:tz,weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(d),o={};f.forEach(function(x){o[x.type]=x.value});
+    return{wd:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(o.weekday),m:(+o.hour)*60+(+o.minute)}}
+  function state(r,d){var p=parts(r[1],d),o=r[2]*60+r[3],c=r[4]*60+r[5],wk=p.wd>=1&&p.wd<=5;
+    if(wk&&p.m>=o&&p.m<c)return{on:true,left:c-p.m};
+    var mins=p.m<o&&wk?o-p.m:null;
+    if(mins===null){var add=1440-p.m,wd=(p.wd+1)%7;while(wd===0||wd===6){add+=1440;wd=(wd+1)%7}mins=add+o}
+    return{on:false,left:mins}}
+  function dur(m){var h=Math.floor(m/60),mm=m%60;return h>=24?Math.floor(h/24)+"d "+(h%24)+"h":h?h+"h "+(mm<10?"0":"")+mm+"m":mm+"m"}
+  var box=null;
+  function paint(){
+    if(!bar||!brain)return;
+    if(!box){box=document.createElement("div");box.className="sess";box.id="sess";bar.insertBefore(box,brain)}
+    var d=new Date(),h='<div class="st"><span>Sessions</span><span id="sess-t"></span></div>';
+    SESS.forEach(function(r){var st=state(r,d);h+='<div class="sr'+(st.on?" on":"")+'"><span class="sd"></span><span class="sn">'+r[0]+'</span><span class="sw">'+(st.on?"closes "+dur(st.left):"opens "+dur(st.left))+'</span></div>'});
+    box.innerHTML=h;var t=document.getElementById("sess-t");if(t)t.textContent=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Dublin",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d)+" Dublin"}
+  paint();setInterval(paint,30000);
+  /* the light that follows the pointer */
+  if(!calm)document.addEventListener("pointermove",function(e){var c=e.target.closest&&e.target.closest(".card,.stat,.ticket");if(!c)return;
+    var r=c.getBoundingClientRect();c.style.setProperty("--mx",(e.clientX-r.left)+"px");c.style.setProperty("--my",(e.clientY-r.top)+"px")},{passive:true});
+  /* numbers count up when they appear */
+  var NUM=/([+\-−]?)(\d[\d,]*)(\.\d+)?/;
+  function countUp(el){
+    var txt=el.textContent;if(!txt||el.getAttribute("data-cu")===txt||txt.length>18)return;
+    var all=txt.match(/\d[\d,]*(\.\d+)?/g);if(!all||all.length!==1)return;
+    var m=txt.match(NUM);if(!m)return;var at=txt.indexOf(m[0]),pre=txt.slice(0,at)+m[1],post=txt.slice(at+m[0].length);
+    var intp=m[2],dec=m[3]?m[3].length-1:0,comma=intp.indexOf(",")>=0,target=parseFloat(intp.replace(/,/g,"")+(m[3]||""));
+    if(!isFinite(target)||target===0){el.setAttribute("data-cu",txt);return}
+    el.setAttribute("data-cu",txt);var t0=null,dur2=900;
+    function fmt(v){var s=v.toFixed(dec);if(comma){var q=s.split(".");q[0]=q[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");s=q.join(".")}return s}
+    function tick(ts){if(t0===null)t0=ts;var k=Math.min(1,(ts-t0)/dur2),e=1-Math.pow(1-k,3);
+      el.textContent=k>=1?txt:pre.replace(m[1],m[1])+fmt(target*e)+post;if(k<1)requestAnimationFrame(tick)}
+    el.textContent=pre+fmt(0)+post;requestAnimationFrame(tick)}
+  /* things below the fold rise as you scroll to them */
+  var io=("IntersectionObserver" in window&&!calm)?new IntersectionObserver(function(list){list.forEach(function(x){if(x.isIntersecting){var n=x.target;io.unobserve(n);n.classList.remove("rv-wait");n.classList.add("rv-in");setTimeout(function(){n.classList.remove("rv-in")},900)}})},{rootMargin:"0px 0px -6% 0px"}):null;
+  function prep(root){
+    $$(".stat .v,.jtotal",root).forEach(countUp);
+    if(io)$$(".tool.active>.card,.tool.active .jgrid>.card,.tool.active .tool-grid>.card",root).forEach(function(c){
+      if(c.__rv)return;c.__rv=1;var r=c.getBoundingClientRect();
+      if(r.top>window.innerHeight*0.92){c.classList.add("rv-wait");io.observe(c);setTimeout(function(){c.classList.remove("rv-wait")},6000)}})}
+  var queued=false,main=document.querySelector("main");
+  if(main){new MutationObserver(function(ms){
+    if(queued)return;for(var i=0;i<ms.length;i++){var tg=ms[i].target;if(tg.closest&&(tg.closest("#sb-root")||tg.closest("[data-cu]")))continue;queued=true;break}
+    if(queued)requestAnimationFrame(function(){queued=false;prep(main)})}).observe(main,{childList:true,subtree:true});
+    setTimeout(function(){prep(main)},400)}
+  document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("nav button,.brainbtn")){setTimeout(function(){$$(".tool.active>.card").forEach(function(c){c.__rv=0});prep(main)},120)}});
 })();
 </script>
 

@@ -567,3 +567,24 @@ class MotionPack(unittest.TestCase):
     def test_the_intro_can_be_skipped_and_never_blocks_for_long(self):
         for needle in ('d.addEventListener("click",function(){finish(true)})', "document.addEventListener(\"keydown\"", "t1=setTimeout(function(){finish(false)},2150)"):
             self.assertIn(needle, self.PAGE)
+
+
+class LayoutPack(unittest.TestCase):
+    PAGE = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+
+    def test_menu_glide_icons_sessions_spotlight_countup_and_reveal(self):
+        for needle in (".navglide{", "nav.has-glide", 'class="sess"' if False else 'box.className="sess"', "function countUp(", "function prep(", "rv-wait", "IntersectionObserver",
+                       "pointermove", "--mx", "var SESS=[", "Europe/London", "America/New_York", "keyframes tickpop", "keyframes shine"):
+            self.assertIn(needle, self.PAGE)
+
+    def test_hovering_the_selected_menu_item_does_not_repaint_it(self):
+        self.assertIn('nav button:not([aria-selected="true"]):hover{background:var(--glowsoft)}', self.PAGE)
+        self.assertNotIn("nav button:hover{background:var(--glowsoft)}", self.PAGE)
+
+    def test_count_up_never_changes_the_final_number_and_skips_the_editor(self):
+        for needle in ("el.textContent=k>=1?txt:", 'tg.closest("#sb-root")', 'tg.closest("[data-cu]")', "all.length!==1"):
+            self.assertIn(needle, self.PAGE)
+
+    def test_reduced_motion_keeps_everything_visible(self):
+        for needle in (".rv-wait{opacity:1;transform:none}", ".navglide{transition:none}", "var calm="):
+            self.assertIn(needle, self.PAGE)
