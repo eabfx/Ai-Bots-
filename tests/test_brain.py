@@ -254,3 +254,11 @@ class SidebarAndUndo(unittest.TestCase):
                        'k!=="z"&&k!=="y"', "isContentEditable"):
             self.assertIn(needle, JS)
         self.assertGreaterEqual(JS.count("undoReset()"), 6)       # every place a different document is loaded starts a fresh history
+
+
+class HideSections(unittest.TestCase):
+    def test_the_section_list_can_be_hidden_and_the_choice_is_remembered(self):
+        for needle in ('btn("sb-vs"', "VIEW.side=!VIEW.side", "sbv-noside", "Hide sections", "Show sections", "side:v.side!==false"):
+            self.assertIn(needle, JS)
+        css = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets", "brain.css"), encoding="utf-8").read()
+        self.assertIn(".sbv-noside .sb-side{display:none}", css)

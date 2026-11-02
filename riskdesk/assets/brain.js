@@ -162,10 +162,11 @@ function render(){
   if(S.loc.row)rowPage(body);else pageView(body);
   applyView();syncUndo();window.scrollTo(0,y)}
 /* how the page is shown: full width or a narrow column, and the text size. Kept in this browser only. */
-var SIZES=[0.9,1,1.12,1.25,1.4],VIEW=(function(){try{var v=JSON.parse(localStorage.getItem("sb.view")||"{}");return{wide:v.wide!==false,size:Math.max(0,Math.min(SIZES.length-1,v.size===undefined?1:+v.size||0))}}catch(e){return{wide:true,size:1}}})();
+var SIZES=[0.9,1,1.12,1.25,1.4],VIEW=(function(){try{var v=JSON.parse(localStorage.getItem("sb.view")||"{}");return{wide:v.wide!==false,side:v.side!==false,size:Math.max(0,Math.min(SIZES.length-1,v.size===undefined?1:+v.size||0))}}catch(e){return{wide:true,side:true,size:1}}})();
 function viewControls(){
   var box=h("div","sb-view");box.id="sb-viewbox";
   function btn(id,label,fn,title){var b=h("button","sb-mini",label);b.type="button";b.id=id;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;box.appendChild(b)}
+  btn("sb-vs","",function(){VIEW.side=!VIEW.side;saveView();applyView()},"Hide or show the list of sections on the left");
   btn("sb-undo","\u21B6 Undo",doUndo,"Undo the last change (Ctrl+Z)");
   btn("sb-redo","\u21B7 Redo",doRedo,"Redo (Ctrl+Y)");
   btn("sb-vw","",function(){VIEW.wide=!VIEW.wide;saveView();applyView()},"Switch between a full-width page and a narrow column");
@@ -175,7 +176,8 @@ function viewControls(){
 function saveView(){try{localStorage.setItem("sb.view",JSON.stringify(VIEW))}catch(e){}}
 function applyView(){
   var m=S.mount;if(!m)return;
-  m.classList.toggle("sbv-narrow",!VIEW.wide);m.style.setProperty("--sbs",String(SIZES[VIEW.size]));
+  m.classList.toggle("sbv-narrow",!VIEW.wide);m.classList.toggle("sbv-noside",!VIEW.side);
+  var sv=document.getElementById("sb-vs");if(sv)sv.textContent=VIEW.side?"\u25E7 Hide sections":"\u25E7 Show sections";m.style.setProperty("--sbs",String(SIZES[VIEW.size]));
   var w=document.getElementById("sb-vw"),a=document.getElementById("sb-vm"),b=document.getElementById("sb-vp");
   if(w)w.textContent=VIEW.wide?"Narrow page":"Wide page";if(a)a.disabled=VIEW.size===0;if(b)b.disabled=VIEW.size===SIZES.length-1}
 function refreshFromNotion(btn){

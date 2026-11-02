@@ -201,3 +201,5 @@
   .sb-side .sb-tab,.sb-side .sb-tab.sub{width:auto;margin:0}
   .sb-side .sb-tabw{width:auto}
 }
+.sbv-noside .sb-layout{grid-template-columns:minmax(0,1fr)}
+.sbv-noside .sb-side{display:none}
