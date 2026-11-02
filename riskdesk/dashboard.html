@@ -380,6 +380,26 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .h-tr .bd{padding:10px 13px 12px}
 .h-tr .nm{font:600 14px var(--sans,inherit)}.h-tr .nm span{font:500 12px var(--mono);color:var(--muted);margin-left:7px}
 .h-tr .dt{font:500 11.5px var(--mono);color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg#j-type button{padding:9px 18px;font-size:14px}
+#j-out button.on[data-o="win"]{background:var(--up);border-color:var(--up);color:#06130c}
+#j-out button.on[data-o="loss"]{background:var(--down);border-color:var(--down);color:#1d0806}
+.nprops{display:grid;gap:0;margin:6px 0 14px;max-width:880px}
+.np{display:grid;grid-template-columns:170px 1fr;gap:14px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line)}
+.np>label{font:600 12.5px var(--mono);color:var(--muted);margin:0}
+.np>div{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.np input[type=text],.np input[type=number],.np input[type=date],.np input[type=time],.np select,.np textarea{flex:1 1 220px;min-width:0}
+.np .u{font:600 12px var(--mono);color:var(--muted)}
+.np #j-sstitle{color:var(--muted)}
+.np textarea{width:100%}
+.ss{display:flex;gap:14px;align-items:center;flex-wrap:wrap;width:100%}
+.ssprev{width:190px;aspect-ratio:16/10;border:1px dashed var(--line);border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font:500 12px var(--mono);background:var(--panel2);cursor:default}
+.ssprev img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.jmore{margin:4px 0 14px}.jmore summary{cursor:pointer;color:var(--muted);font:600 12.5px var(--mono);padding:8px 0}
+@media(max-width:620px){.np{grid-template-columns:1fr;gap:6px}}
+#j-form textarea{background:var(--input);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:10px 12px;font:14px var(--sans,inherit)}
+.ok{margin-top:12px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--up) 45%,var(--line));border-radius:12px;color:var(--up);font-size:13.5px}
+.ok[hidden]{display:none}.ok button{margin-left:10px}
+.editing{outline:2px solid var(--accent);outline-offset:2px}
 .h-secrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .h-more{appearance:none;background:none;border:0;color:var(--muted);font:600 11.5px var(--mono);cursor:pointer;padding:0}.h-more:hover{color:var(--text)}
 :root[data-theme="light"] .h-tr .chip.dir,:root[data-theme="light"] .h-tr .chip.rr{background:rgba(255,255,255,.88);color:#111;border-color:rgba(0,0,0,.18)}
@@ -762,7 +782,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div class="jhead">
 <div><h2 id="j-title">Journal</h2>
 <p class="sub" id="j-sub">Your trades, your numbers.</p></div>
-<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Log a trade</button></div>
+<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Add a trade</button></div>
 </div>
 
 <div class="card hcard" id="h-card">
@@ -802,43 +822,44 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 <div id="j-groups"></div></div>
 
 <div class="card" id="j-form">
-<h3 class="jh">Log a trade</h3>
-<div class="frow three">
-<div><label for="j-date">Date</label><input type="date" id="j-date"></div>
-<div><label for="j-time">Time (Dublin, optional)</label><input type="time" id="j-time"></div>
-<div><label for="j-inst">Instrument</label><input type="text" id="j-inst" placeholder="EURUSD, NQ, XAUUSD" maxlength="20"></div>
+<div class="t-head"><h3 class="jh" id="j-formtitle" style="margin:0">Add a trade</h3><button class="btn ghost small" id="j-editcancel" type="button" hidden>Cancel editing</button></div>
+<div class="eyebrow" style="margin-top:12px">What kind of trade</div>
+<div class="seg" id="j-type" role="group" aria-label="Trade type"><button type="button" data-k="live">Day-to-day</button><button type="button" data-k="forward">Forward test</button><button type="button" data-k="backtest">Backtest</button></div>
+<div class="jsub" id="j-typenote" style="margin-bottom:6px"></div>
+<div class="nprops">
+<div class="np"><label>Date</label><div><input type="date" id="j-date"></div></div>
+<div class="np"><label>Account Type</label><div><input type="text" id="j-at" list="j-atlist" placeholder="Funded Account, Live Account, Evaluation" maxlength="24" autocomplete="off"><datalist id="j-atlist"></datalist></div></div>
+<div class="np"><label>Bias</label><div><select id="j-bias"><option value="">Not set</option><option value="bullish">Bullish</option><option value="bearish">Bearish</option><option value="neutral">Neutral</option></select></div></div>
+<div class="np"><label>Pair</label><div><input type="text" id="j-inst" list="j-instlist" placeholder="EURUSD, NQ, XAUUSD" maxlength="20" autocomplete="off"><datalist id="j-instlist"></datalist></div></div>
+<div class="np"><label>Session</label><div><input type="text" id="j-ses" list="j-seslist" placeholder="Asia, London or NY Session" maxlength="30" autocomplete="off"><datalist id="j-seslist"></datalist></div></div>
+<div class="np"><label>Long / Short</label><div><div class="seg" id="j-dirseg" role="group" aria-label="Long or short"><button type="button" data-d="long">Long</button><button type="button" data-d="short">Short</button></div><select id="j-dir" hidden><option value="long">Long</option><option value="short">Short</option></select></div></div>
+<div class="np"><label>Risk</label><div><input type="number" id="j-rp" placeholder="0.5 or 1 (% of the account)" min="0" step="any"><span class="u">%</span></div></div>
+<div class="np"><label>Win / Loss</label><div><div class="seg" id="j-out" role="group" aria-label="Win or loss"><button type="button" data-o="win">WIN</button><button type="button" data-o="loss">LOSS</button><button type="button" data-o="be">BE</button></div></div></div>
+<div class="np"><label>R/R</label><div><input type="number" id="j-r" placeholder="3 (a 3RR trade)" step="any"><span class="u">RR</span></div></div>
+<div class="np"><label>Partials</label><div><select id="j-part"><option value="">Not set</option><option value="yes">Yes</option><option value="no">No</option></select></div></div>
+<div class="np"><label>Strategy</label><div><input type="text" id="j-strat" list="j-stratlist" placeholder="e.g. OG" maxlength="30" autocomplete="off"><datalist id="j-stratlist"></datalist></div></div>
+<div class="np"><label>Zone</label><div><input type="text" id="j-zone" list="j-zonelist" placeholder="e.g. 15m Demand Zone" maxlength="40" autocomplete="off"><datalist id="j-zonelist"></datalist></div></div>
+<div class="np"><label>Setup</label><div><input type="text" id="j-tag" list="j-taglist" placeholder="e.g. Double Top" maxlength="30" autocomplete="off"><datalist id="j-taglist"></datalist></div></div>
+<div class="np"><label>Trade SS</label><div><div class="ss"><div class="ssprev" id="j-ssprev"><span>No screenshot yet</span></div><div><label class="btn small ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Choose a file<input type="file" id="j-img" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none"></label><button class="btn small ghost" id="j-ssclear" type="button" hidden style="margin-left:8px">Remove</button><div class="jsub" id="j-img-state">Or paste an image (Ctrl+V) while this form is open.</div></div></div></div></div>
+<div class="np"><label>Strategy + Setup</label><div><input type="text" id="j-sstitle" readonly tabindex="-1" placeholder="Filled in from Strategy and Setup"></div></div>
+<div class="np"><label>Trade Breakdown</label><div><textarea id="j-notes" rows="4" maxlength="500" placeholder="What did you see, what did you do, what would you change?"></textarea></div></div>
+<div class="np"><label>Profit</label><div><input type="number" id="j-pl" placeholder="800 (money, optional when R/R and Risk are filled)" step="any"></div></div>
+<div class="np"><label>Trade No.</label><div><input type="number" id="j-no" min="0" step="1" placeholder="auto"></div></div>
 </div>
-<div class="frow two">
-<div><label for="j-dir">Direction</label><select id="j-dir"><option value="long">Long</option><option value="short">Short</option></select></div>
-<div><label for="j-tag">Setup / strategy tag</label><input type="text" id="j-tag" placeholder="e.g. 30m demand, London" maxlength="30"></div>
-</div>
-<div class="frow two"><div><label for="j-at">Account (optional)</label><input type="text" id="j-at" list="j-atlist" placeholder="e.g. Funded Account" maxlength="24" autocomplete="off"><datalist id="j-atlist"></datalist></div></div>
-<div class="frow two">
-<div><label for="j-risk">Risk on the trade</label><input type="number" id="j-risk" placeholder="100" min="0" step="any"></div>
-<div><label for="j-pl">Result P/L (losses negative)</label><input type="number" id="j-pl" placeholder="-100 or 250" step="any"></div>
-</div>
-<div class="frow three">
-<div><label for="j-grade">Setup grade (optional)</label><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div>
-<div><label for="j-plan">Did you follow the plan? (optional)</label><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div>
-<div><label for="j-emo">How did you feel? (optional)</label><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div>
-</div>
-<div class="frow two">
-<div><label for="j-bias">Your bias (optional)</label><select id="j-bias"><option value="">Not set</option><option value="bullish">Bullish</option><option value="bearish">Bearish</option><option value="neutral">Neutral</option></select></div>
-<div><label for="j-zone">Zone (optional)</label><input type="text" id="j-zone" placeholder="e.g. 15m demand zone" maxlength="40"></div>
-</div>
-<div class="frow two">
-<div><label for="j-r">Result in R (optional)</label><input type="number" id="j-r" placeholder="3, -1 or 0" step="any"></div>
-<div><label for="j-rp">Risk as % of account (with R)</label><input type="number" id="j-rp" placeholder="1 or 0.75" min="0" step="any"></div>
-</div>
-<div class="hint" style="margin:-4px 0 10px">Use R and risk % instead of P/L if you track the account in percent: the result is stored as risk % times R and the stats then show %.</div>
-<div class="frow two"><div><label for="j-img">Screenshot (optional)</label><input type="file" id="j-img" accept="image/png,image/jpeg,image/webp,image/gif"><div class="jsub" id="j-img-state">You can also paste an image (Ctrl+V) while this form is open.</div></div></div>
-<div class="frow two"><div><label for="j-notes">Notes</label><input type="text" id="j-notes" placeholder="What did you do well or badly?" maxlength="140"></div></div>
+<details class="jmore"><summary>More (optional): time, grade, plan, feeling, no-trade day</summary><div class="nprops">
+<div class="np"><label>Time</label><div><input type="time" id="j-time"></div></div>
+<div class="np"><label>Setup grade</label><div><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div></div>
+<div class="np"><label>Followed the plan</label><div><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div></div>
+<div class="np"><label>Feeling</label><div><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div></div>
+<div class="np"><label>Counts in my numbers?</label><div><select id="j-kind"><option value="">Yes, a normal trade</option><option value="none">No-trade day (kept, not counted)</option><option value="invalid">Invalid trade (kept, not counted)</option></select></div></div>
+</div></details>
 <div class="btnrow">
-<button class="btn" id="j-add" type="button">Log trade</button>
+<button class="btn" id="j-add" type="button">Add trade</button>
 <button class="btn ghost" id="j-export" type="button">Export CSV</button>
 <button class="btn ghost" id="j-backup" type="button">Backup JSON</button>
 <label class="btn ghost" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">Restore JSON<input type="file" id="j-restore" accept=".json" style="display:none"></label>
 </div>
+<div class="ok" id="j-ok" hidden></div>
 <div class="err" id="j-err" style="display:none"></div>
 </div>
 
@@ -944,7 +965,7 @@ function showTab(name){
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
   var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
-  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jRender()}
+  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jFormTab(name);jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
   if(name==="alerts")alRender();if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
   dockChat(name==="home");
@@ -1138,6 +1159,7 @@ function cleanTrade(t){
   if(t.skip==="none"||t.skip==="invalid"||t.skip==="test")o.skip=t.skip;          /* kept in the journal but left out of every number */
   var r=parseFloat(t.r),rp=parseFloat(t.riskPct),no=parseInt(t.no,10);
   if(isFinite(r))o.r=r;if(isFinite(rp)&&rp>0)o.riskPct=rp;if(isFinite(no))o.no=no;
+  var pf=parseFloat(t.profit);if(isFinite(pf))o.profit=pf;
   if(/^[0-9a-f]{16}\.(png|jpg|webp|gif)$/.test(String(t.img||"")))o.img=t.img;
   return o
 }
@@ -1442,7 +1464,7 @@ function tRow(t,box){
   row.appendChild(el("div","t-pl "+cls(t.pl),signed(t.pl)));row.appendChild(el("div","t-ch","\u2304"));
   row.onclick=function(){tOpen[id]=!tOpen[id];jRender()};box.appendChild(row);
   if(open){var d=el("div","t-det"),kv=el("div","kv");
-    [["Zone",t.zone],["Strategy",t.strategy],["Bias",t.bias],["Grade",t.grade],["Plan",t.plan],["Feeling",t.emotion],["Partials",t.partials],["Risk",t.risk?jm(t.risk):""],["Trade no.",t.no]].forEach(function(p){
+    [["Zone",t.zone],["Strategy",t.strategy],["Bias",t.bias],["Grade",t.grade],["Plan",t.plan],["Feeling",t.emotion],["Partials",t.partials],["Risk",t.riskPct?t.riskPct+"%":t.risk?jm(t.risk):""],["Profit",t.profit!==undefined?(t.profit>=0?"+":"-")+"$"+money(Math.abs(t.profit)):""],["Trade no.",t.no]].forEach(function(p){
       if(p[1]===undefined||p[1]==="")return;var s=el("span");s.appendChild(document.createTextNode(p[0]+" "));s.appendChild(el("b",null,String(p[1])));kv.appendChild(s)});
     d.appendChild(kv);
     var ta=el("textarea");ta.value=t.notes||"";ta.maxLength=500;ta.rows=3;ta.placeholder="Notes on this trade";ta.setAttribute("aria-label","Notes");ta.onclick=function(e){e.stopPropagation()};d.appendChild(ta);
@@ -1450,6 +1472,7 @@ function tRow(t,box){
     var sv=el("button","btn small","Save changes");sv.type="button";sv.style.margin="8px 0 0";
     sv.onclick=function(e){e.stopPropagation();t.notes=ta.value.trim().slice(0,500);var at=ai.value.trim().slice(0,24);if(at)t.acctType=at;else delete t.acctType;jSave();jRender()};
     var row2=el("div");row2.style.cssText="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px";row2.appendChild(ai);row2.appendChild(sv);d.appendChild(row2);
+    var ed=el("button","btn small","Edit all fields");ed.type="button";ed.style.cssText="margin:10px 8px 0 0";ed.onclick=function(e){e.stopPropagation();jEdit(t)};d.appendChild(ed);
     var del=el("button","btn ghost small","Delete trade");del.type="button";del.style.marginTop="10px";del.onclick=function(e){e.stopPropagation();tDelete(t)};d.appendChild(del);box.appendChild(d)}}
 function tCard(t,list){
   var r=t.risk>0?t.pl/t.risk:(t.r!==undefined?t.r:null),b=el("button","h-tr "+cls(t.pl)),pic=el("div","pic");b.type="button";
@@ -1481,7 +1504,7 @@ function tRender(list){
     if(tDay!=="pick"||tPick!==dk){var v=el("button","v","View day \u203a");v.type="button";v.onclick=function(){tDay="pick";tPick=dk;jShown=30;jRender()};r.appendChild(v)}
     h.appendChild(r);sec.appendChild(h);ts.forEach(function(t){tRow(t,sec)});box.appendChild(sec)})}
 function jRender(){
-  var list=jView(),st=jStats(list);jHero();jAccts();setUnit(list);
+  var list=jView(),st=jStats(list);jHero();jAccts();setUnit(list);fillLists();if(!$("j-no").value&&!jEditing)$("j-no").value=nextNo();
   var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
   $("j-sub").textContent=bt?"Your backtest trades, kept apart from your live journal. They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
   $("coach").hidden=bt;
@@ -1524,7 +1547,7 @@ Array.prototype.forEach.call($("t-size").children,function(b){b.onclick=function
 Array.prototype.forEach.call($("t-day").children,function(b){b.onclick=function(){tDay=b.getAttribute("data-d");if(tDay==="pick"&&!tPick)tPick=today();jShown=30;jRender()}});
 $("t-pick").onchange=function(){tPick=this.value;jShown=30;jRender()};
 var tQT=null;$("t-q").oninput=function(){var v=this.value;clearTimeout(tQT);tQT=setTimeout(function(){tQ=v;jShown=30;jRender();var q=$("t-q");q.focus();q.setSelectionRange(q.value.length,q.value.length)},180)};
-$("j-log-go").onclick=function(){$("j-form").scrollIntoView({behavior:"smooth",block:"start"});$("j-pl").focus({preventScroll:true})};
+$("j-log-go").onclick=function(){$("j-form").scrollIntoView({behavior:"smooth",block:"start"});$("j-inst").focus({preventScroll:true})};
 /* import from a broker CSV: the columns are guessed, you check them, then it adds only what is new */
 function csvParse(text){
   text=text.replace(/^\uFEFF/,"");
@@ -1644,28 +1667,91 @@ function uploadImage(file){
       .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"upload failed");return j.name})})})}
 function pickImage(file){
   if(!file)return;imgState("Saving the screenshot...");
-  uploadImage(file).then(function(n){pendingImg=n;imgState("Screenshot ready ("+n+"). It is attached when you log the trade.")})
+  uploadImage(file).then(function(n){pendingImg=n;jDropImg=false;ssPreview(n);imgState("Screenshot ready. It is attached when you press the button below.")})
   .catch(function(e){pendingImg="";imgState("Could not save the screenshot: "+e.message,true)})}
 $("j-img").onchange=function(ev){pickImage(ev.target.files[0]);ev.target.value=""};
 document.addEventListener("paste",function(ev){
   if((tabNow!=="journal"&&tabNow!=="backtest")||!ev.clipboardData)return;
   var items=ev.clipboardData.files;if(items&&items.length&&/^image\//.test(items[0].type)){
     if(!$("lb").hidden)return;ev.preventDefault();pickImage(items[0])}});
+/* the add / edit form: the same properties, in the same order, as the Notion trade journal */
+var jType="live",jOut="",jEditing=null,jDropImg=false,TTKEY="zd.testtype",LAKEY="zd.liveat";
+var TYPENAME={live:"Day-to-day",forward:"Forward test",backtest:"Backtest"},TYPENOTE={
+  live:"Counts on the Journal page, Home, the prop firm room and the alerts.",
+  forward:"Account Type is Forward-Test. It shows on the Backtest page and never counts in your live numbers.",
+  backtest:"Account Type is Backtest. It shows on the Backtest page and never counts in your live numbers."};
+function typeOf(t){return t.acct!=="backtest"?"live":/forward/i.test(t.acctType||"")?"forward":"backtest"}
+function setType(k){jType=k;if(k!=="live")jset(TTKEY,k);
+  Array.prototype.forEach.call($("j-type").children,function(b){b.className=b.getAttribute("data-k")===k?"on":""});
+  var at=$("j-at");at.readOnly=k!=="live";at.value=k==="forward"?"Forward-Test":k==="backtest"?"Backtest":(jEditing&&jEditing.acctType)||jget(LAKEY)||"Funded Account";
+  $("j-typenote").textContent=TYPENOTE[k]}
+function setOut(o,toggle){jOut=toggle&&jOut===o?"":o;
+  Array.prototype.forEach.call($("j-out").children,function(b){b.className=b.getAttribute("data-o")===jOut?"on":""})}
+function setDir(d){$("j-dir").value=d;Array.prototype.forEach.call($("j-dirseg").children,function(b){b.className=b.getAttribute("data-d")===d?"on":""})}
+function nextNo(){var mx=0;trades.forEach(function(t){if(t.no>mx)mx=t.no});return mx+1}
+function ssPreview(name){
+  var box=$("j-ssprev");box.textContent="";$("j-ssclear").hidden=!name;
+  if(name){var im=el("img");im.src="/api/img/"+name;im.alt="Trade screenshot";im.onclick=function(){if(jEditing)openLb(jEditing);else window.open(im.src,"_blank","noopener")};box.appendChild(im)}
+  else box.appendChild(el("span",null,"No screenshot yet"))}
+function ssTitle(){var a=$("j-strat").value.trim(),b=$("j-tag").value.trim();$("j-sstitle").value=[a,b].filter(Boolean).join(" + ")}
+function fillLists(){
+  function put(id,vals){var dl=$(id);dl.textContent="";var seen={};vals.forEach(function(v){v=String(v||"").trim();if(v&&v!=="-"&&!seen[v]){seen[v]=1;var o=el("option");o.value=v;dl.appendChild(o)}})}
+  function uniq(k){var c={};trades.forEach(function(t){if(t[k])c[t[k]]=(c[t[k]]||0)+1});return Object.keys(c).sort(function(a,b){return c[b]-c[a]})}
+  put("j-instlist",uniq("inst"));put("j-stratlist",uniq("strategy"));put("j-taglist",uniq("tag"));put("j-zonelist",uniq("zone"));
+  put("j-seslist",["Asia Session","London Session","NY Session"].concat(uniq("session")))}
+function jFormTab(name){if(jEditing)jCancelEdit();setType(name==="backtest"?(jget(TTKEY)==="forward"?"forward":"backtest"):"live");$("j-ok").hidden=true}
+function readTradeForm(){
+  var kind=$("j-kind").value,pl,risk=0,unit="",rv="",rp="",profit="",money=parseFloat($("j-pl").value.trim()),r=parseFloat($("j-r").value),p=num("j-rp");
+  if(jOut==="be"){if(!isFinite(r))r=0;if(!isFinite(money))money=0}
+  else if(jOut==="loss"&&!isFinite(r)&&p>0&&!isFinite(money))r=-1;
+  function sgn(x){return jOut==="win"?Math.abs(x):jOut==="loss"?-Math.abs(x):x}
+  if(kind){pl=0;if(isFinite(money))profit=sgn(money)}
+  else if(isFinite(r)&&p>0){r=jOut==="be"?0:sgn(r);pl=Math.round(r*p*10000)/10000;risk=p;unit="pct";rv=r;rp=p;if(isFinite(money))profit=jOut==="be"?0:sgn(money)}
+  else if(isFinite(money)){pl=sgn(money);if(p>0){risk=0;rp=p}}
+  else return{error:"Fill in R/R and Risk (for example 3 and 0.5), or the Profit. Pick WIN or LOSS and the minus sign is handled for you."};
+  var live=jType==="live",t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
+    tag:$("j-tag").value.trim(),risk:risk,pl:pl,notes:$("j-notes").value.trim(),time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,
+    emotion:$("j-emo").value,acct:live?"live":"backtest",acctType:live?$("j-at").value.trim():jType==="forward"?"Forward-Test":"Backtest",
+    bias:$("j-bias").value,zone:$("j-zone").value.trim(),strategy:$("j-strat").value.trim(),session:$("j-ses").value.trim(),partials:$("j-part").value,
+    no:$("j-no").value,skip:kind,unit:unit,r:rv,riskPct:rp,profit:profit,img:pendingImg||(jEditing&&jEditing.img)||""});
+  return t?{trade:t}:{error:"That trade could not be read. Check the date and the numbers."}}
+function jOk(msg,page){
+  var b=$("j-ok");b.textContent=msg;b.hidden=false;
+  if(page&&((page==="backtest")!==(tabNow==="backtest"))){var go=el("button","btn small ghost","Open "+(page==="backtest"?"Backtest":"Journal")+" \u203a");go.type="button";go.onclick=function(){showTab(page)};b.appendChild(go)}}
+function jResetForm(){
+  ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-zone","j-bias","j-part","j-ses"].forEach(function(i){$(i).value=""});
+  $("j-kind").value="";setOut("");pendingImg="";ssPreview("");imgState("Or paste an image (Ctrl+V) while this form is open.");$("j-no").value=nextNo();ssTitle()}
+function jLeaveEdit(){jEditing=null;jDropImg=false;$("j-form").classList.remove("editing");$("j-formtitle").textContent="Add a trade";$("j-add").textContent="Add trade";$("j-editcancel").hidden=true}
+function jCancelEdit(){jLeaveEdit();jResetForm();setType(jType)}
+function jEdit(t){
+  jEditing=t;setType(typeOf(t));
+  $("j-form").classList.add("editing");$("j-formtitle").textContent="Edit this trade";$("j-add").textContent="Save changes";$("j-editcancel").hidden=false;$("j-ok").hidden=true;
+  var m={"j-date":t.date,"j-time":t.time,"j-no":t.no===undefined?"":t.no,"j-inst":t.inst==="-"?"":t.inst,"j-at":t.acctType||"","j-tag":t.tag,"j-zone":t.zone,"j-strat":t.strategy,
+    "j-ses":t.session,"j-bias":t.bias,"j-part":t.partials,"j-grade":t.grade,"j-plan":t.plan,"j-emo":t.emotion,"j-notes":t.notes,"j-kind":t.skip||""};
+  for(var k in m)$(k).value=m[k]===undefined||m[k]===null?"":m[k];
+  setDir(t.dir);setOut(t.skip?"":t.pl>0?"win":t.pl<0?"loss":"be");
+  var rp=t.riskPct||(t.unit==="pct"?t.risk:0)||"",rr=t.r!==undefined?t.r:(t.unit==="pct"&&rp?Math.round(t.pl/rp*100)/100:"");
+  $("j-rp").value=rp;$("j-r").value=rr===""?"":Math.abs(rr);
+  $("j-pl").value=t.profit!==undefined?Math.abs(t.profit):(t.unit==="pct"||t.skip?"":Math.abs(t.pl));
+  pendingImg="";ssPreview(t.img||"");imgState(t.img?"Choose or paste another file to replace it.":"Or paste an image (Ctrl+V) while this form is open.");ssTitle();
+  $("j-form").scrollIntoView({behavior:"smooth",block:"start"})}
+$("j-editcancel").onclick=jCancelEdit;
+Array.prototype.forEach.call($("j-type").children,function(b){b.onclick=function(){setType(b.getAttribute("data-k"))}});
+Array.prototype.forEach.call($("j-out").children,function(b){b.onclick=function(){setOut(b.getAttribute("data-o"),true)}});
+Array.prototype.forEach.call($("j-dirseg").children,function(b){b.onclick=function(){setDir(b.getAttribute("data-d"))}});
+$("j-strat").oninput=ssTitle;$("j-tag").oninput=ssTitle;setDir("long");
+$("j-ssclear").onclick=function(){pendingImg="";jDropImg=!!jEditing;ssPreview("");imgState("Screenshot removed. Choose or paste another one if you want.")};
 $("j-add").onclick=function(){
-  jError("");
-  var pl=$("j-pl").value.trim(),rv=$("j-r").value.trim(),rp=num("j-rp"),useR=rv!==""&&isFinite(parseFloat(rv))&&rp>0,unit="";
-  var risk=num("j-risk"),plv=parseFloat(pl);
-  if(useR){risk=rp;plv=Math.round(parseFloat(rv)*rp*10000)/10000;unit="pct"}
-  else if(pl===""||!isFinite(plv)){jError("Enter the result (P/L) first, or the result in R with the risk percent. Use a negative number for a loss.");return}
-  var t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
-    tag:$("j-tag").value.trim(),risk:risk,pl:plv,notes:$("j-notes").value.trim(),
-    time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,emotion:$("j-emo").value,
-    acct:jAcct,acctType:$("j-at").value.trim(),bias:$("j-bias").value,zone:$("j-zone").value.trim(),unit:unit,r:useR?parseFloat(rv):"",riskPct:useR?rp:"",img:pendingImg});
+  jError("");$("j-ok").hidden=true;
+  var res=readTradeForm();if(res.error){jError(res.error);return}
+  var t=res.trade,page=t.acct==="backtest"?"backtest":"journal",label=TYPENAME[typeOf(t)];
+  if(jDropImg&&!pendingImg)delete t.img;
+  if(t.acct==="live"&&t.acctType)jset(LAKEY,t.acctType);
+  if(jEditing){var ix=trades.indexOf(jEditing);if(ix>=0)trades[ix]=t;else trades.unshift(t);
+    jLeaveEdit();jSave();jRender();jResetForm();setType(jType);jOk("Saved. "+label+" trade updated.",page);return}
   trades.unshift(t);jSave();jRender();
-  if(AL.check&&t.acct!=="backtest"){var ckr=ckRules(),ckd=ckDone(),ckn=ckr.filter(function(r,i){return ckd.indexOf(i)>=0}).length;if(ckn<ckr.length)alFire("Checklist not complete","You logged a trade with "+ckn+" of "+ckr.length+" checklist items ticked.")}
-  ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-rp","j-zone","j-bias"].forEach(function(i){$(i).value=""});
-  pendingImg="";imgState("You can also paste an image (Ctrl+V) while this form is open.");
-};
+  if(AL.check&&t.acct!=="backtest"&&!t.skip){var ckr=ckRules(),ckd=ckDone(),ckn=ckr.filter(function(r,i){return ckd.indexOf(i)>=0}).length;if(ckn<ckr.length)alFire("Checklist not complete","You logged a trade with "+ckn+" of "+ckr.length+" checklist items ticked.")}
+  jResetForm();jOk("Added to "+label+(t.no!==undefined?" as trade "+t.no:"")+". Add the next one, the date, pair and strategy are kept.",page)};
 /* share card: a picture of one period's result, drawn on a canvas so it can be saved or pasted anywhere */
 var SH={list:[],label:"",who:""};
 function shDraw(){

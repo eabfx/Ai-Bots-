@@ -456,7 +456,7 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertNotIn('id="j-rows"', self.PAGE)                              # the flat table is gone
 
     def test_accounts_panel_filters_the_whole_journal_by_account(self):
-        for s in ('id="j-accts"', 'id="ac-add"', 'id="j-at"', "function jAccts()", "function jBase()", "function atName(", "acctType:$(\"j-at\").value.trim()"):
+        for s in ('id="j-accts"', 'id="ac-add"', 'id="j-at"', "function jAccts()", "function jBase()", "function atName(", "acctType:live?$(\"j-at\").value.trim()"):
             self.assertIn(s, self.PAGE)
         self.assertIn("jAT?jBase().filter(", self.PAGE)                          # the hero, stats and trades all read the filtered pool
 

@@ -46,3 +46,28 @@ class Motion(unittest.TestCase):
         for needle in ("@keyframes fadeup", ".tool.enter", 'ent.classList.add("enter")', "pathLength:1"):
             self.assertIn(needle, PAGE)
         self.assertIn("prefers-reduced-motion:reduce){*{animation:none!important", PAGE)
+
+
+class ManualEntry(unittest.TestCase):
+    ORDER = ["Date", "Account Type", "Bias", "Pair", "Session", "Long / Short", "Risk", "Win / Loss", "R/R", "Partials", "Strategy", "Zone", "Setup",
+             "Trade SS", "Strategy + Setup", "Trade Breakdown", "Profit", "Trade No."]
+
+    def test_the_form_lists_the_notion_columns_in_the_same_order(self):
+        start = PAGE.index('<div class="card" id="j-form">')
+        form = PAGE[start:PAGE.index('<div class="card" id="j-trades">')]
+        at = -1
+        for name in self.ORDER:
+            i = form.index('<div class="np"><label>%s</label>' % name)
+            self.assertGreater(i, at, name)
+            at = i
+
+    def test_three_kinds_of_trade_and_editing(self):
+        for needle in ('data-k="live"', 'data-k="forward"', 'data-k="backtest"', '"Forward-Test"', "function jEdit(t)", "Edit all fields", "function readTradeForm()",
+                       "var pf=parseFloat(t.profit)"):
+            self.assertIn(needle, PAGE)
+
+    def test_no_duplicate_element_ids_in_the_form(self):
+        import re
+        ids = re.findall(r'\sid="([^"]+)"', PAGE)
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        self.assertEqual(dup, [])
