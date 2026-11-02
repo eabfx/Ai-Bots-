@@ -30,6 +30,7 @@ import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_api     # noqa: E402
 import autobrief     # noqa: E402
+import backup        # noqa: E402
 import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
@@ -45,6 +46,7 @@ class Handler(BaseHTTPRequestHandler):
     allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
     brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
     auth_settings = None                             # sign in with Google, only when the config has an "auth" section (see signin.py)
@@ -253,6 +255,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"doc": doc, "seeded": seeded})
         elif url.path == "/api/macro/brief":
             self.send_json(200, self.brief_keeper.state() if self.brief_keeper else {"brief": None, "error": "", "every": autobrief.EVERY, "next_at": 0})
+        elif url.path == "/api/backup":
+            self.send_json(200, self.backups.state() if self.backups else {"last": None, "count": 0, "error": ""})
         elif url.path == "/api/notion/hub":
             self.send_json(200, self.notion_link.hub_doc if self.notion_link else {"at": "", "root": "", "pages": {}})
         elif url.path == "/api/tradezella/summary":
@@ -375,6 +379,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler.notion_link = notion_api.Link(handler.data_dir, config_path)
     handler.vault = vault.Vault(handler.data_dir)
     handler.brief_keeper = autobrief.Keeper(handler.data_dir, config_path, handler.macro_net, lambda *a, **k: handler.coach_post(*a, **k))
+    handler.backups = backup.Backups(handler.data_dir, config_path)
     return DashboardServer(("127.0.0.1", port), handler)
 
 
@@ -438,6 +443,7 @@ def main(argv=None):
     try:
         if server.RequestHandlerClass.notion_link.token:
             server.RequestHandlerClass.notion_link.start()
+        server.RequestHandlerClass.backups.start()
         if not args.offline:
             server.RequestHandlerClass.brief_keeper.start()
         server.serve_forever()

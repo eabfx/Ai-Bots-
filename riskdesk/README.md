@@ -2,6 +2,8 @@
 
 A personal trading dashboard: macro desk, journal, backtest log, risk calculators, prop firm tracker, alerts and an AI assistant. Signals only: it never places an order. The Zones finder is a separate project in `../zones-app`.
 
+**Daily backup:** while RiskDesk runs it saves a zip of your whole trader folder (journal, screenshots, notes, settings) to `trader/backups` once a day and keeps the newest 14. It never changes your originals. The status bar shows the time of the last copy. For a second copy somewhere else (a OneDrive or USB folder), add `"backup_copy_to": "D:/Backups"` to `trader/config.json`. Restore by unzipping a backup over the trader folder while RiskDesk is closed.
+
 **Open it like an app (Windows):** run `powershell -ExecutionPolicy Bypass -File riskdesk\install-app.ps1` once. You get a RiskDesk icon on the Desktop and in the Start menu that opens it in its own window (no browser tabs), starting the server quietly if needed. The server also starts at sign-in so prices and the hourly AI read keep going. Remove with `-Remove`.
 
 Start it on Windows by double-clicking `RiskDesk.bat` in this folder, or from the repo's top folder:

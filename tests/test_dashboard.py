@@ -746,3 +746,70 @@ class TerminalLook(Server):
         for needle in ('id="h-tiles"', 'id="h-qm"', "Quote monitor", "function tilesRender", "function qmRender", "hgrid3"):
             self.assertIn(needle, page)
 
+
+
+class DailyBackup(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        import backup
+        self.backup = backup
+        self.dir = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.dir, "journal"))
+        with open(os.path.join(self.dir, "journal", "trades.json"), "w") as fh:
+            fh.write('[{"id": 1}]')
+        with open(os.path.join(self.dir, "config.json"), "w") as fh:
+            fh.write("{}")
+        self.now = 1800000000.0
+
+    def make(self, **kw):
+        return self.backup.Backups(self.dir, os.path.join(self.dir, "config.json"), clock=lambda: self.now, **kw)
+
+    def test_a_backup_holds_the_journal_and_leaves_the_originals_alone(self):
+        import zipfile
+        b = self.make()
+        name = b.run()
+        self.assertTrue(name.endswith(".zip"), b.error)
+        with zipfile.ZipFile(os.path.join(self.dir, "backups", name)) as z:
+            self.assertIn(os.path.join("journal", "trades.json"), z.namelist())
+            self.assertEqual(z.read(os.path.join("journal", "trades.json")), b'[{"id": 1}]')
+            self.assertFalse([n for n in z.namelist() if n.startswith("backups")])   # never a backup of the backups
+        with open(os.path.join(self.dir, "journal", "trades.json")) as fh:
+            self.assertEqual(fh.read(), '[{"id": 1}]')
+
+    def test_it_is_due_when_there_is_none_or_the_newest_is_old(self):
+        b = self.make()
+        self.assertTrue(b.due())
+        b.run()
+        self.assertFalse(b.due())
+        self.now += 21 * 3600
+        self.assertTrue(b.due())
+
+    def test_only_the_newest_few_are_kept(self):
+        b = self.make(keep=3)
+        for _ in range(5):
+            self.now += 86400
+            self.assertTrue(b.run(), b.error)
+        names = [f["name"] for f in b.listing()]
+        self.assertEqual(len(names), 3)
+        self.assertEqual(names, sorted(names))
+
+    def test_a_second_copy_goes_where_the_config_says(self):
+        import tempfile
+        extra = os.path.join(tempfile.mkdtemp(), "mine")
+        with open(os.path.join(self.dir, "config.json"), "w") as fh:
+            json.dump({"backup_copy_to": extra}, fh)
+        name = self.make().run()
+        self.assertTrue(os.path.exists(os.path.join(extra, name)))
+
+    def test_a_failure_is_reported_not_raised(self):
+        afile = os.path.join(self.dir, "config.json")           # a file where a folder is needed, so making backups/ fails
+        b = self.backup.Backups(afile, None)
+        self.assertEqual(b.run(), "")
+        self.assertTrue(b.error)
+        self.assertTrue(b.state()["error"])
+
+    def test_the_status_bar_and_route_are_in_the_page(self):
+        with open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8") as fh:
+            page = fh.read()
+        self.assertIn('id="sb-bk"', page)
+        self.assertIn("/api/backup", page)

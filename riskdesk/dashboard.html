@@ -3163,7 +3163,7 @@ jLoad();
 })();
 </script>
 <div id="cmdhelp" role="listbox" aria-label="Commands"></div>
-<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span class="sp"></span><span>Signals only. No orders.</span></div>
+<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span id="sb-bk"></span><span class="sp"></span><span>Signals only. No orders.</span></div>
 <script>
 /* terminal bar: numbered tabs, a command box (` focuses it), a status bar */
 (function(){
@@ -3214,7 +3214,12 @@ jLoad();
     var st=window.rdState?window.rdState():{};
     if(st.d)put($("sb-px"),"Prices","ok","live",["as of",st.d.as_of]);else put($("sb-px"),"Prices","bad","waiting");
     if(st.b&&st.b.at)put($("sb-ai"),"AI read","b",hm(st.b.at*1000),st.n?["next",hm(st.n*1000)]:null);else put($("sb-ai"),"AI read","bad","none yet")}
-  tick();setInterval(tick,1000);
+  var bk={};function loadBk(){fetch("/api/backup").then(function(r){return r.json()}).then(function(d){bk=d||{}}).catch(function(){})}
+  function bkShow(){var el=$("sb-bk");if(!el)return;
+    var label,val,cls;if(bk.error){val="failed";cls="bad"}else if(bk.last){val=hm(bk.last.at*1000);cls=""}else{val="due soon";cls=""}
+    el.textContent="";el.appendChild(document.createTextNode("Backup "));var a=document.createElement("i");if(cls)a.className=cls;a.textContent=val;el.appendChild(a)}
+  loadBk();setInterval(loadBk,600000);
+  tick();setInterval(tick,1000);setInterval(bkShow,5000);setTimeout(bkShow,1500);
 })();
 </script>
 </body>
