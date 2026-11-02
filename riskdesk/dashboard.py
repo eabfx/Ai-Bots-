@@ -196,8 +196,8 @@ class Handler(BaseHTTPRequestHandler):
                                         self.coach_post, 1800)
                 parts = macro.split_brief(answer)
                 doc = self.brief_keeper.store(answer, snap["as_of"], parts) if self.brief_keeper else {}
-                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": parts,
-                                            "bias": macro.biases(parts), "at": doc.get("at"), "auto": False})
+                return self.send_json(200, dict(doc) if doc else dict(macro.desk(parts), answer=answer, as_of=snap["as_of"],
+                                                                      parts=parts, at=None, auto=False))
             elif path == "/api/chat":
                 now = z.parse_now(str(body.get("now") or "") or None)
                 msgs = coach.clean_messages(body.get("messages"))

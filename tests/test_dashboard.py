@@ -265,7 +265,7 @@ class MacroRoutes(Server):
         self.assertIn("macro brief", sent["system"])
 
     def test_the_ai_gives_a_bias_for_each_market_and_it_is_kept(self):
-        answer = ("Tone: Calm.\n\nGold and MGC:\nBias: Bullish\nConviction: Medium\nSentiment: Dollar -0.4%, VIX up.\n"
+        answer = ("Tone: Calm.\n\nGold and MGC:\nBias: Bullish\nConfidence: 66\nSentiment: Dollar -0.4%, VIX up.\n"
                   "Fundamentals: PCE below forecast.\nChanges if: yields jump.\n\nNasdaq (NQ):\nBias: Neutral\nConviction: Low\n"
                   "Sentiment: Mixed.\nFundamentals: Jobs data due.\nChanges if: a beat.")
         self.server.RequestHandlerClass.coach_post = staticmethod(lambda u, h, b: (
@@ -273,7 +273,7 @@ class MacroRoutes(Server):
         code, doc = self.post("/api/macro/brief", {"now": self.NOW})
         self.assertEqual(code, 200)
         gold = doc["bias"]["Gold and MGC"]
-        self.assertEqual((gold["bias"], gold["conviction"]), ("bullish", "medium"))
+        self.assertEqual((gold["bias"], gold["conviction"], gold["confidence"]), ("bullish", "medium", 66))
         self.assertEqual(gold["fundamentals"], "PCE below forecast.")
         self.assertEqual(doc["bias"]["Nasdaq (NQ)"]["bias"], "neutral")
         _, _, js = self.get("/api/macro/brief")
@@ -282,7 +282,7 @@ class MacroRoutes(Server):
     def test_the_brief_asks_for_a_bias_from_sentiment_and_fundamentals_with_the_trend(self):
         self.post("/api/macro/brief", {"now": self.NOW})
         sent = self.sent[0][2]
-        for needle in ("Bias: Bullish or Bearish or Neutral", "Sentiment:", "Fundamentals:", "Changes if"):
+        for needle in ("Bias: Bullish or Bearish or Neutral", "Confidence:", "Sentiment:", "Fundamentals:", "Changes if", "Event notes", "Headline"):
             self.assertIn(needle, sent["system"])
         self.assertIn("MOOD by a plain rule", sent["messages"][0]["content"])
 
@@ -331,6 +331,20 @@ class MacroRoutes(Server):
         self.assertIn("No AI key", keeper.state()["error"])
         self.assertEqual(self.sent, [])
 
+    def test_the_keeper_logs_each_brief_and_notes_a_changed_bias(self):
+        clock = [1800000000.0]
+        keeper = dash.autobrief.Keeper(self.tmp.name, "x", None, None, lambda: clock[0])
+        up = {"Gold and MGC": "Bias: Bullish\nConfidence: 70", "EURUSD": "Bias: Neutral\nConfidence: 40"}
+        down = {"Gold and MGC": "Bias: Neutral\nConfidence: 50", "EURUSD": "Bias: Neutral\nConfidence: 40"}
+        keeper.store("a", "t1", up)
+        clock[0] += 3600
+        keeper.store("b", "t2", down)
+        st = keeper.state()
+        self.assertEqual(len(st["history"]), 2)
+        self.assertEqual(st["changes"], [{"market": "Gold and MGC", "from": "bullish", "to": "neutral", "at": 1800003600.0}])
+        again = dash.autobrief.Keeper(self.tmp.name, "x", None)
+        self.assertEqual(len(again.state()["history"]), 2)
+
     def test_a_restarted_keeper_loads_the_last_brief_from_disk(self):
         self.post("/api/macro/brief", {"now": self.NOW})
         again = dash.autobrief.Keeper(self.tmp.name, "x", None)
@@ -339,7 +353,7 @@ class MacroRoutes(Server):
     def test_home_shows_real_numbers_under_each_market_and_the_hourly_note(self):
         _, _, page = self.get("/")
         for needle in ("function mkFacts", "Prev close", "1 month", "hrange", "function loadBrief", "/api/macro/brief",
-                       'id="h-mk-note"', "next one about", "Write it now"):
+                       'id="h-mk-note"', "next one about", "Write it now", "function deskRender", "function deskAlign", "Alignment score", "Highest conviction", "Bias changed", "Against the desk", "AI overview", "Upcoming events"):
             self.assertIn(needle, page)
 
     def test_chat_sends_the_conversation_and_what_is_on_screen_and_nothing_else(self):

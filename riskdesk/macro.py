@@ -476,8 +476,8 @@ def mood(quotes):
     return {"label": label, "score": score, "reasons": reasons or ["no big moves in the S&P 500, Nasdaq, VIX or dollar"]}
 
 
-BRIEF_LABELS = ["Tone", "Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD", "Releases to watch", "Careful around",
-                "One thing to check on your own charts"]
+BRIEF_LABELS = ["Headline", "Overview", "Mood", "Tone", "Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD", "Releases to watch", "Careful around",
+                "Event notes", "One thing to check on your own charts"]
 
 
 def split_brief(text):
@@ -552,19 +552,32 @@ Ground rules:
 - A bias is a lean, not a forecast. Do not predict exact prices, do not give price targets, entries or stops, and do
   not tell the trader to buy, sell, take or skip a trade.
 - Plain text, short paragraphs, no tables, no markdown headings, no bold. Use these labelled parts in this order:
-  Tone (two sentences on risk appetite), then one part each for Gold and MGC, Nasdaq (NQ), EURUSD and GBPUSD, then
-  Releases to watch (the next ones with Dublin time, forecast and previous when given, and which markets they hit),
-  Careful around (the Dublin times to be careful), and One thing to check on your own charts.
+  Headline (one line, under 14 words, the main story of the day), Overview (three to five sentences: what is moving
+  and why, and how the four markets line up), Mood (the shape below), Tone (two sentences on risk appetite), then one
+  part each for Gold and MGC, Nasdaq (NQ), EURUSD and GBPUSD, then Releases to watch (the next ones with Dublin time,
+  forecast and previous when given, and which markets they hit), Careful around (the Dublin times to be careful),
+  Event notes (the shape below) and One thing to check on your own charts.
+- Mood has exactly two lines:
+  Mood: Risk-on or Risk-off or Mixed
+  Confidence: a whole number from 0 to 100
 - Each of the four market parts must follow this exact shape, one labelled line each:
   Bias: Bullish or Bearish or Neutral
-  Conviction: Low or Medium or High
+  Confidence: a whole number from 0 to 100 (under 45 when signals disagree or data is missing, 45 to 69 when most
+  agree, 70 or more only when sentiment and fundamentals clearly agree)
   Sentiment: one or two sentences with the numbers that support it
   Fundamentals: one or two sentences on the releases and drivers that support it
   Changes if: one sentence on what would flip or weaken the bias
-- Keep it under 550 words."""
+- Event notes: one line for each of the next four high or medium impact releases in the data, in this shape:
+  Event: <the release title exactly as listed> | <one sentence on what a beat or a miss could do and to which markets>
+  Skip this part if no releases are listed.
+- Keep it under 750 words."""
 
 
-MARKET_FIELDS = ("Bias", "Conviction", "Sentiment", "Fundamentals", "Changes if")
+MARKET_FIELDS = ("Bias", "Confidence", "Conviction", "Sentiment", "Fundamentals", "Changes if")
+
+
+def _level(conf):
+    return "low" if conf < 45 else "medium" if conf < 70 else "high"
 
 
 def parse_market(text):
@@ -581,7 +594,12 @@ def parse_market(text):
     if not bias:
         return None
     conv = re.match(r"(?i)\s*(low|medium|high)", got.get("conviction", ""))
-    return {"bias": bias.group(1).lower(), "conviction": conv.group(1).lower() if conv else "",
+    num = re.match(r"\s*(\d{1,3})", got.get("confidence", ""))
+    conf = max(0, min(100, int(num.group(1)))) if num else None
+    level = _level(conf) if conf is not None else (conv.group(1).lower() if conv else "")
+    if conf is None and level:
+        conf = {"low": 35, "medium": 60, "high": 80}[level]
+    return {"bias": bias.group(1).lower(), "conviction": level, "confidence": conf,
             "sentiment": got.get("sentiment", ""), "fundamentals": got.get("fundamentals", ""),
             "changes": got.get("changes if", "")}
 
@@ -632,3 +650,33 @@ def brief_messages(snap, focus=""):
     if focus:
         lines.append("The trader asks you to focus on: " + focus)
     return [{"role": "user", "content": "\n".join(lines)}]
+
+
+def parse_mood(text):
+    """The Mood part as {label, confidence}; None when it is not readable."""
+    clean = re.sub(r"[*_`]+", "", text or "")
+    m = re.search(r"(?i)(risk[- ]?on|risk[- ]?off|mixed)", clean)
+    if not m:
+        return None
+    word = m.group(1).lower().replace(" ", "-")
+    label = "Risk-on" if word.startswith("risk") and word.endswith("on") else \
+        "Risk-off" if word.startswith("risk") else "Mixed"
+    num = re.search(r"(?i)confidence\s*:\s*(\d{1,3})", clean)
+    return {"label": label, "confidence": max(0, min(100, int(num.group(1)))) if num else None}
+
+
+def parse_events(text):
+    """The Event notes part as [{title, note}], one per 'Event: title | note' line."""
+    out = []
+    for line in re.sub(r"[*_`]+", "", text or "").splitlines():
+        m = re.match(r"\s*(?:Event\s*:\s*)?(.+?)\s*\|\s*(.+)$", line)
+        if m and m.group(1).strip() and m.group(2).strip():
+            out.append({"title": m.group(1).strip()[:120], "note": m.group(2).strip()[:300]})
+    return out[:8]
+
+
+def desk(parts):
+    """Everything the Macro Desk shows that came from the AI: headline, overview, mood, per-market bias, event notes."""
+    parts = parts or {}
+    return {"headline": (parts.get("Headline") or "").strip()[:160], "overview": (parts.get("Overview") or "").strip()[:1200],
+            "mood": parse_mood(parts.get("Mood", "")), "bias": biases(parts), "events": parse_events(parts.get("Event notes", ""))}

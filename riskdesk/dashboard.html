@@ -485,16 +485,42 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hm .read{font-size:12.5px;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);white-space:pre-wrap}
 .hm .read.none{color:var(--muted)}
 .aib{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
-.aih{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-.aih .k{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.aipill{font:700 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 11px;border-radius:99px;border:1px solid currentColor}
-.aipill.up{color:var(--up);background:color-mix(in srgb,var(--up) 14%,transparent)}.aipill.down{color:var(--down);background:color-mix(in srgb,var(--down) 14%,transparent)}.aipill.flat{color:var(--flat)}
-.aiconv{display:inline-flex;align-items:center;gap:3px}.aiconv i{width:14px;height:5px;border-radius:99px;background:var(--line)}
-.aiconv i.on.up{background:var(--up)}.aiconv i.on.down{background:var(--down)}.aiconv i.on.flat{background:var(--flat)}
-.aiconv em{font:500 10px var(--mono);font-style:normal;color:var(--muted);margin-left:5px;text-transform:uppercase;letter-spacing:.08em}
+.aih{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.aik{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.aipill{font:700 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 11px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.aipill.mini{font-size:9.5px;padding:1px 7px}
+.aipill.up,.dkstack i.bullish,.dklg i.bullish{color:var(--up)}.aipill.down{color:var(--down)}.aipill.flat,.aipill.pending{color:var(--flat)}
+.aipill.up{background:color-mix(in srgb,var(--up) 14%,transparent)}.aipill.down{background:color-mix(in srgb,var(--down) 14%,transparent)}
+.aicf{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font:500 11px var(--mono);color:var(--muted);margin-bottom:8px}.aicf b{color:var(--text)}
+.aibar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}.aibar i{display:block;height:100%;border-radius:99px;background:var(--flat);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.aibar i.up{background:var(--up)}.aibar i.down{background:var(--down)}
+.aian{font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.aimore{display:none;margin-top:4px}.aib.open .aian{-webkit-line-clamp:unset;display:none}.aib.open .aimore{display:block}
 .aiy{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:12.5px;line-height:1.5;margin-top:5px}
 .aiy b{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.aird{appearance:none;border:0;background:none;color:var(--text);font:600 11px var(--mono);padding:4px 0 0;cursor:pointer;opacity:.75;text-decoration:underline;text-underline-offset:3px}.aird:hover{opacity:1}
+.aiup{font:500 10.5px var(--mono);color:var(--muted);margin-top:8px}
 .aib .read{font-size:12.5px;line-height:1.5;white-space:pre-wrap}.aib .read.none{color:var(--muted)}
+.desk{margin-bottom:8px}.dkh{font-size:20px;margin:0 0 2px}.dksub{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.dk4{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:12px}
+.dk2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:12px}@media(max-width:900px){.dk2{grid-template-columns:1fr}}
+.dkc{margin-bottom:0}.dkt{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.dkmood{display:flex;align-items:center;gap:12px}.gauge{width:104px;flex:none}.dkmood .mbig{display:block;font-size:20px}
+.dkstack{display:flex;gap:3px;height:8px;margin:10px 0 8px}.dkstack i{display:block;border-radius:99px;background:var(--flat)}
+.dkstack i.bullish{background:var(--up)}.dkstack i.bearish{background:var(--down)}.dkstack i.neutral{background:var(--flat)}.dkstack i.pending{background:var(--line)}
+.dklg{display:flex;gap:12px;flex-wrap:wrap;font:500 11px var(--mono);color:var(--muted)}.dklg i{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;background:var(--flat)}
+.dklg i.bullish{background:var(--up)}.dklg i.bearish{background:var(--down)}.dklg i.pending{background:var(--line)}
+.dkbest{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 4px}.dkbest b{font-size:18px}
+.dkwr{display:grid;grid-template-columns:56px 1fr 64px;gap:8px;align-items:center;font:500 11px var(--mono);color:var(--muted);margin-top:6px}.dkwr b{color:var(--text);text-align:right}
+.dkhead{font-weight:700;font-size:15px;line-height:1.4;margin-bottom:6px}.dkov{font-size:13px;line-height:1.65}.dksrc{font:500 10.5px var(--mono);color:var(--muted);margin:10px 0 12px}
+.dkcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;border-top:1px solid var(--line);padding-top:12px}
+.dkcl{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.dkrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:500 12px var(--mono);margin-top:5px}.dkrow em{font-style:normal;color:var(--muted);font-size:10.5px}
+.dkrow .up{color:var(--up)}.dkrow .down{color:var(--down)}
+.dkev{max-height:430px;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+.dkei{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--glowsoft)}
+.dket{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px}
+.dkea{font-size:12px;line-height:1.5;margin-top:6px}.dkea .aik{color:var(--text)}
 .hmnote{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5}
 .hfacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;margin:8px 0 4px;font:500 11px var(--mono)}
 .hfacts .hf{display:flex;flex-direction:column;gap:1px}.hfacts .hf i{font-style:normal;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
@@ -2437,22 +2463,116 @@ function mkFacts(q){
     var lab=el("div","hrl");lab.appendChild(el("span",null,fmt(lo,q.digits)));lab.appendChild(el("span",null,fmt(hi,q.digits)));
     var tr=el("div","hrt"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";tr.appendChild(dot);rg.appendChild(tr);rg.appendChild(lab);box.appendChild(rg)}
   return box}
-/* the AI's bias for one market: a lean, with its conviction and the sentiment and fundamentals behind it */
+/* the AI's bias for one market: a lean, with its confidence and the sentiment and fundamentals behind it */
+function agoText(at){if(!at)return"";var m=Math.max(0,Math.round((Date.now()/1000-at)/60));return m<1?"just now":m<60?m+"m ago":Math.floor(m/60)+"h ago"}
 function aiBias(m,home){
   var box=el("div","aib"),a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]],part=macroBrief&&macroBrief.parts&&macroBrief.parts[m[2]];
-  var hd=el("div","aih");hd.appendChild(el("span","k","AI bias"));
+  var hd=el("div","aih");hd.appendChild(el("span","aik","AI analysis"));
   if(!a){
-    if(part){hd.appendChild(el("span","aipill flat","No bias given"));box.appendChild(hd);box.appendChild(el("div","read",part));return box}
-    hd.appendChild(el("span","aipill flat","Waiting"));box.appendChild(hd);
+    if(part){hd.appendChild(el("span","aipill flat","No bias"));box.appendChild(hd);box.appendChild(el("div","read",part));return box}
+    hd.appendChild(el("span","aipill flat","Pending"));box.appendChild(hd);
     box.appendChild(el("div","read none","The AI is reading the market. The bias appears here when the next read is written."));return box}
   var cls=a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat";
   hd.appendChild(el("span","aipill "+cls,(a.bias==="bullish"?"\u25B2 ":a.bias==="bearish"?"\u25BC ":"\u25C6 ")+a.bias));
-  var lv={low:1,medium:2,high:3}[a.conviction]||0;
-  if(lv){var cv=el("span","aiconv");cv.title="Conviction: "+a.conviction;for(var i=1;i<=3;i++)cv.appendChild(el("i",i<=lv?"on "+cls:""));cv.appendChild(el("em",null,a.conviction));hd.appendChild(cv)}
   box.appendChild(hd);
-  [["Sentiment",a.sentiment],["Fundamentals",a.fundamentals],["Changes if",a.changes]].forEach(function(r){
-    if(!r[1])return;var row=el("div","aiy");row.appendChild(el("b",null,r[0]));row.appendChild(el("span",null,r[1]));box.appendChild(row)});
+  if(a.confidence!==null&&a.confidence!==undefined){
+    var cr=el("div","aicf");cr.title="Confidence in the bias: "+a.conviction;cr.appendChild(el("span",null,"Confidence"));
+    var bar=el("div","aibar"),fl=el("i",cls);fl.style.width=a.confidence+"%";bar.appendChild(fl);cr.appendChild(bar);cr.appendChild(el("b",null,a.confidence+"%"));box.appendChild(cr)}
+  var an=el("div","aian",[a.sentiment,a.fundamentals].filter(Boolean).join(" ")||part||"");box.appendChild(an);
+  var more=el("div","aimore");[["Sentiment",a.sentiment],["Fundamentals",a.fundamentals],["Changes if",a.changes]].forEach(function(r){
+    if(!r[1])return;var row=el("div","aiy");row.appendChild(el("b",null,r[0]));row.appendChild(el("span",null,r[1]));more.appendChild(row)});
+  var rb=el("button","aird","Read more");rb.type="button";
+  rb.onclick=function(){var o=box.classList.toggle("open");rb.textContent=o?"Show less":"Read more"};
+  box.appendChild(more);box.appendChild(rb);
+  if(macroBrief.at)box.appendChild(el("div","aiup","Updated "+agoText(macroBrief.at)));
   return box}
+/* AI Macro Desk: mood, bias across the markets, highest conviction, alignment with your trades, overview, changes, events */
+var briefChanges=[],briefHist=[];
+var DESKM={"Gold and MGC":/^(XAU|GC|MGC|GOLD)/,"Nasdaq (NQ)":/^(NQ|MNQ|NAS|US100|USTEC)/,"EURUSD":/^(EURUSD|6E|M6E)/,"GBPUSD":/^(GBPUSD|6B|M6B)/};
+function deskAlign(){
+  var r={w:0,wn:0,a:0,an:0};
+  if(!briefHist.length)return r;
+  sinceDays(90).forEach(function(t){
+    var lab=null;for(var k in DESKM)if(DESKM[k].test(String(t.inst||"").toUpperCase()))lab=k;if(!lab)return;
+    var ts=Date.parse(t.date+"T"+(t.time||"12:00")+":00");if(!isFinite(ts))return;ts/=1000;
+    var h=null;for(var i=0;i<briefHist.length;i++){if(briefHist[i][0]<=ts)h=briefHist[i];else break}
+    if(!h||ts-h[0]>36*3600)return;var b=h[1][lab];if(b!=="bullish"&&b!=="bearish")return;
+    var withIt=(b==="bullish")===(t.dir==="long");
+    if(withIt){r.w++;if(t.pl>0)r.wn++}else{r.a++;if(t.pl>0)r.an++}});
+  return r}
+function svgEl(tag,attrs){var e=document.createElementNS("http://www.w3.org/2000/svg",tag);for(var k in attrs)e.setAttribute(k,attrs[k]);return e}
+function moodGauge(label,conf){
+  var g=svgEl("svg",{viewBox:"0 0 120 70","class":"gauge","aria-hidden":"true"});
+  [["var(--down)","M10 62 A50 50 0 0 1 35 19"],["var(--flat)","M40 16 A50 50 0 0 1 80 16"],["var(--up)","M85 19 A50 50 0 0 1 110 62"]].forEach(function(a){
+    g.appendChild(svgEl("path",{d:a[1],fill:"none",stroke:a[0],"stroke-width":"9","stroke-linecap":"round",opacity:".85"}))});
+  var dir=label==="Risk-on"?1:label==="Risk-off"?-1:0,ang=dir*(25+((conf===null||conf===undefined?60:conf)/100)*55);
+  var n=svgEl("line",{x1:"60",y1:"62",x2:"60",y2:"26","stroke-width":"3","stroke-linecap":"round",stroke:"var(--text)",style:"transform-origin:60px 62px;transform:rotate("+ang+"deg)"});
+  g.appendChild(n);g.appendChild(svgEl("circle",{cx:"60",cy:"62",r:"5",fill:"var(--text)"}));return g}
+function deskRender(d){
+  var wrap=el("div","desk"),B=macroBrief||{},bi=B.bias||{},mood=B.mood||null;
+  wrap.appendChild(el("h2","dkh","AI Macro Desk"));
+  wrap.appendChild(el("div","dksub","Real prices, calendar and headlines, read by the AI every hour. A bias is a lean for the day, not a forecast and not a trade signal."));
+  var grid=el("div","dk4");
+  /* mood */
+  var c=el("div","card dkc"),h=el("div","dkt");h.appendChild(el("span","mlabel","Market mood"));if(B.at)h.appendChild(el("span","chip",agoText(B.at)));c.appendChild(h);
+  var lab=mood?mood.label:d.mood.label,mr=el("div","dkmood");mr.appendChild(moodGauge(lab,mood?mood.confidence:null));
+  var mt=el("div");mt.appendChild(el("b","mbig "+(lab==="Risk-on"?"up":lab==="Risk-off"?"down":"flat"),lab));
+  mt.appendChild(el("div","mmore",B.headline||("From "+d.mood.reasons.join(", ")+".")));
+  if(mood&&mood.confidence!==null)mt.appendChild(el("div","mmore","Confidence "+mood.confidence+"% \u00B7 "+(mood.confidence<45?"Low":mood.confidence<70?"Medium":"High")));
+  else mt.appendChild(el("div","mmore","Plain rule on today's moves until the AI read is in."));
+  mr.appendChild(mt);c.appendChild(mr);grid.appendChild(c);
+  /* bias across */
+  c=el("div","card dkc");c.appendChild(el("div","mlabel","Bias across your markets"));
+  var cnt={bullish:0,bearish:0,neutral:0,pending:0};MARKETS.forEach(function(m){var a=bi[m[2]];cnt[a?a.bias:"pending"]++});
+  c.appendChild(el("div","mbig",MARKETS.length+" followed"));
+  var sb=el("div","dkstack");["bullish","bearish","neutral","pending"].forEach(function(k){if(cnt[k]){var i=el("i",k);i.style.flex=cnt[k];sb.appendChild(i)}});c.appendChild(sb);
+  var lg=el("div","dklg");["bullish","bearish","neutral","pending"].forEach(function(k){var sp=el("span");sp.appendChild(el("i",k));sp.appendChild(document.createTextNode(cnt[k]+" "+k));lg.appendChild(sp)});c.appendChild(lg);grid.appendChild(c);
+  /* highest conviction */
+  c=el("div","card dkc");c.appendChild(el("div","mlabel","Highest conviction"));
+  var best=null;MARKETS.forEach(function(m){var a=bi[m[2]];if(a&&a.confidence!==null&&(!best||a.confidence>best.a.confidence))best={m:m,a:a}});
+  if(best){var q=quoteBy(d,best.m[0]),cl=best.a.bias==="bullish"?"up":best.a.bias==="bearish"?"down":"flat",r=el("div","dkbest");
+    r.appendChild(el("b",null,best.m[0]));r.appendChild(el("span","aipill "+cl,best.a.bias));if(q)r.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));c.appendChild(r);
+    c.appendChild(el("div","mmore",best.m[1]+" \u00B7 "+best.a.confidence+"% confidence"));
+    var mv=null,br=null;d.quotes.forEach(function(x){if(x.pct!==null&&(!mv||Math.abs(x.pct)>Math.abs(mv.pct)))mv=x});
+    MARKETS.forEach(function(m){var a=bi[m[2]];if(a&&a.bias==="bearish"&&(!br||a.confidence>br.a.confidence))br={m:m,a:a}});
+    c.appendChild(el("div","mmore","Biggest mover: "+(mv?mv.key+" "+pctText(mv.pct):"-")+(br?" \u00B7 Strongest bearish: "+br.m[0]+" "+br.a.confidence+"%":"")))}
+  else c.appendChild(el("div","mmore","Shows once the AI has written its first bias."));
+  grid.appendChild(c);
+  /* alignment */
+  c=el("div","card dkc");h=el("div","dkt");h.appendChild(el("span","mlabel","Alignment score"));h.appendChild(el("span","chip","90d"));c.appendChild(h);
+  var al=deskAlign(),tot=al.w+al.a;
+  if(tot){c.appendChild(el("div","mbig",Math.round(al.w/tot*100)+"%"));c.appendChild(el("div","mmore","of your last 90 days of trades were with the desk ("+tot+" trades)"));
+    [["With",al.wn,al.w,"up"],["Against",al.an,al.a,"down"]].forEach(function(r){var row=el("div","dkwr");row.appendChild(el("span",null,r[0]));
+      var bar=el("div","aibar"),f=el("i",r[3]);f.style.width=(r[2]?Math.round(r[1]/r[2]*100):0)+"%";bar.appendChild(f);row.appendChild(bar);row.appendChild(el("b",null,(r[2]?Math.round(r[1]/r[2]*100):0)+"% win"));c.appendChild(row)})}
+  else{c.appendChild(el("div","mbig","-"));c.appendChild(el("div","mmore","Builds up as the hourly biases are logged and your trades are matched to them. Needs live trades in Gold, NQ, EURUSD or GBPUSD."))}
+  grid.appendChild(c);wrap.appendChild(grid);
+  /* overview + events */
+  var row=el("div","dk2"),ov=el("div","card dkc");h=el("div","dkt");h.appendChild(el("span","mlabel","AI overview"));
+  var ob=el("button","btn ghost small","Write it now");ob.type="button";ob.onclick=function(){var b=$("h-brief");if(b)b.click();ob.disabled=true;ob.textContent="Writing..."};h.appendChild(ob);ov.appendChild(h);
+  if(B.headline||B.overview){ov.appendChild(el("div","dkhead",B.headline||""));ov.appendChild(el("div","dkov",B.overview||(B.parts&&B.parts.Tone)||""));
+    ov.appendChild(el("div","dksrc","Source: live Yahoo prices, economic calendar and news headlines \u00B7 written "+agoText(B.at)+(B.auto?" automatically":"")))}
+  else ov.appendChild(el("div","mmore","The overview is written every hour. The first one appears shortly after RiskDesk starts, or press Write it now."));
+  var cols=el("div","dkcols"),col=function(t){var x=el("div");x.appendChild(el("div","dkcl",t));cols.appendChild(x);return x};
+  var mvc=col("Movers today");d.quotes.filter(function(x){return x.pct!==null}).sort(function(a,b){return Math.abs(b.pct)-Math.abs(a.pct)}).slice(0,3).forEach(function(x){
+    var r=el("div","dkrow");r.appendChild(el("b",null,x.key));r.appendChild(el("span",pctClass(x.pct),pctText(x.pct)));mvc.appendChild(r)});
+  var ch=col("Bias changed"),lbl={};MARKETS.forEach(function(m){lbl[m[2]]=m[0]});
+  if(briefChanges.length)briefChanges.slice(-3).reverse().forEach(function(x){var r=el("div","dkrow");r.appendChild(el("b",null,lbl[x.market]||x.market));
+    r.appendChild(el("span","aipill mini flat",x.from));r.appendChild(el("span",null,"\u2192"));r.appendChild(el("span","aipill mini "+(x.to==="bullish"?"up":x.to==="bearish"?"down":"flat"),x.to));r.appendChild(el("em",null,agoText(x.at)));ch.appendChild(r)});
+  else ch.appendChild(el("div","mmore","No change yet."));
+  var ag=col("Against the desk"),any=false;MARKETS.forEach(function(m){var a=bi[m[2]],q=quoteBy(d,m[0]);
+    if(a&&q&&q.pct!==null&&((a.bias==="bullish"&&q.pct<0)||(a.bias==="bearish"&&q.pct>0))){any=true;var r=el("div","dkrow");r.appendChild(el("b",null,m[0]));r.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));
+      r.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":"down"),a.bias));ag.appendChild(r)}});
+  if(!any)ag.appendChild(el("div","mmore","Nothing is moving against its bias."));
+  ov.appendChild(cols);row.appendChild(ov);
+  var ev=el("div","card dkc");h=el("div","dkt");h.appendChild(el("span","mlabel","Upcoming events"));ev.appendChild(h);
+  var list=el("div","dkev"),shown=d.events.filter(function(e){return e.minutes>=-30}).slice(0,12),notes=B.events||[];
+  shown.forEach(function(e){var it=el("div","dkei"),top=el("div","dket");top.appendChild(el("b",null,e.title));top.appendChild(el("span","imp "+e.impact,e.impact));it.appendChild(top);
+    it.appendChild(el("div","mmore",e.when.split(" ").slice(-1)[0]+" Dublin \u00B7 "+e.country+" \u00B7 "+(e.minutes>=0?"in "+dur(e.minutes):dur(-e.minutes)+" ago")+((e.forecast||e.previous)?" \u00B7 forecast "+(e.forecast||"-")+", previous "+(e.previous||"-"):"")));
+    var nt=null;notes.forEach(function(n){if(!nt&&(e.title.toLowerCase().indexOf(n.title.toLowerCase())>=0||n.title.toLowerCase().indexOf(e.title.toLowerCase())>=0))nt=n});
+    if(nt){var an=el("div","dkea");an.appendChild(el("span","aik","AI"));an.appendChild(document.createTextNode(" "+nt.note));it.appendChild(an)}
+    list.appendChild(it)});
+  if(!shown.length)list.appendChild(el("div","mmore","Nothing listed soon."));ev.appendChild(list);row.appendChild(ev);wrap.appendChild(row);
+  return wrap}
 /* the hourly market read: written by RiskDesk itself every hour from live data, so it is here when you open the page */
 var briefNext=0,briefErr="";
 function briefNote(){
@@ -2463,11 +2583,12 @@ function briefNote(){
   else if(briefErr)txt+=briefErr;
   else txt+="The first market read is being written.";
   n.textContent=txt}
-function loadBrief(){
+function loadBrief(force){
   if(dormant)return;
   fetch("/api/macro/brief").then(function(r){return r.json()}).then(function(j){
-    briefNext=j.next_at||0;briefErr=j.error||"";
+    briefNext=j.next_at||0;briefErr=j.error||"";briefChanges=j.changes||[];briefHist=j.history||[];
     if(j.brief&&(!macroBrief||(j.brief.at||0)>(macroBrief.at||0))){macroBrief=j.brief;if(macroData)renderAll(macroData)}
+    else if(macroData&&tabNow==="macro")renderAll(macroData);
     briefNote()}).catch(function(){})}
 setInterval(loadBrief,300000);setTimeout(loadBrief,1500);setTimeout(loadBrief,45000);
 function renderAll(d){macroRender(d);homeRender(d);alertCheck(d);if(tabNow==="connect")connRender()}
@@ -2488,30 +2609,15 @@ function macroRender(d){
   var out=$("macro-out");out.textContent="";$("macro-asof").textContent="As of "+d.as_of+" Dublin";
   if(d.notes.length){var nc=el("div","card");d.notes.forEach(function(n){nc.appendChild(el("div","note",n))});out.appendChild(nc)}
   out.appendChild(sessionStrip(d));
-  /* mood, next release, biggest mover */
-  var row=el("div","mrow"),c1=el("div","card");
-  c1.appendChild(el("div","mlabel","Market mood"));
-  c1.appendChild(el("div","mbig "+(d.mood.label==="Risk-on"?"up":d.mood.label==="Risk-off"?"down":"flat"),d.mood.label));
-  c1.appendChild(el("div","mmore","From: "+d.mood.reasons.join(", ")+". A plain rule on the day's moves, not AI."));row.appendChild(c1);
-  var next=null;d.events.forEach(function(e){if(!next&&e.minutes>=0&&e.impact==="High")next=e});
-  if(!next)d.events.forEach(function(e){if(!next&&e.minutes>=0)next=e});
-  var c2=el("div","card");c2.appendChild(el("div","mlabel","Next release"));
-  if(next){c2.appendChild(el("div","mbig",next.title));
-    c2.appendChild(el("div","mmore",next.country+" "+next.impact+" impact, "+next.when+" Dublin, in "+dur(next.minutes)+
-      (next.forecast?". Forecast "+next.forecast+", previous "+(next.previous||"-"):"")))}
-  else c2.appendChild(el("div","mmore","No release listed ahead."));
-  row.appendChild(c2);
-  var mover=null;d.quotes.forEach(function(q){if(q.key!=="VIX"&&q.pct!==null&&(!mover||Math.abs(q.pct)>Math.abs(mover.pct)))mover=q});
-  var c3=el("div","card");c3.appendChild(el("div","mlabel","Biggest mover"));
-  if(mover){c3.appendChild(el("div","mbig "+pctClass(mover.pct),mover.name));c3.appendChild(el("div","mmore",pctText(mover.pct)+" since the last close"))}
-  else c3.appendChild(el("div","mmore","No prices."));
-  row.appendChild(c3);out.appendChild(row);
+  out.appendChild(deskRender(d));
+
   /* capital flow: every watched price, by how far it moved */
   var fc=el("div","card");fc.appendChild(el("h2",null,"Capital flow"));
   fc.appendChild(el("div","sub","How far each market moved since its last close, biggest first."));
   flowRows(fc,d,0);
   out.appendChild(fc);
   /* your markets */
+  var mh=el("h2","dkh","Your markets");mh.style.margin="6px 0 10px";out.appendChild(mh);
   var mk=el("div","mkts");
   MARKETS.forEach(function(m){
     var q=quoteBy(d,m[0]),c=el("div","mkt"),top=el("div","top");top.appendChild(el("h3",null,m[1]));
@@ -2540,7 +2646,7 @@ function macroRender(d){
       body:JSON.stringify({focus:fi.value.trim()})})
     .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
     .then(function(x){if(!x.ok){be.textContent=x.j.error||"The brief could not be written.";be.style.display="";bb.disabled=false;bb.textContent="Write today's brief";return}
-      macroBrief=x.j;renderAll(d)})
+      macroBrief=x.j;renderAll(d);loadBrief(true)})
     .catch(function(e){be.textContent="The dashboard did not answer: "+e;be.style.display="";bb.disabled=false;bb.textContent="Write today's brief"})};
   out.appendChild(bc);
   /* calendar */
@@ -2632,7 +2738,7 @@ $("h-brief").onclick=function(){
   var b=$("h-brief"),e=$("h-brief-err");e.style.display="none";b.disabled=true;b.textContent="Writing... this can take a minute";
   fetch("/api/macro/brief",{method:"POST",headers:HDRS,body:JSON.stringify({focus:""})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
-  .then(function(x){if(!x.ok){e.textContent=x.j.error||"The brief could not be written.";e.style.display="";return}macroBrief=x.j;if(macroData)renderAll(macroData)})
+  .then(function(x){if(!x.ok){e.textContent=x.j.error||"The brief could not be written.";e.style.display="";return}macroBrief=x.j;if(macroData)renderAll(macroData);loadBrief(true)})
   .catch(function(er){e.textContent="The dashboard did not answer: "+er;e.style.display=""})
   .then(function(){b.disabled=false;b.textContent=macroBrief?"Write it now":"Write today's brief"})};
 function dockChat(on){                                       /* on Home the assistant sits in its own panel, elsewhere it floats */

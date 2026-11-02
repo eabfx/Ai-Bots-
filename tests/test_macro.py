@@ -268,9 +268,10 @@ class Mood(unittest.TestCase):
 
 
 class SplitBrief(unittest.TestCase):
-    TEXT = ("Tone: Cautious.\nVIX up.\n\nGold and MGC: Held near highs.\n\nNasdaq (NQ): Pulled back.\n\n"
+    TEXT = ("Headline: Gold jumps.\n\nOverview: Yields slid.\n\nMood: Risk-on\nConfidence: 70\n\n"
+            "Tone: Cautious.\nVIX up.\n\nGold and MGC: Held near highs.\n\nNasdaq (NQ): Pulled back.\n\n"
             "EURUSD: Quiet.\n\nGBPUSD: Quiet.\n\nReleases to watch: PCE at 12:30.\n\nCareful around: 12:30.\n\n"
-            "One thing to check on your own charts: the daily level.")
+            "Event notes: Event: PCE | hot print hits gold\n\nOne thing to check on your own charts: the daily level.")
 
     def test_the_labelled_parts_are_found(self):
         parts = macro.split_brief(self.TEXT)
@@ -416,7 +417,7 @@ class MarketBias(unittest.TestCase):
 
     def test_a_part_with_the_shape_is_read(self):
         got = macro.parse_market(self.GOOD)
-        self.assertEqual(got, {"bias": "bearish", "conviction": "high", "sentiment": "Yields up 3%.",
+        self.assertEqual(got, {"bias": "bearish", "conviction": "high", "confidence": 80, "sentiment": "Yields up 3%.",
                                "fundamentals": "Hot CPI.", "changes": "CPI revised."})
 
     def test_bold_and_odd_case_are_tolerated(self):
@@ -440,3 +441,28 @@ class MarketBias(unittest.TestCase):
         self.assertIn("do not predict exact prices", low)
         self.assertIn("not a forecast", low)
 
+
+
+class Desk(unittest.TestCase):
+    def test_confidence_is_a_number_and_sets_the_level(self):
+        got = macro.parse_market("Bias: Bullish\nConfidence: 72\nSentiment: a")
+        self.assertEqual((got["confidence"], got["conviction"]), (72, "high"))
+        self.assertEqual(macro.parse_market("Bias: Bearish\nConfidence: 30")["conviction"], "low")
+        self.assertEqual(macro.parse_market("Bias: Bearish\nConfidence: 450")["confidence"], 100)
+
+    def test_the_old_word_form_still_reads(self):
+        got = macro.parse_market("Bias: Neutral\nConviction: Medium")
+        self.assertEqual((got["conviction"], got["confidence"]), ("medium", 60))
+
+    def test_mood_and_event_notes_are_read(self):
+        self.assertEqual(macro.parse_mood("Risk-off\nConfidence: 64"), {"label": "Risk-off", "confidence": 64})
+        self.assertIsNone(macro.parse_mood("unclear"))
+        ev = macro.parse_events("Event: Core PCE | A beat lifts the dollar and weighs on gold.\nrandom line")
+        self.assertEqual(ev, [{"title": "Core PCE", "note": "A beat lifts the dollar and weighs on gold."}])
+
+    def test_the_desk_collects_everything_the_page_needs(self):
+        parts = {"Headline": "Gold jumps", "Overview": "Yields slid.", "Mood": "Risk-on\nConfidence: 70",
+                 "Gold and MGC": "Bias: Bullish\nConfidence: 70", "Event notes": "Event: CPI | x"}
+        d = macro.desk(parts)
+        self.assertEqual((d["headline"], d["mood"]["label"], d["bias"]["Gold and MGC"]["confidence"], d["events"][0]["title"]),
+                         ("Gold jumps", "Risk-on", 70, "CPI"))

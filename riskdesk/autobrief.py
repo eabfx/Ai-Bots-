@@ -13,6 +13,8 @@ import macro
 EVERY = 3600                    # seconds between briefs
 RETRY = 600                     # seconds before trying again after a failure
 FILE = "macro_brief.json"
+HISTORY = "macro_bias_history.json"      # every brief's biases over time, so changes and "with the desk" can be worked out
+KEEP = 600
 
 
 class Keeper:
@@ -22,6 +24,7 @@ class Keeper:
         self.error = ""
         self.tried = 0.0
         self.brief = self._load()
+        self.history = self._load_history()
 
     def _path(self):
         return os.path.join(self.dir, FILE)
@@ -36,6 +39,35 @@ class Keeper:
             pass
         return None
 
+    def _load_history(self):
+        try:
+            with open(os.path.join(self.dir, HISTORY), encoding="utf-8") as fh:
+                doc = json.load(fh)
+            if isinstance(doc, dict) and isinstance(doc.get("history"), list) and isinstance(doc.get("changes"), list):
+                return {"history": doc["history"][-KEEP:], "changes": doc["changes"][-KEEP:]}
+        except (OSError, ValueError):
+            pass
+        return {"history": [], "changes": []}
+
+    def _log(self, at, bias):
+        """Add this brief's biases to the log and note which markets changed since the last one."""
+        now = {k: v["bias"] for k, v in bias.items()}
+        if not now:
+            return
+        last = self.history["history"][-1][1] if self.history["history"] else {}
+        for k, v in now.items():
+            if k in last and last[k] != v:
+                self.history["changes"].append({"market": k, "from": last[k], "to": v, "at": at})
+        self.history["history"].append([at, now])
+        self.history["history"] = self.history["history"][-KEEP:]
+        self.history["changes"] = self.history["changes"][-KEEP:]
+        try:
+            with open(os.path.join(self.dir, HISTORY + ".tmp"), "w", encoding="utf-8") as fh:
+                json.dump(self.history, fh, ensure_ascii=False)
+            os.replace(os.path.join(self.dir, HISTORY + ".tmp"), os.path.join(self.dir, HISTORY))
+        except (OSError, TypeError, ValueError):
+            pass
+
     def _save(self, doc):
         try:
             os.makedirs(self.dir, exist_ok=True)
@@ -47,11 +79,12 @@ class Keeper:
 
     def store(self, answer, as_of, parts, auto=False):
         """Keep a brief that was just written (by the button or by the hourly job) so the next page load has it."""
-        doc = {"answer": answer, "as_of": as_of, "parts": parts or {}, "bias": macro.biases(parts), "at": self.clock(),
-               "auto": bool(auto)}
+        at = self.clock()
+        doc = dict(macro.desk(parts), answer=answer, as_of=as_of, parts=parts or {}, at=at, auto=bool(auto))
         with self.lock:
             self.brief = doc
             self.error = ""
+            self._log(at, doc["bias"])
         self._save(doc)
         return doc
 
@@ -83,7 +116,8 @@ class Keeper:
             nxt = have + EVERY
         else:
             nxt = 0                                   # the first one is being written right now
-        return {"brief": self.brief, "error": self.error, "every": EVERY, "next_at": nxt}
+        return {"brief": self.brief, "error": self.error, "every": EVERY, "next_at": nxt,
+                "changes": self.history["changes"][-8:], "history": self.history["history"][-300:]}
 
     def start(self):
         def loop():
