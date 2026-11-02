@@ -671,6 +671,65 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
 .rv-wait{opacity:0;transform:translateY(26px)}
 .rv-in{opacity:1;transform:none;transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
 @media(prefers-reduced-motion:reduce){.rv-wait{opacity:1;transform:none}#h-greet,#h-hello{animation:none;-webkit-text-fill-color:currentColor;background:none}.navglide{transition:none}}
+
+/* ===== table and button polish ===== */
+:root{--btn-top:#ffffff;--btn-bot:#d6d6d2;--btn-edge:rgba(255,255,255,.85);--btn-shade:rgba(0,0,0,.14)}
+:root[data-theme="light"]{--btn-top:#2b2b2b;--btn-bot:#0b0b0b;--btn-edge:rgba(255,255,255,.2);--btn-shade:rgba(0,0,0,.5)}
+.btn:not(.ghost),.brainbtn:not([aria-selected="true"]){background:linear-gradient(180deg,var(--btn-top),var(--btn-bot));
+  box-shadow:inset 0 1px 0 var(--btn-edge),inset 0 -2px 0 var(--btn-shade),0 6px 14px -9px rgba(0,0,0,.7)}
+.btn:not(.ghost):hover,.brainbtn:not([aria-selected="true"]):hover{box-shadow:inset 0 1px 0 var(--btn-edge),inset 0 -2px 0 var(--btn-shade),0 10px 24px -8px var(--glow)}
+.btn:not(.ghost):active,.brainbtn:active{box-shadow:inset 0 2px 5px rgba(0,0,0,.35)}
+.btn.ghost,.themebtn{background:linear-gradient(180deg,var(--glowsoft),transparent);backdrop-filter:blur(2px)}
+.btn.ghost:hover,.themebtn:hover{background:var(--glowsoft);border-color:var(--hover)}
+.btn:disabled{filter:grayscale(1);opacity:.42;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.btn:disabled::after{display:none}
+:focus-visible{outline:none;box-shadow:0 0 0 2px var(--bgc),0 0 0 4px var(--hover)}
+.t-dh button.v,.h-more,.jmore{transition:transform .2s,color .2s}.t-dh button.v:hover{transform:translateX(3px)}
+/* grouped buttons become one track with a highlight that slides */
+.seg{position:relative;display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:18px;background:var(--input);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+.seg button{border:0;background:transparent;border-radius:15px;box-shadow:none;position:relative;z-index:1}
+.seg button:hover{background:var(--glowsoft);color:var(--text);transform:none;box-shadow:none}
+.seg button.on{background:var(--accent);box-shadow:0 2px 8px -2px var(--glow)}
+.seg.has-thumb button.on{background:transparent;box-shadow:none;animation:none}
+.seg::before{content:"";position:absolute;left:0;top:0;width:var(--tw,0);height:var(--th,0);transform:translate(var(--tx,0),var(--ty,0));border-radius:15px;background:linear-gradient(180deg,var(--btn-top),var(--btn-bot));box-shadow:inset 0 1px 0 var(--btn-edge),0 4px 12px -4px var(--glow);z-index:0;pointer-events:none;opacity:0}
+.seg.has-thumb::before{opacity:1}
+.seg.ready::before{transition:transform .38s cubic-bezier(.3,1.25,.4,1),width .3s cubic-bezier(.3,1,.4,1),height .3s cubic-bezier(.3,1,.4,1)}
+/* tables */
+.tool:not(#tab-brain) .scroll{border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.tool:not(#tab-brain) table{border-collapse:separate;border-spacing:0}
+.tool:not(#tab-brain) thead th{background:linear-gradient(180deg,var(--glowsoft),transparent);color:var(--muted);padding:11px 10px;border-bottom:1px solid var(--line)}
+.tool:not(#tab-brain) td{padding:10px 10px}
+.tool:not(#tab-brain) tbody tr:nth-child(even) td{background:rgba(127,127,127,.04)}
+.tool:not(#tab-brain) tbody tr:hover td{background:var(--glowsoft)}
+.tool:not(#tab-brain) tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.tool:not(#tab-brain) td.pos{color:var(--up);text-shadow:0 0 14px color-mix(in srgb,var(--up) 45%,transparent)}
+.tool:not(#tab-brain) td.neg{color:var(--down);text-shadow:0 0 14px color-mix(in srgb,var(--down) 45%,transparent)}
+/* trade rows in the list */
+.t-dh{background:linear-gradient(90deg,var(--glowsoft),transparent);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:16px}
+.t-day>.t-dh+*{margin-top:4px}
+.t-r{position:relative;border-bottom:0;border-radius:12px;margin:2px 0;padding:9px 12px;transition:background .2s,transform .22s cubic-bezier(.2,.8,.2,1)}
+.t-r::before{content:"";position:absolute;left:0;top:16%;bottom:16%;width:3px;border-radius:3px;background:var(--flat);opacity:.35;transform:scaleY(.5);transition:transform .25s,opacity .25s}
+.t-r:has(.t-pl.up)::before{background:var(--up)}.t-r:has(.t-pl.down)::before{background:var(--down)}
+.t-r:hover{background:var(--glowsoft);transform:translateX(4px)}
+.t-r:hover::before{opacity:1;transform:scaleY(1)}
+.t-th{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}.t-r:hover .t-th{transform:scale(1.07);box-shadow:0 8px 20px -8px rgba(0,0,0,.7)}
+.t-pl{padding:3px 11px;border-radius:99px;background:rgba(127,127,127,.12)}
+.t-pl.up{background:color-mix(in srgb,var(--up) 15%,transparent)}.t-pl.down{background:color-mix(in srgb,var(--down) 15%,transparent)}
+.t-rr{padding:2px 8px;border:1px solid var(--line);border-radius:99px}
+.t-det{border-radius:0 0 12px 12px;margin:-2px 0 6px}
+/* readouts, bars and tiles */
+.ticket-head{background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.02))}
+.trow{padding:7px 8px;margin:0 -8px;border-radius:8px;transition:background .2s}.trow:hover{background:rgba(255,255,255,.05)}
+.trow .v.big{text-shadow:0 0 20px rgba(255,255,255,.28)}
+.jrow{border-radius:10px;padding:6px 8px;margin:0 -8px;transition:background .2s}.jrow:hover{background:var(--glowsoft)}
+.jtrack{height:9px;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+.jtrack i.up{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 55%,transparent),var(--up));box-shadow:0 0 12px -2px var(--up)}
+.jtrack i.down{background:linear-gradient(270deg,color-mix(in srgb,var(--down) 55%,transparent),var(--down));box-shadow:0 0 12px -2px var(--down)}
+.jtrack i.fill{background:linear-gradient(90deg,color-mix(in srgb,var(--text) 45%,transparent),var(--text))}
+.card{box-shadow:var(--shadow),inset 0 1px 0 var(--glowsoft)}
+.card:hover{box-shadow:0 14px 38px -22px var(--glow),inset 0 1px 0 var(--glowsoft)}
+.stat{position:relative;box-shadow:var(--shadow),inset 0 1px 0 var(--glowsoft)}
+@media(prefers-reduced-motion:reduce){.seg.ready::before{transition:none}.t-r,.t-r:hover{transform:none}}
 </style>
 </head>
 <body>
@@ -792,6 +851,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
     if(queued)requestAnimationFrame(function(){queued=false;prep(main)})}).observe(main,{childList:true,subtree:true});
     setTimeout(function(){prep(main)},400)}
   document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("nav button,.brainbtn")){setTimeout(function(){$$(".tool.active>.card").forEach(function(c){c.__rv=0});prep(main)},120)}});
+})();
+</script>
+<script>
+/* the highlight inside grouped buttons slides to the one you pick */
+(function(){
+  var calm=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function sync(seg){
+    var on=seg.querySelector("button.on");
+    if(!on||!on.offsetWidth){seg.classList.remove("has-thumb");return}
+    var st=seg.style;st.setProperty("--tw",on.offsetWidth+"px");st.setProperty("--th",on.offsetHeight+"px");st.setProperty("--tx",on.offsetLeft+"px");st.setProperty("--ty",on.offsetTop+"px");
+    seg.classList.add("has-thumb");
+    if(!calm&&!seg.classList.contains("ready"))requestAnimationFrame(function(){requestAnimationFrame(function(){seg.classList.add("ready")})})}
+  var q=false,pend=[];
+  function flushSegs(){q=false;var l=pend;pend=[];l.forEach(function(sg){if(sg.isConnected)sync(sg)})}
+  function mark(sg){if(pend.indexOf(sg)<0)pend.push(sg);if(!q){q=true;requestAnimationFrame(flushSegs)}}
+  function all(){[].forEach.call(document.querySelectorAll(".seg"),mark)}
+  var main=document.querySelector("main");
+  if(main){
+    new MutationObserver(function(ms){ms.forEach(function(m){
+      if(m.type==="attributes"){var p=m.target.parentElement;if(p&&p.classList.contains("seg"))mark(p)}
+      else{[].forEach.call(m.addedNodes,function(n){if(n.nodeType!==1)return;if(n.classList.contains("seg"))mark(n);else if(n.querySelectorAll)[].forEach.call(n.querySelectorAll(".seg"),mark);var p=n.parentElement;if(p&&p.classList.contains("seg"))mark(p)})}})
+    }).observe(main,{attributes:true,attributeFilter:["class"],childList:true,subtree:true})}
+  window.addEventListener("resize",all);setTimeout(all,200);setTimeout(all,1200);
+  document.addEventListener("click",function(){setTimeout(all,160);setTimeout(all,700)});
 })();
 </script>
 

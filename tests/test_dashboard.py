@@ -588,3 +588,21 @@ class LayoutPack(unittest.TestCase):
     def test_reduced_motion_keeps_everything_visible(self):
         for needle in (".rv-wait{opacity:1;transform:none}", ".navglide{transition:none}", "var calm="):
             self.assertIn(needle, self.PAGE)
+
+
+class TablesAndButtons(unittest.TestCase):
+    PAGE = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+
+    def test_buttons_tracks_tables_and_rows_are_restyled(self):
+        for needle in ("--btn-top:", ".seg::before{", "--tx", ".tool:not(#tab-brain) thead th", ".tool:not(#tab-brain) tbody tr:hover td:first-child",
+                       ".t-r:has(.t-pl.up)::before", ".t-pl.up{background:color-mix", ".jtrack i.up{background:linear-gradient", ".btn:disabled{filter:grayscale(1)"):
+            self.assertIn(needle, self.PAGE)
+
+    def test_the_grouped_button_highlight_is_not_an_extra_child_element(self):
+        # code elsewhere loops over the buttons of a group with .children, so the highlight must not add one
+        self.assertNotIn("seg-thumb", self.PAGE)
+        self.assertNotIn('createElement("span");th.className', self.PAGE)
+
+    def test_second_brain_tables_are_left_alone(self):
+        self.assertNotIn("\ntable{border-collapse:separate", self.PAGE)
+        self.assertIn(".tool:not(#tab-brain) table{border-collapse:separate", self.PAGE)
