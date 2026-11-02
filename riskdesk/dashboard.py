@@ -29,6 +29,7 @@ import brain         # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_api     # noqa: E402
+import autobrief     # noqa: E402
 import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
@@ -44,6 +45,7 @@ class Handler(BaseHTTPRequestHandler):
     allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
     auth_settings = None                             # sign in with Google, only when the config has an "auth" section (see signin.py)
     oauth_post = staticmethod(signin.http_post)     # the one call out to Google; the tests swap it
@@ -192,7 +194,8 @@ class Handler(BaseHTTPRequestHandler):
                 pv = coach.provider(self.config_path)
                 answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, str(body.get("focus") or "")), pv,
                                         self.coach_post, 1200)
-                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": macro.split_brief(answer)})
+                doc = self.brief_keeper.store(answer, snap["as_of"], macro.split_brief(answer)) if self.brief_keeper else {}
+                return self.send_json(200, {"answer": answer, "as_of": snap["as_of"], "parts": macro.split_brief(answer), "at": doc.get("at")})
             elif path == "/api/chat":
                 now = z.parse_now(str(body.get("now") or "") or None)
                 msgs = coach.clean_messages(body.get("messages"))
@@ -246,6 +249,8 @@ class Handler(BaseHTTPRequestHandler):
             except brain.BrainError as e:
                 return self.send_json(500, {"error": str(e)})
             self.send_json(200, {"doc": doc, "seeded": seeded})
+        elif url.path == "/api/macro/brief":
+            self.send_json(200, self.brief_keeper.state() if self.brief_keeper else {"brief": None, "error": "", "every": autobrief.EVERY, "next_at": 0})
         elif url.path == "/api/notion/hub":
             self.send_json(200, self.notion_link.hub_doc if self.notion_link else {"at": "", "root": "", "pages": {}})
         elif url.path == "/api/tradezella/summary":
@@ -367,6 +372,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
                                           "data_dir": os.path.dirname(os.path.abspath(config_path))})
     handler.notion_link = notion_api.Link(handler.data_dir, config_path)
     handler.vault = vault.Vault(handler.data_dir)
+    handler.brief_keeper = autobrief.Keeper(handler.data_dir, config_path, handler.macro_net, lambda *a, **k: handler.coach_post(*a, **k))
     return DashboardServer(("127.0.0.1", port), handler)
 
 
@@ -430,6 +436,8 @@ def main(argv=None):
     try:
         if server.RequestHandlerClass.notion_link.token:
             server.RequestHandlerClass.notion_link.start()
+        if not args.offline:
+            server.RequestHandlerClass.brief_keeper.start()
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")

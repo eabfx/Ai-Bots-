@@ -484,6 +484,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hm svg{width:100%;height:38px;display:block;margin:4px 0}
 .hm .read{font-size:12.5px;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);white-space:pre-wrap}
 .hm .read.none{color:var(--muted)}
+.hmnote{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.5}
+.hfacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;margin:8px 0 4px;font:500 11px var(--mono)}
+.hfacts .hf{display:flex;flex-direction:column;gap:1px}.hfacts .hf i{font-style:normal;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.hfacts .hf b{font-weight:600}.hfacts .hf b.up{color:var(--up)}.hfacts .hf b.down{color:var(--down)}
+.hrange{grid-column:1/-1;margin-top:4px}.hrt{position:relative;height:5px;border-radius:99px;background:linear-gradient(90deg,var(--down),var(--flat),var(--up));opacity:.75}
+.hrt i{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--text);border:2px solid var(--bgc);box-shadow:0 0 8px var(--glow)}
+.hrl{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:4px}
 .hmood{display:flex;align-items:baseline;gap:12px}
 .hmood .k{font:600 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hmood b{font:600 26px var(--disp);letter-spacing:-.02em}
@@ -897,8 +904,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
 <div class="btnrow"><button class="btn small" id="ck-save" type="button">Save rules</button><button class="btn small ghost" id="ck-reset" type="button">Reset to default</button></div></div></div>
 </div>
 <div class="hgrid">
-<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button">Write today's brief</button></div>
-<div class="err" id="h-brief-err" style="display:none"></div><div class="hmk" id="h-mkts"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Markets</h3><button class="btn small" id="h-brief" type="button" title="The market read also writes itself every hour">Write today's brief</button></div>
+<div class="err" id="h-brief-err" style="display:none"></div><div class="hmnote" id="h-mk-note"></div><div class="hmk" id="h-mkts"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Capital flow</h3></div><div id="h-flow"></div></div>
 </div>
 <div class="hticker" id="h-ticker" aria-label="Prices"></div>
@@ -2406,6 +2413,36 @@ function flowRows(box,d,limit){
     r.appendChild(el("span","pct "+(q.pct>0?"pos":q.pct<0?"neg":""),pctText(q.pct)));
     r.lastChild.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";box.appendChild(r)});
   if(!qs.length)box.appendChild(el("div","empty","No prices came back."))}
+/* real numbers under each market: yesterday's close, the 5 day and 1 month moves, and where the price sits in the 1 month range */
+function mkFacts(q){
+  var box=el("div","hfacts"),sp=(q.spark||[]).filter(function(v){return isFinite(v)});
+  function row(k,v,cls){var r=el("span","hf");r.appendChild(el("i",null,k));r.appendChild(el("b",cls||"",v));box.appendChild(r)}
+  if(q.prev!==null&&q.prev!==undefined)row("Prev close",fmt(q.prev,q.digits));
+  if(sp.length>=6){var a=sp[sp.length-6],ch=(q.price/a-1)*100;row("5 days",pctText(ch),pctClass(ch))}
+  if(sp.length>=15){var m=(q.price/sp[0]-1)*100;row("1 month",pctText(m),pctClass(m))}
+  if(sp.length>=10){
+    var lo=Math.min.apply(null,sp.concat([q.price])),hi=Math.max.apply(null,sp.concat([q.price])),pos=hi>lo?(q.price-lo)/(hi-lo)*100:50;
+    var rg=el("div","hrange");rg.title="Where the price sits between its 1 month low and high";
+    var lab=el("div","hrl");lab.appendChild(el("span",null,fmt(lo,q.digits)));lab.appendChild(el("span",null,fmt(hi,q.digits)));
+    var tr=el("div","hrt"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";tr.appendChild(dot);rg.appendChild(tr);rg.appendChild(lab);box.appendChild(rg)}
+  return box}
+/* the hourly market read: written by RiskDesk itself every hour from live data, so it is here when you open the page */
+var briefNext=0,briefErr="";
+function briefNote(){
+  var n=$("h-mk-note");if(!n)return;
+  var t=function(ms){var d=new Date(ms);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)};
+  var txt="Live prices from Yahoo, refreshed every minute"+(macroData?" (last "+macroData.as_of+")":"")+". ";
+  if(macroBrief&&macroBrief.at){txt+="Market read written "+t(macroBrief.at*1000)+(macroBrief.auto?" automatically":"")+(briefNext?", next one about "+t(briefNext*1000):"")+"."}
+  else if(briefErr)txt+=briefErr;
+  else txt+="The first market read is being written.";
+  n.textContent=txt}
+function loadBrief(){
+  if(dormant)return;
+  fetch("/api/macro/brief").then(function(r){return r.json()}).then(function(j){
+    briefNext=j.next_at||0;briefErr=j.error||"";
+    if(j.brief&&(!macroBrief||(j.brief.at||0)>(macroBrief.at||0))){macroBrief=j.brief;if(macroData)renderAll(macroData)}
+    briefNote()}).catch(function(){})}
+setInterval(loadBrief,300000);setTimeout(loadBrief,1500);setTimeout(loadBrief,45000);
 function renderAll(d){macroRender(d);homeRender(d);alertCheck(d);if(tabNow==="connect")connRender()}
 function loadMacro(force){
   if(macroBusy||dormant)return;
@@ -2469,7 +2506,7 @@ function macroRender(d){
   bc.appendChild(el("div","sub","Written from the prices, releases and headlines on this page. It says what is moving and when to be careful. It does not predict price or say what to take."));
   var fr=el("div","frow"),fd=el("div");fd.appendChild(el("label",null,"Focus (optional)"));
   var fi=el("input");fi.type="text";fi.id="brief-focus";fi.maxLength=200;fi.placeholder="e.g. gold into the PCE release";fd.appendChild(fi);fr.appendChild(fd);bc.appendChild(fr);
-  var br=el("div","btnrow"),bb=el("button","btn",macroBrief?"Write it again":"Write today's brief");bb.type="button";br.appendChild(bb);bc.appendChild(br);
+  var br=el("div","btnrow"),bb=el("button","btn",macroBrief?"Write it now":"Write today's brief");bb.type="button";br.appendChild(bb);bc.appendChild(br);
   var be=el("div","err");be.style.display="none";bc.appendChild(be);
   if(macroBrief){bc.appendChild(el("div","mute","Written "+macroBrief.as_of+" Dublin"));
     var parts=macroBrief.parts||{},keys=Object.keys(parts);
@@ -2527,7 +2564,7 @@ function homeNums(){
   if(pfTouched){propCalc();card("Prop room",money(pfRoom),"most you can lose now",pfRoom>0?"":"down","trades")}
   else card("Prop room","Set up","enter your firm's rules","","trades")}
 function homeRender(d){
-  $("h-asof").textContent="Prices as of "+d.as_of;
+  $("h-asof").textContent="Prices as of "+d.as_of;briefNote();
   var s=$("h-sessions");s.textContent="";s.appendChild(sessionStrip(d));
   homeNums();
   var mk=$("h-mkts");mk.textContent="";
@@ -2536,6 +2573,7 @@ function homeRender(d){
     if(q)t.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));c.appendChild(t);
     c.appendChild(el("div","px "+(q?pctClass(q.pct):""),q?fmt(q.price,q.digits):"-"));
     if(q)c.appendChild(sparkline(q.spark,pctClass(q.pct)));
+    if(q)c.appendChild(mkFacts(q));
     var bias=el("div","bias"),cur=store("zd.bias."+m[0]);bias.appendChild(el("span",null,"Your bias"));
     ["bullish","neutral","bearish"].forEach(function(v){var b=el("button","bbtn "+v+(cur===v?" on":""),v);b.type="button";
       b.onclick=function(){store("zd.bias."+m[0],cur===v?"":v);renderAll(d)};bias.appendChild(b)});
@@ -2579,7 +2617,7 @@ $("h-brief").onclick=function(){
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
   .then(function(x){if(!x.ok){e.textContent=x.j.error||"The brief could not be written.";e.style.display="";return}macroBrief=x.j;if(macroData)renderAll(macroData)})
   .catch(function(er){e.textContent="The dashboard did not answer: "+er;e.style.display=""})
-  .then(function(){b.disabled=false;b.textContent=macroBrief?"Write it again":"Write today's brief"})};
+  .then(function(){b.disabled=false;b.textContent=macroBrief?"Write it now":"Write today's brief"})};
 function dockChat(on){                                       /* on Home the assistant sits in its own panel, elsewhere it floats */
   var c=$("chat"),b=$("chat-btn");
   if(on){$("h-assist-box").appendChild(c);c.classList.add("docked");c.hidden=false;b.style.display="none";chatRender()}

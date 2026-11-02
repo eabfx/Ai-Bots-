@@ -271,6 +271,55 @@ class MacroRoutes(Server):
         self.assertIn("No API key", doc["error"])
         self.assertEqual(self.sent, [])
 
+    def test_a_brief_written_by_the_button_is_kept_for_the_next_page_load(self):
+        self.post("/api/macro/brief", {"now": self.NOW})
+        code, _, js = self.get("/api/macro/brief")
+        doc = json.loads(js)
+        self.assertEqual(code, 200)
+        self.assertEqual(doc["brief"]["parts"]["Tone"], "Calm.")
+        self.assertFalse(doc["brief"]["auto"])
+        self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "macro_brief.json")))
+
+    def test_before_any_brief_the_route_says_so_and_does_not_fail(self):
+        code, _, js = self.get("/api/macro/brief")
+        self.assertEqual(code, 200)
+        self.assertIsNone(json.loads(js)["brief"])
+
+    def test_the_hourly_keeper_writes_from_live_data_and_waits_an_hour(self):
+        clock = [1800000000.0]
+        keeper = dash.autobrief.Keeper(self.tmp.name, self.server.RequestHandlerClass.config_path if hasattr(
+            self.server.RequestHandlerClass, "config_path") else os.path.join(self.tmp.name, "config.json"),
+            self.tm.FakeNet(errors=dash.macro), self.server.RequestHandlerClass.coach_post, lambda: clock[0])
+        self.assertTrue(keeper.due())
+        doc = keeper.refresh()
+        self.assertTrue(doc["auto"])
+        self.assertEqual(doc["parts"]["Tone"], "Calm.")
+        self.assertIn("PRICES (Yahoo", self.sent[0][2]["messages"][0]["content"])
+        clock[0] += 1800
+        self.assertFalse(keeper.due())
+        clock[0] += 1800
+        self.assertTrue(keeper.due())
+        self.assertEqual(keeper.state()["next_at"], 1800000000.0 + 3600)
+
+    def test_the_keeper_survives_a_dead_ai_and_says_why(self):
+        os.remove(os.path.join(self.tmp.name, "anthropic_key.txt"))
+        keeper = dash.autobrief.Keeper(self.tmp.name, os.path.join(self.tmp.name, "config.json"),
+                                       self.tm.FakeNet(errors=dash.macro), self.server.RequestHandlerClass.coach_post)
+        self.assertIsNone(keeper.refresh())
+        self.assertIn("No AI key", keeper.state()["error"])
+        self.assertEqual(self.sent, [])
+
+    def test_a_restarted_keeper_loads_the_last_brief_from_disk(self):
+        self.post("/api/macro/brief", {"now": self.NOW})
+        again = dash.autobrief.Keeper(self.tmp.name, "x", None)
+        self.assertEqual(again.brief["parts"]["Gold and MGC"], "Quiet.")
+
+    def test_home_shows_real_numbers_under_each_market_and_the_hourly_note(self):
+        _, _, page = self.get("/")
+        for needle in ("function mkFacts", "Prev close", "1 month", "hrange", "function loadBrief", "/api/macro/brief",
+                       'id="h-mk-note"', "next one about", "Write it now"):
+            self.assertIn(needle, page)
+
     def test_chat_sends_the_conversation_and_what_is_on_screen_and_nothing_else(self):
         msgs = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"},
                 {"role": "user", "content": "explain my entry"}]
