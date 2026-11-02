@@ -345,6 +345,14 @@ class MacroRoutes(Server):
         again = dash.autobrief.Keeper(self.tmp.name, "x", None)
         self.assertEqual(len(again.state()["history"]), 2)
 
+    def test_an_older_brief_is_read_again_when_the_keeper_starts(self):
+        text = "Headline\nGold jumps.\n\nMood: Mixed\nConfidence: 55\n\nGold and MGC\nBias: Bullish\nConfidence: 60\n\nEURUSD\nBias: Neutral"
+        with open(os.path.join(self.tmp.name, "macro_brief.json"), "w") as fh:
+            json.dump({"answer": text, "as_of": "x", "parts": {}, "at": 1800000000.0, "auto": True}, fh)
+        k = dash.autobrief.Keeper(self.tmp.name, "x", None)
+        self.assertEqual(k.brief["headline"], "Gold jumps.")
+        self.assertEqual(k.brief["bias"]["Gold and MGC"]["confidence"], 60)
+
     def test_a_restarted_keeper_loads_the_last_brief_from_disk(self):
         self.post("/api/macro/brief", {"now": self.NOW})
         again = dash.autobrief.Keeper(self.tmp.name, "x", None)

@@ -34,6 +34,9 @@ class Keeper:
             with open(self._path(), encoding="utf-8") as fh:
                 doc = json.load(fh)
             if isinstance(doc, dict) and isinstance(doc.get("answer"), str) and isinstance(doc.get("at"), (int, float)):
+                parts = macro.split_brief(doc["answer"])          # read it again, so a better reader fixes an older brief
+                if parts:
+                    doc.update(macro.desk(parts), parts=parts)
                 return doc
         except (OSError, ValueError):
             pass

@@ -466,3 +466,14 @@ class Desk(unittest.TestCase):
         d = macro.desk(parts)
         self.assertEqual((d["headline"], d["mood"]["label"], d["bias"]["Gold and MGC"]["confidence"], d["events"][0]["title"]),
                          ("Gold jumps", "Risk-on", 70, "CPI"))
+
+
+class LooseLabels(unittest.TestCase):
+    def test_labels_on_their_own_line_or_in_markdown_still_split(self):
+        text = ("Headline\nGold jumps.\n\nOverview\nYields slid.\n\n**Mood:** Mixed\nConfidence: 55\n\nTone\nCalm.\n\n"
+                "## Gold and MGC\nBias: Bullish\nConfidence: 55\nSentiment: up\n\nNasdaq (NQ)\nBias: Neutral\nConfidence: 40")
+        parts = macro.split_brief(text)
+        self.assertEqual(parts["Headline"], "Gold jumps.")
+        self.assertEqual(macro.parse_mood(parts["Mood"])["label"], "Mixed")
+        self.assertEqual(macro.biases(parts)["Gold and MGC"]["bias"], "bullish")
+        self.assertEqual(macro.biases(parts)["Nasdaq (NQ)"]["confidence"], 40)

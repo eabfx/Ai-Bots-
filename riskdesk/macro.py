@@ -483,7 +483,8 @@ BRIEF_LABELS = ["Headline", "Overview", "Mood", "Tone", "Gold and MGC", "Nasdaq 
 def split_brief(text):
     """The brief's labelled parts as {label: text}. Empty when the answer did not follow the format, so the page
     shows it whole instead."""
-    pattern = r"(?im)^\s*(%s)\s*:\s*" % "|".join(re.escape(l) for l in BRIEF_LABELS)
+    # a label may end in a colon or stand alone on its line, and may be wrapped in markdown (## or **)
+    pattern = r"(?im)^[ \t#*]*(%s)[ \t*]*(?::[ \t*]*|[ \t]*$)" % "|".join(re.escape(l) for l in BRIEF_LABELS)
     marks = list(re.finditer(pattern, text))
     if len(marks) < 3:
         return {}
