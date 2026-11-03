@@ -182,7 +182,9 @@ class Wiring(unittest.TestCase):
         self.assertIn('"home","macro","journal","backtest","forward","brain"', PAGE)
 
     def test_the_sync_buttons_pull_from_notion_and_say_where_each_trade_went(self):
-        self.assertEqual(PAGE.count("data-nsync"), 5)                # Home, Journal and the Connections routine share one handler
+        self.assertEqual(PAGE.count("data-nsync"), 4)                # Journal and the Connections routine share one handler; Home has no button, Notion syncs by itself
+        self.assertNotIn('data-nsync type="button">Sync Notion</button><button class="btn small ghost" id="h-cust"', PAGE)
+        self.assertIn("nsPull(true)},120000", PAGE)
         for needle in ("function nsPull(", "new in Journal", "new in Backtest", "Already up to date", 'visibilitychange', "body.hasnotion .nsb"):
             self.assertIn(needle, PAGE)
         self.assertIn('refresh(with_hub=bool(body.get("hub", True)))', SERVER)     # the button reads the journal only, so it takes seconds

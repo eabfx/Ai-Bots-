@@ -1520,7 +1520,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <section class="tool active" id="tab-home" role="tabpanel">
 <div class="hhead">
 <div><div class="eyebrow" id="h-date"></div><h2 class="pt" id="h-greet">Good morning</h2></div>
-<div class="hright"><span class="hclock" id="h-clock"></span><span class="mute" id="h-asof" style="font-size:12px"></span><button class="btn small ghost nsb" data-nsync type="button">Sync Notion</button><button class="btn small ghost" id="h-cust" type="button" aria-pressed="false" title="Hide, show and reorder the Home panels">Customise</button><button class="btn small ghost" id="home-refresh" type="button">Refresh</button></div>
+<div class="hright"><span class="hclock" id="h-clock"></span><span class="mute" id="h-asof" style="font-size:12px"></span><button class="btn small ghost" id="h-cust" type="button" aria-pressed="false" title="Hide, show and reorder the Home panels">Customise</button><button class="btn small ghost" id="home-refresh" type="button">Refresh</button></div>
 </div>
 <div class="err" id="h-err" style="display:none"></div>
 <div class="custbar" id="cust-bar" hidden><span>Move panels with the arrows, hide the ones you do not use. Saved in this browser.</span><span class="custgap"></span><label class="ckrow" style="margin:0"><input type="checkbox" id="cust-compact"><span>Compact</span></label><button class="btn small ghost" id="cust-reset" type="button">Reset layout</button><button class="btn small" id="cust-done" type="button">Done</button></div>
@@ -3165,6 +3165,8 @@ document.addEventListener("visibilitychange",nsBack);window.addEventListener("fo
 function nsWhere(r){return [r.live?r.live+" new in Journal":"",r.fw?r.fw+" new in Forward Test":"",r.bt?r.bt+" new in Backtest":""].filter(Boolean).join(", ")}
 function nsAuto(){nsSync().then(function(r){if(r&&(r.live||r.fw||r.bt))nsNote("New from Notion",nsWhere(r)+".")})}
 setInterval(function(){if(!document.hidden)nsAuto()},60000);setTimeout(nsAuto,4000);
+/* no button needed: Notion is read quietly every two minutes while the page is open and on every return to it, and each new trade lands in Journal, Forward Test or Backtest by its Account Type */
+setInterval(function(){if(!document.hidden&&!dormant&&document.body.classList.contains("hasnotion"))nsPull(true)},120000);setTimeout(function(){if(document.body.classList.contains("hasnotion"))nsPull(true)},2500);
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
