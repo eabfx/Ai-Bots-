@@ -407,6 +407,9 @@ def clean_context(doc):
     for k in ("tab", "symbol", "price", "as_of", "rule"):
         if k in doc:
             out[k] = prim(doc[k], 40)
+    for k in ("funding", "board"):                  # prop-firm totals and the charts on the Markets page, as one plain line each
+        if k in doc:
+            out[k] = prim(doc[k], 400)
     if "bias" in doc:                               # the trader's own read per market, typed on the Macro tab
         out["trader_bias"] = prim(doc["bias"], 200)
     for section, keys in CONTEXT_KEYS.items():

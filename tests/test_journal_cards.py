@@ -37,7 +37,7 @@ class TileWallAndRing(unittest.TestCase):
 
 class Motion(unittest.TestCase):
     def test_the_assistant_button_is_called_ai_bot_and_animated(self):
-        self.assertIn('<span>AI Bot</span>', PAGE)
+        self.assertIn('<span>AI Assistant</span>', PAGE)
         self.assertNotIn("Ask RiskDesk", PAGE)
         for needle in ("@keyframes botfloat", "@keyframes botring", "@keyframes botblink", 'class="bot"'):
             self.assertIn(needle, PAGE)

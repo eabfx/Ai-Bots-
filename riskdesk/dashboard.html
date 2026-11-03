@@ -1177,7 +1177,7 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 .chat .log{gap:14px}
 .chat .m{position:relative;max-width:none;border:0;background:transparent;border-radius:0!important;padding:0 0 0 12px;font:400 13px/1.6 var(--sans);color:var(--text)}
 .chat .m::before{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
-.chat .m.assistant{border-left:2px solid var(--text)}.chat .m.assistant::before{content:"Assistant"}
+.chat .m.assistant{border-left:2px solid var(--text)}.chat .m.assistant::before{content:"AI Assistant"}
 .chat .m.user{align-self:flex-end;max-width:88%;padding:8px 12px;background:var(--panel2);color:var(--text);border:1px solid var(--line)}.chat .m.user::before{content:"You"}
 .chat .m.err{border-left:2px solid var(--down);background:transparent;color:var(--errtext)}.chat .m.err::before{content:"Problem";color:var(--down)}
 .chat .m.new{animation:cin .4s cubic-bezier(.2,.8,.2,1) both}
@@ -1446,6 +1446,35 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 @media(max-width:700px){.hgrid1 .hmk{grid-template-columns:minmax(0,1fr)}}
 .hgridc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px}
 @media(max-width:1180px){.hgridc{grid-template-columns:minmax(0,1fr)}}
+/* markets tiles, second pass */
+.mk-tile{position:relative;transition:border-color .2s}
+.mk-tile:hover,.mk-tile:focus-within{border-color:var(--hover)}
+.mk-th{padding:12px 14px 2px}
+.mk-sym{font:600 14px var(--sans);letter-spacing:-.005em}
+.mk-nm{font:500 11px var(--mono)}
+.mk-price{font:600 24px var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mk-chg{display:inline-block;padding:1px 7px;border-radius:2px;font:600 12px var(--mono);background:color-mix(in srgb,var(--flat) 14%,transparent)}
+.mk-chg.up{background:color-mix(in srgb,var(--up) 15%,transparent)}.mk-chg.down{background:color-mix(in srgb,var(--down) 15%,transparent)}
+.mk-ctl{position:absolute;right:8px;bottom:3px;top:auto;z-index:3;padding:0;gap:3px;background:var(--panel);opacity:0;pointer-events:none;transition:opacity .15s}
+.mk-tile:hover .mk-ctl,.mk-tile:focus-within .mk-ctl{opacity:1;pointer-events:auto}
+@media(hover:none){.mk-ctl{position:static;opacity:1;pointer-events:auto;transform:none;border:0;padding:4px 0 0;background:none;grid-column:1/-1}}
+.mk-ctl select,.mk-ctl button{border-color:transparent;background:transparent}
+.mk-ctl select:hover,.mk-ctl button:hover{border-color:var(--line)}
+.mk-ro{left:14px;top:6px;background:color-mix(in srgb,var(--panel) 80%,transparent);padding:2px 6px 2px 0}
+.mk-ro b.up{color:var(--up)}.mk-ro b.down{color:var(--down)}
+.mk-cv{min-height:210px}
+.mk-grid[data-c="1"] .mk-cv{min-height:440px}.mk-grid[data-c="2"] .mk-cv{min-height:260px}.mk-grid[data-c="4"] .mk-cv{min-height:190px}
+.mk-ft{padding:7px 14px 10px;gap:4px 14px}
+/* AI Assistant, second pass */
+.chat .hd{gap:10px}.chat .hd b{font:600 12px var(--mono);letter-spacing:.04em}
+.cstat{margin-right:auto;white-space:nowrap;font:500 11px var(--mono);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.cstat::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted)}.cstat.on::before{background:var(--up)}.cstat.off{color:var(--down)}.cstat.off::before{background:var(--down)}
+.chat.docked .hd{display:flex;padding:0 0 8px;background:transparent;border-bottom:1px solid var(--line)}.chat.docked .hd b{display:none}
+.chat .m[data-t]::after{content:attr(data-t);display:block;margin-top:4px;font:500 10px var(--mono);color:var(--muted);letter-spacing:.04em}.chat .m.user[data-t]::after{text-align:right}
+.chat .m .li{position:relative;padding-left:14px;margin:2px 0}.chat .m .li::before{content:"";position:absolute;left:2px;top:.7em;width:5px;height:1px;background:var(--muted)}
+.chat .m .gap{height:8px}.chat .m b{font-weight:600}
+.cfine{font:400 11px/1.5 var(--sans)!important;color:var(--muted)}
+.chat.docked{height:480px}.chat.docked #chat-close{display:none}.chat.docked .hd{flex-wrap:nowrap}
 /* ten menu items: the menu gives way, the buttons on its right never get squeezed */
 @media(min-width:901px){.bar nav{flex:1 1 0;min-width:0}.brainbtn,.themebtn,#cmd{flex:none}}
 @media(min-width:901px) and (max-width:1560px){.bar nav button .ni{display:none}.bar nav button{padding:0 9px!important}}
@@ -1633,7 +1662,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="hgridc">
 <div class="hpanel"><div class="hp-h"><h3>Capital flow</h3></div><div id="h-flow"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Currency strength</h3></div><div id="h-strength"></div></div>
-<div class="hpanel"><div class="hp-h"><h3>Assistant</h3></div><div id="h-assist-box"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>AI Assistant</h3></div><div id="h-assist-box"></div></div>
 </div>
 <div class="hgrid2">
 <div class="hpanel"><div class="hp-h"><h3>Today's plan</h3><span class="mute" id="pl-saved" style="font-size:12px"></span></div>
@@ -2046,9 +2075,9 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 
 </main>
 
-<button class="btn chatbtn" id="chat-btn" type="button" aria-expanded="false" aria-controls="chat"><svg class="bot" viewBox="0 0 32 32" aria-hidden="true"><g class="gr"><line class="an" x1="16" y1="3" x2="16" y2="8"/><circle class="ad" cx="16" cy="3" r="2"/></g><rect class="bd" x="4" y="9" width="24" height="18" rx="7"/><circle class="ey" cx="11.5" cy="17" r="2.4"/><circle class="ey" cx="20.5" cy="17" r="2.4"/><path class="mo" d="M12 22.5q4 2.4 8 0"/></svg><span>AI Bot</span></button>
-<div class="chat" id="chat" role="dialog" aria-label="AI Bot" hidden>
-<div class="hd"><b>AI Bot</b><span><button class="btn ghost small" id="chat-clear" type="button">Clear</button> <button class="btn ghost small" id="chat-close" type="button" aria-label="Close">x</button></span></div>
+<button class="btn chatbtn" id="chat-btn" type="button" aria-expanded="false" aria-controls="chat"><svg class="bot" viewBox="0 0 32 32" aria-hidden="true"><g class="gr"><line class="an" x1="16" y1="3" x2="16" y2="8"/><circle class="ad" cx="16" cy="3" r="2"/></g><rect class="bd" x="4" y="9" width="24" height="18" rx="7"/><circle class="ey" cx="11.5" cy="17" r="2.4"/><circle class="ey" cx="20.5" cy="17" r="2.4"/><path class="mo" d="M12 22.5q4 2.4 8 0"/></svg><span>AI Assistant</span></button>
+<div class="chat" id="chat" role="dialog" aria-label="AI Assistant" hidden>
+<div class="hd"><b>AI Assistant</b><small class="cstat" id="chat-stat">Checking...</small><span><button class="btn ghost small" id="chat-clear" type="button" title="Start a new chat">New chat</button> <button class="btn ghost small" id="chat-close" type="button" aria-label="Close">x</button></span></div>
 <div class="log" id="chat-log"></div>
 <div class="chips" id="chat-chips"></div>
 <form id="chat-form"><input type="text" id="chat-in" placeholder="Ask about the market, your trades, risk..." maxlength="600" autocomplete="off"><button class="btn small" id="chat-send" type="submit">Send</button></form>
@@ -4250,7 +4279,7 @@ function mkBuild(){
     g.appendChild(mkTile(i))}
   mkPaintAll()}
 function mkTile(i){
-  var t=MK.lay.tiles[i],box=el("div","mk-tile"),th=el("div","mk-th"),id=el("div","mk-id"),sym=el("button","mk-sym",t.s);sym.type="button";sym.title="Change this chart's symbol";
+  var t=MK.lay.tiles[i],box=el("div","mk-tile"),th=el("div","mk-th"),id=el("div","mk-id"),sym=el("button","mk-sym",mkLabel(t.s,null)[0]);sym.type="button";sym.title="Change this chart's symbol";
   sym.onclick=function(){
     var inp=el("input");inp.setAttribute("list","mk-suggest");inp.value=t.s;inp.maxLength=16;inp.setAttribute("aria-label","Symbol");inp.spellcheck=false;
     var done=false;function commit(ok){if(done)return;done=true;var v=inp.value.trim().toUpperCase();
@@ -4278,9 +4307,20 @@ function mkTile(i){
   var ft=el("div","mk-ft");box.appendChild(ft);
   wrap.addEventListener("pointermove",function(e){var d=MK.data[mkKey(t)];if(!d||!d.bars)return;var r=cv.getBoundingClientRect(),n=d.bars.length,pl=6,pw=r.width-pl-MK_PADR,j=Math.floor((e.clientX-r.left-pl)/pw*n);MK.hover[i]=Math.max(0,Math.min(n-1,j));mkDraw(i)});
   wrap.addEventListener("pointerleave",function(){MK.hover[i]=-1;mkDraw(i)});
-  MK.cv[i]={box:box,wrap:wrap,cv:cv,ro:ro,msg:msg,ft:ft,nm:nm,pr:pr,ch:ch};
+  MK.cv[i]={box:box,wrap:wrap,cv:cv,ro:ro,msg:msg,ft:ft,nm:nm,pr:pr,ch:ch,sym:sym};
   return box}
-var MK_PADR=58,MK_PADB=18,MK_FMT={};
+var MK_PADR=58,MK_PADB=20,MK_FMT={};
+/* plain names for the usual symbols; anything else gets Yahoo's name with the contract month and exchange clutter taken off */
+var MK_NAMES={"GC=F":["Gold","Futures"],"MGC=F":["Micro Gold","Futures"],"SI=F":["Silver","Futures"],"HG=F":["Copper","Futures"],"PL=F":["Platinum","Futures"],"CL=F":["Crude Oil (WTI)","Futures"],"BZ=F":["Brent Crude","Futures"],"NG=F":["Natural Gas","Futures"],
+  "NQ=F":["Nasdaq 100","Futures"],"ES=F":["S&P 500","Futures"],"YM=F":["Dow Jones","Futures"],"RTY=F":["Russell 2000","Futures"],"MNQ=F":["Micro Nasdaq 100","Futures"],"MES=F":["Micro S&P 500","Futures"],
+  "DX-Y.NYB":["US Dollar Index","Index"],"^VIX":["VIX","Volatility index"],"^TNX":["US 10-Year Yield","Rate"],"^GSPC":["S&P 500","Index"],"^IXIC":["Nasdaq Composite","Index"],"^DJI":["Dow Jones","Index"],"^FTSE":["FTSE 100","Index"],"^GDAXI":["DAX","Index"],
+  "BTC-USD":["Bitcoin","Crypto"],"ETH-USD":["Ethereum","Crypto"]};
+function mkLabel(sym,d){
+  var n=MK_NAMES[sym],fx=/^([A-Z]{3})([A-Z]{3})=X$/.exec(sym),mon=d&&/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{2}\b/.exec(d.name||"");
+  if(fx)return[fx[1]+"/"+fx[2],"Forex \u00B7 "+sym];
+  if(n)return[n[0],n[1]+(mon&&n[1]==="Futures"?" \u00B7 "+mon[0]+" contract":"")+" \u00B7 "+sym];
+  var nm=d&&d.name?d.name.replace(/\s*-?\$?\d*\s*\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{2}\b.*$/,"").replace(/\bIndus\.?/,"Industrial").replace(/\s+Inc\.?$/i,"").trim():sym;
+  return[(nm||sym).slice(0,26),(d&&d.exchange&&!/^(CCY|CME|NY Mercantile)$/.test(d.exchange)?d.exchange+" \u00B7 ":"")+sym]}
 function mkTime(sec,tf){
   var k=tf==="1d"||tf==="1h"?"d":"t";
   if(!MK_FMT[k]){try{MK_FMT[k]=new Intl.DateTimeFormat("en-GB",k==="d"?{timeZone:"Europe/Dublin",day:"numeric",month:"short"}:{timeZone:"Europe/Dublin",hour:"2-digit",minute:"2-digit",hourCycle:"h23"})}catch(e){MK_FMT[k]=new Intl.DateTimeFormat("en-GB")}}
@@ -4288,9 +4328,10 @@ function mkTime(sec,tf){
 function mkPaintAll(){for(var i=0;i<MK.lay.tiles.length;i++)mkPaint(i)}
 function mkPaint(i){
   var t=MK.lay.tiles[i],c=MK.cv[i];if(!c)return;var d=MK.data[mkKey(t)];
-  if(!d){c.pr.textContent="-";c.ch.textContent="";c.nm.textContent="";c.ft.textContent="";c.msg.hidden=false;c.msg.textContent="Loading "+t.s+"...";mkDraw(i);return}
-  if(d.error){c.pr.textContent="-";c.ch.textContent="";c.nm.textContent="";c.ft.textContent="";c.msg.hidden=false;c.msg.textContent=d.error;mkDraw(i);return}
-  c.msg.hidden=true;c.nm.textContent=d.name+(d.exchange?"  ·  "+d.exchange:"");
+  var lb=mkLabel(t.s,d&&!d.error?d:null);c.sym.textContent=lb[0];c.sym.title=t.s+": click to change this chart's symbol";
+  if(!d){c.pr.textContent="-";c.ch.textContent="";c.nm.textContent=lb[1];c.ft.textContent="";c.msg.hidden=false;c.msg.textContent="Loading "+t.s+"...";mkDraw(i);return}
+  if(d.error){c.pr.textContent="-";c.ch.textContent="";c.nm.textContent=t.s;c.ft.textContent="";c.msg.hidden=false;c.msg.textContent=d.error;mkDraw(i);return}
+  c.msg.hidden=true;c.nm.textContent=lb[1];
   var txt=mkNum(d.price,d.digits),was=MK.last[mkKey(t)];
   if(c.pr.textContent!==txt){c.pr.textContent=txt;if(was!==undefined&&was!==d.price){c.pr.classList.remove("fup","fdn");void c.pr.offsetWidth;c.pr.classList.add(d.price>was?"fup":"fdn")}}
   MK.last[mkKey(t)]=d.price;
@@ -4300,7 +4341,7 @@ function mkPaint(i){
   var b2=el("span",null,"Low ");b2.appendChild(el("b",null,mkNum(lo,d.digits)));c.ft.appendChild(b2);
   var age=Date.now()/1000-d.last_t,note;
   if(t.tf!=="1d"&&age>2400)note="No trades since "+mkTime(d.last_t,"1m")+" Dublin";
-  else if(/=F$/.test(d.symbol))note="Futures, about 10 min behind";
+  else if(/=F$/.test(d.symbol))note="About 10 min behind";
   else note="Last bar "+(t.tf==="1d"||t.tf==="1h"?mkTime(d.last_t,"1d")+" ":"")+mkTime(d.last_t,"1m");
   c.ft.appendChild(el("span",null,note));
   mkDraw(i)}
@@ -4312,36 +4353,67 @@ function mkDraw(i){
   if(!d||d.error||!d.bars||d.bars.length<2)return;
   var cs=getComputedStyle(document.documentElement),UP=cs.getPropertyValue("--up").trim()||"#30d98b",DN=cs.getPropertyValue("--down").trim()||"#ff5b5f",
       MU=cs.getPropertyValue("--muted").trim()||"#888",LN=cs.getPropertyValue("--line").trim()||"#222",TX=cs.getPropertyValue("--text").trim()||"#eee",
-      light=document.documentElement.getAttribute("data-theme")==="light",col=d.price>=d.prev?UP:DN,bars=d.bars,n=bars.length,cand=t.style==="candles";
-  g.font="500 11px "+(cs.getPropertyValue("--mono").trim()||"monospace");var pl=6,pr=Math.max(50,Math.ceil(g.measureText(mkNum(d.price*1.0003,d.digits)).width)+16),pt=14,pb=MK_PADB,pw=w-pl-pr,ph=h-pt-pb,lo=Infinity,hi=-Infinity;
-  bars.forEach(function(b){var l=cand?b[3]:b[4],u=cand?b[2]:b[4];if(l<lo)lo=l;if(u>hi)hi=u});
-  var span0=hi-lo||Math.abs(hi)*0.001||1;if(d.prev>=lo-span0*0.6&&d.prev<=hi+span0*0.6){lo=Math.min(lo,d.prev);hi=Math.max(hi,d.prev)}
-  var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
+      MONO=cs.getPropertyValue("--mono").trim()||"monospace",light=document.documentElement.getAttribute("data-theme")==="light",
+      col=d.price>=d.prev?UP:DN,bars=d.bars,n=bars.length,cand=t.style==="candles",hex=/^#[0-9a-f]{6}$/i.test(col);
+  g.font="500 11px "+MONO;
+  var pl=8,pr=Math.max(52,Math.ceil(g.measureText(mkNum(d.price*1.0003,d.digits)).width)+18),pt=12,pb=MK_PADB,pw=w-pl-pr,ph0=h-pt-pb,
+      hasVol=bars.some(function(b){return b[5]>0}),vh=hasVol?Math.round(ph0*0.16):0,ph=ph0-vh-(hasVol?4:0),lo=Infinity,hi=-Infinity,hiI=0,loI=0;
+  bars.forEach(function(b,j){var l=cand?b[3]:b[4],u=cand?b[2]:b[4];if(l<lo){lo=l;loI=j}if(u>hi){hi=u;hiI=j}});
+  var rLo=lo,rHi=hi,span0=hi-lo||Math.abs(hi)*0.001||1;
+  if(d.prev>=lo-span0*0.6&&d.prev<=hi+span0*0.6){lo=Math.min(lo,d.prev);hi=Math.max(hi,d.prev)}
+  var pad=(hi-lo)*0.1||1;lo-=pad;hi+=pad;
   function X(j){return pl+(j+0.5)/n*pw}function Y(v){return pt+(hi-v)/(hi-lo)*ph}
-  g.textBaseline="middle";
-  g.lineWidth=1;var yPx=Y(d.price);
-  for(var k=0;k<=4;k++){var v=lo+(hi-lo)*k/4,y=Math.round(Y(v))+0.5;g.strokeStyle=LN;g.beginPath();g.moveTo(pl,y);g.lineTo(pl+pw,y);g.stroke();if(Math.abs(y-yPx)>11){g.fillStyle=MU;g.textAlign="left";g.fillText(mkNum(v,d.digits),pl+pw+6,y)}}
+  function tag(txt,y,fill,ink){var tw=Math.ceil(g.measureText(txt).width)+10;g.fillStyle=fill;g.beginPath();var x=pl+pw+3,hh=16,r=3;
+    g.moveTo(x+r,y-hh/2);g.lineTo(x+tw-r,y-hh/2);g.quadraticCurveTo(x+tw,y-hh/2,x+tw,y-hh/2+r);g.lineTo(x+tw,y+hh/2-r);g.quadraticCurveTo(x+tw,y+hh/2,x+tw-r,y+hh/2);
+    g.lineTo(x+r,y+hh/2);g.quadraticCurveTo(x,y+hh/2,x,y+hh/2-r);g.lineTo(x,y-hh/2+r);g.quadraticCurveTo(x,y-hh/2,x+r,y-hh/2);g.fill();
+    g.fillStyle=ink;g.textAlign="left";g.textBaseline="middle";g.fillText(txt,x+5,y+0.5)}
+  var yPx=Y(d.price);g.lineWidth=1;g.textBaseline="middle";
+  /* horizontal price grid, labels on the right, kept clear of the last-price tag */
+  for(var k=1;k<=3;k++){var v=lo+(hi-lo)*k/4,y=Math.round(Y(v))+0.5;g.strokeStyle=LN;g.globalAlpha=0.55;g.beginPath();g.moveTo(pl,y);g.lineTo(pl+pw,y);g.stroke();g.globalAlpha=1;
+    if(Math.abs(y-yPx)>12){g.fillStyle=MU;g.textAlign="left";g.fillText(mkNum(v,d.digits),pl+pw+7,y)}}
+  /* a faint line where each new day starts, with its date, so five days of five-minute bars read as days */
+  var off=0;try{off=-new Date().getTimezoneOffset()*60}catch(e){}
+  if(t.tf!=="1d"&&t.tf!=="1h"){var prevDay=null;g.textAlign="left";g.textBaseline="alphabetic";bars.forEach(function(b,j){var dk=Math.floor((b[0]+off)/86400);
+    if(prevDay!==null&&dk!==prevDay){var x=Math.round(X(j))+0.5;g.save();g.setLineDash([2,4]);g.strokeStyle=MU;g.globalAlpha=0.45;g.beginPath();g.moveTo(x,pt);g.lineTo(x,pt+ph0);g.stroke();g.restore();g.fillStyle=MU;g.globalAlpha=0.8;g.fillText(mkTime(b[0],"1d"),x+4,pt+10);g.globalAlpha=1}prevDay=dk})}
+  /* time axis */
   g.textAlign="center";g.textBaseline="alphabetic";g.fillStyle=MU;
-  var marks=4;for(var m=0;m<marks;m++){var j=Math.round((n-1)*(m+0.5)/marks);g.fillText(mkTime(bars[j][0],t.tf),X(j),h-4)}
-  if(d.prev>=lo&&d.prev<=hi){g.save();g.setLineDash([3,4]);g.strokeStyle=MU;g.globalAlpha=0.7;var yp=Math.round(Y(d.prev))+0.5;g.beginPath();g.moveTo(pl,yp);g.lineTo(pl+pw,yp);g.stroke();g.restore()}
+  for(var m=0;m<4;m++){var j2=Math.round((n-1)*(m+0.5)/4);g.fillText(mkTime(bars[j2][0],t.tf),X(j2),h-4)}
+  /* volume along the bottom */
+  if(hasVol){var vm=0;bars.forEach(function(b){if(b[5]>vm)vm=b[5]});var bw0=Math.max(1,pw/n*0.7);
+    bars.forEach(function(b,j){var up=b[4]>=b[1],vv=b[5]/vm*vh;g.fillStyle=up?UP:DN;g.globalAlpha=0.32;g.fillRect(Math.round(X(j)-bw0/2),pt+ph0-vv,Math.max(1,Math.round(bw0)),vv)});g.globalAlpha=1}
+  /* previous close */
+  if(d.prev>=lo&&d.prev<=hi){var yp=Math.round(Y(d.prev))+0.5;g.save();g.setLineDash([4,4]);g.strokeStyle=MU;g.globalAlpha=0.65;g.beginPath();g.moveTo(pl,yp);g.lineTo(pl+pw,yp);g.stroke();g.restore();
+    g.fillStyle=MU;g.textAlign="left";g.textBaseline="bottom";g.fillText("Prev close "+mkNum(d.prev,d.digits),pl+4,yp-3)}
+  /* the series */
   if(cand){
-    var bw=Math.max(1,Math.min(12,pw/n*0.66));
-    bars.forEach(function(b,j){var up=b[4]>=b[1],cc=up?UP:DN,x=Math.round(X(j))+0.5;g.strokeStyle=cc;g.fillStyle=cc;g.beginPath();g.moveTo(x,Y(b[2]));g.lineTo(x,Y(b[3]));g.stroke();
+    var bw=Math.max(1,Math.min(12,pw/n*0.68));
+    bars.forEach(function(b,j){var up=b[4]>=b[1],cc=up?UP:DN,x=Math.round(X(j))+0.5;g.strokeStyle=cc;g.fillStyle=cc;g.lineWidth=1;g.beginPath();g.moveTo(x,Y(b[2]));g.lineTo(x,Y(b[3]));g.stroke();
       var y1=Y(Math.max(b[1],b[4])),y2=Y(Math.min(b[1],b[4]));g.fillRect(Math.round(x-bw/2),y1,Math.max(1,Math.round(bw)),Math.max(1,y2-y1))})}
   else{
-    var gr=null;if(/^#[0-9a-f]{6}$/i.test(col)){gr=g.createLinearGradient(0,pt,0,pt+ph);gr.addColorStop(0,col+"55");gr.addColorStop(1,col+"00")}
-    g.beginPath();bars.forEach(function(b,j){var x=X(j),y=Y(b[4]);if(j)g.lineTo(x,y);else g.moveTo(x,y)});
-    g.strokeStyle=col;g.lineWidth=1.6;g.lineJoin="round";g.stroke();
-    if(gr){g.lineTo(X(n-1),pt+ph);g.lineTo(X(0),pt+ph);g.closePath();g.fillStyle=gr;g.fill()}}
-  var yl=Y(d.price);g.save();g.setLineDash([1,3]);g.strokeStyle=col;g.lineWidth=1;g.beginPath();g.moveTo(pl,Math.round(yl)+0.5);g.lineTo(pl+pw,Math.round(yl)+0.5);g.stroke();g.restore();
-  var lab=mkNum(d.price,d.digits);g.fillStyle=col;g.fillRect(pl+pw+2,yl-8,pr-3,16);g.fillStyle=light?"#fff":"#0a0a0a";g.textAlign="left";g.textBaseline="middle";g.fillText(lab,pl+pw+6,yl+0.5);
+    var path=new Path2D();bars.forEach(function(b,j){var x=X(j),y=Y(b[4]);if(j)path.lineTo(x,y);else path.moveTo(x,y)});
+    if(hex){var gr=g.createLinearGradient(0,pt,0,pt+ph);gr.addColorStop(0,col+"66");gr.addColorStop(0.6,col+"1a");gr.addColorStop(1,col+"00");
+      var fill=new Path2D();fill.addPath(path);fill.lineTo(X(n-1),pt+ph);fill.lineTo(X(0),pt+ph);fill.closePath();g.fillStyle=gr;g.fill(fill)}
+    g.save();if(!light){g.shadowColor=col;g.shadowBlur=8}g.strokeStyle=col;g.lineWidth=1.8;g.lineJoin="round";g.lineCap="round";g.stroke(path);g.restore()}
+  /* high and low of the window */
+  function mark(j,v,above){var x=X(j),y=Y(v),txt=mkNum(v,d.digits),tw=g.measureText(txt).width;g.fillStyle=MU;g.textBaseline="middle";g.textAlign=x+tw+14>pl+pw?"right":"left";
+    g.fillText(txt,x+(g.textAlign==="left"?7:-7),above?Math.max(pt+6,y-9):Math.min(pt+ph-4,y+9));g.beginPath();g.arc(x,y,2,0,6.283);g.fillStyle=MU;g.fill()}
+  if(hiI!==n-1)mark(hiI,rHi,true);if(loI!==n-1&&Math.abs(Y(rLo)-Y(rHi))>30)mark(loI,rLo,false);
+  /* last price: dotted guide, a pulsing dot and the tag */
+  var xl=X(n-1);g.save();g.setLineDash([1,3]);g.strokeStyle=col;g.globalAlpha=0.8;g.beginPath();g.moveTo(pl,Math.round(yPx)+0.5);g.lineTo(pl+pw,Math.round(yPx)+0.5);g.stroke();g.restore();
+  if(!cand){g.fillStyle=col;g.globalAlpha=0.22;g.beginPath();g.arc(xl,yPx,7,0,6.283);g.fill();g.globalAlpha=1;g.beginPath();g.arc(xl,yPx,3.2,0,6.283);g.fillStyle=col;g.fill();g.strokeStyle=cs.getPropertyValue("--panel").trim()||"#000";g.lineWidth=1.5;g.stroke()}
+  g.font="600 11px "+MONO;tag(mkNum(d.price,d.digits),yPx,col,light?"#fff":"#08110c");g.font="500 11px "+MONO;
+  /* crosshair */
   var hv=MK.hover[i];
   if(hv!==undefined&&hv>=0&&hv<n){
-    var b=bars[hv],x=Math.round(X(hv))+0.5,yv=Y(b[4]);g.strokeStyle=TX;g.globalAlpha=0.45;g.lineWidth=1;g.beginPath();g.moveTo(x,pt);g.lineTo(x,pt+ph);g.stroke();g.beginPath();g.moveTo(pl,Math.round(yv)+0.5);g.lineTo(pl+pw,Math.round(yv)+0.5);g.stroke();g.globalAlpha=1;
-    g.fillStyle=col;g.beginPath();g.arc(x,yv,3.5,0,6.283);g.fill();
-    var s=mkTime(b[0],t.tf)+"  ";c.ro.appendChild(document.createTextNode(s));
+    var b=bars[hv],x=Math.round(X(hv))+0.5,yv=Y(b[4]);g.save();g.setLineDash([3,3]);g.strokeStyle=TX;g.globalAlpha=0.5;g.lineWidth=1;g.beginPath();g.moveTo(x,pt);g.lineTo(x,pt+ph0);g.stroke();g.beginPath();g.moveTo(pl,Math.round(yv)+0.5);g.lineTo(pl+pw,Math.round(yv)+0.5);g.stroke();g.restore();
+    g.font="600 11px "+MONO;tag(mkNum(b[4],d.digits),yv,TX,light?"#fff":"#0a0a0a");g.font="500 11px "+MONO;
+    var tl=mkTime(b[0],t.tf),tw2=Math.ceil(g.measureText(tl).width)+10;g.fillStyle=TX;g.fillRect(Math.max(pl,Math.min(pl+pw-tw2,x-tw2/2)),h-pb+1,tw2,15);g.fillStyle=light?"#fff":"#0a0a0a";g.textAlign="center";g.textBaseline="middle";g.fillText(tl,Math.max(pl,Math.min(pl+pw-tw2,x-tw2/2))+tw2/2,h-pb+9);
+    g.beginPath();g.arc(x,yv,4,0,6.283);g.fillStyle=col;g.fill();g.strokeStyle=cs.getPropertyValue("--panel").trim()||"#000";g.lineWidth=1.5;g.stroke();
+    var chg=b[4]-d.prev;c.ro.appendChild(document.createTextNode(mkTime(b[0],t.tf)+"   "));
     if(cand){[["O",b[1]],["H",b[2]],["L",b[3]],["C",b[4]]].forEach(function(p){c.ro.appendChild(document.createTextNode(p[0]+" "));c.ro.appendChild(el("b",null,mkNum(p[1],d.digits)));c.ro.appendChild(document.createTextNode("  "))})}
-    else c.ro.appendChild(el("b",null,mkNum(b[4],d.digits)))}}
+    else c.ro.appendChild(el("b",null,mkNum(b[4],d.digits)));
+    var ce=el("b",chg>=0?"up":"down","  "+(chg>0?"+":"")+(d.prev?(chg/d.prev*100).toFixed(2):"0.00")+"%");c.ro.appendChild(ce);
+    if(b[5]>0)c.ro.appendChild(document.createTextNode("   Vol "+(b[5]>=1e6?(b[5]/1e6).toFixed(1)+"M":b[5]>=1e3?(b[5]/1e3).toFixed(1)+"k":b[5])))}}
 function mkFetch(){
   if(!MK.lay||MK.busy||!MK.lay.tiles.length){if(MK.lay&&!MK.lay.tiles.length)mkLive(true);return}
   MK.busy=true;var seen={},parts=[];MK.lay.tiles.forEach(function(t){var k=mkKey(t);if(!seen[k]){seen[k]=1;parts.push(encodeURIComponent(t.s)+":"+t.tf)}});
@@ -4455,9 +4527,28 @@ setInterval(dqRender,3000);
 
 /* ---------------- chat box ---------------- */
 var chatMsgs=[],chatBusy=false;
-try{var cs=JSON.parse(store("zd.chat")||"[]");if(Array.isArray(cs))chatMsgs=cs.filter(function(m){return m&&(m.role==="user"||m.role==="assistant"||m.role==="err")&&typeof m.content==="string"}).slice(-20)}catch(e){}
-var CHIPS=["What's moving?","Calendar next 24h","How is my week going?","Risk check","Bias on gold","Explain like I'm new"];
-function chatSave(){store("zd.chat",JSON.stringify(chatMsgs.filter(function(m){return m.role!=="err"}).slice(-20)))}
+/* one chat per day: yesterday's messages are gone when the date changes, and New chat clears today's */
+try{if(store("zd.chat.day")===today()){var cs=JSON.parse(store("zd.chat")||"[]");if(Array.isArray(cs))chatMsgs=cs.filter(function(m){return m&&(m.role==="user"||m.role==="assistant"||m.role==="err")&&typeof m.content==="string"}).slice(-20)}else{store("zd.chat","[]");store("zd.chat.day",today())}}catch(e){}
+var CHIPS=["What's moving?","Calendar next 24h","How is my week going?","Risk check","Bias on gold","My funding","Read my charts","Explain like I'm new"];
+function chatSave(){store("zd.chat.day",today());store("zd.chat",JSON.stringify(chatMsgs.filter(function(m){return m.role!=="err"}).slice(-20)))}
+function chatDayCheck(){if(store("zd.chat.day")!==today()&&chatMsgs.length){chatMsgs=[];chatSave();chatRender()}}
+document.addEventListener("visibilitychange",function(){if(!document.hidden)chatDayCheck()});setInterval(chatDayCheck,60000);
+function chatClock(ms){var d=new Date(ms||Date.now());return("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}
+/* answers come back as plain text with the odd **bold** and "- " list: shown as such without ever being parsed as HTML */
+function chatFmt(node,text){
+  node.textContent="";
+  String(text).split("\n").forEach(function(line){
+    var li=/^\s*(?:[-*\u2022])\s+(.*)$/.exec(line),row=el("div",li?"li":"ln"),src=li?li[1]:line;
+    if(!li&&!src.trim()){row.className="gap";node.appendChild(row);return}
+    src.split(/(\*\*[^*]+\*\*)/).forEach(function(part){if(/^\*\*[^*]+\*\*$/.test(part))row.appendChild(el("b",null,part.slice(2,-2)));else if(part)row.appendChild(document.createTextNode(part))});
+    node.appendChild(row)})}
+var chatInfo=null;
+function chatStatus(){
+  var st=$("chat-stat");if(!st)return;
+  if(!chatInfo){st.textContent="Checking...";return}
+  st.className="cstat "+(chatInfo.ready?"on":"off");
+  st.textContent=chatInfo.ready?"Ready \u00B7 "+chatInfo.service:"No AI key yet";st.title=chatInfo.ready?"Answers come from "+chatInfo.service+(chatInfo.model?" ("+chatInfo.model+")":""):"Add a Claude or Gemini key in Settings, Connections, and the assistant starts answering."}
+fetch("/api/coach/status").then(function(r){return r.json()}).then(function(j){chatInfo=j;chatStatus()}).catch(function(){chatInfo={ready:false};chatStatus()});
 function chatOpen(on){$("chat").hidden=!on;$("chat-btn").setAttribute("aria-expanded",String(on));if(on){chatRender();$("chat-in").focus()}}
 var chatDrawn=0,chatType=false,chatTW=null;
 function chatRender(){
@@ -4465,38 +4556,43 @@ function chatRender(){
   clearTimeout(chatTW);log.textContent="";box.classList.toggle("empty",empty);
   if(empty){
     var w=el("div","cwel"),mk=el("div","cmark");mk.appendChild(el("i"));w.appendChild(mk);
-    w.appendChild(el("b",null,"Ask me anything about your day"));
-    w.appendChild(el("p",null,"Ask me about the market, your journal, your risk or the macro desk. I explain and review. I will not predict price or tell you what to take."));
+    w.appendChild(el("b",null,"How can I help today?"));
+    w.appendChild(el("p",null,"I can see your journal totals, today's prices and calendar, your funding and the charts on your Markets page. I explain and review. I will not predict price or tell you what to take."));
+    w.appendChild(el("p","cfine","A new chat starts each day. Your messages are sent only when you press Send."));
     var g=el("div","cgrid");CHIPS.forEach(function(t,n){var b=el("button",null,t);b.type="button";b.style.setProperty("--n",n);b.onclick=function(){chatSend(t)};g.appendChild(b)});
     w.appendChild(g);log.appendChild(w)}
   chatMsgs.forEach(function(m,i){
-    var n=el("div","m "+m.role+(i>=chatDrawn?" new":""),m.content);log.appendChild(n);
+    var n=el("div","m "+m.role+(i>=chatDrawn?" new":""));if(m.t)n.setAttribute("data-t",chatClock(m.t));log.appendChild(n);
+    if(m.role==="assistant")chatFmt(n,m.content);else n.textContent=m.content;
     if(chatType&&i===chatMsgs.length-1&&m.role==="assistant"&&!REDUCED){
       var txt=m.content,k=0,step=Math.max(3,Math.ceil(txt.length/80));n.textContent="";
-      (function f(){k=Math.min(txt.length,k+step);n.textContent=txt.slice(0,k);log.scrollTop=log.scrollHeight;if(k<txt.length)chatTW=setTimeout(f,16)})()}});
+      (function f(){k=Math.min(txt.length,k+step);n.textContent=txt.slice(0,k);log.scrollTop=log.scrollHeight;if(k<txt.length)chatTW=setTimeout(f,16);else chatFmt(n,txt)})()}});
   chatType=false;chatDrawn=chatMsgs.length;
   if(chatBusy){var t=el("div","m assistant ctyp new");for(var d=0;d<3;d++)t.appendChild(el("i"));log.appendChild(t)}
   log.scrollTop=log.scrollHeight}
 function chatContext(){
   var c={tab:tabNow},b=[];
   MARKETS_ALL.forEach(function(m){var a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]];if(a)b.push(m[0]+" "+a.bias+(a.conviction?" ("+a.conviction+")":""))});if(b.length)c.bias="AI bias today: "+b.join(", ");
+  try{if(FD&&FD.shown)c.funding="Prop funding: total "+fdMoney(FD.shown.all)+", evaluations "+fdMoney(FD.shown.evals)+", funded "+fdMoney(FD.shown.funded)+", forex/CFD "+fdMoney(FD.shown.cfd)+", futures "+fdMoney(FD.shown.futures)+", pay-outs "+fdMoney(FD.paid)+", goal "+fdMoney(FD.goal)}catch(e){}
+  try{if(MK.lay){var bd=[];MK.lay.tiles.slice(0,8).forEach(function(t){var d=MK.data[mkKey(t)];if(d&&!d.error)bd.push(mkLabel(t.s,d)[0]+" "+mkNum(d.price,d.digits)+" "+pctText(d.pct)+" ("+t.tf+")")});if(bd.length)c.board="Markets page charts: "+bd.join(", ")}}catch(e){}
   return c}
 function chatSend(text){
   text=(text||"").trim();if(!text||chatBusy)return;
-  chatMsgs=chatMsgs.filter(function(m){return m.role!=="err"});chatMsgs.push({role:"user",content:text});chatBusy=true;chatSave();chatRender();
+  chatMsgs=chatMsgs.filter(function(m){return m.role!=="err"});chatMsgs.push({role:"user",content:text,t:Date.now()});chatBusy=true;chatSave();chatRender();
   var send=chatMsgs.filter(function(m){return m.role==="user"||m.role==="assistant"}).slice(-12);
   fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},
     body:JSON.stringify({messages:send,context:chatContext(),trades:liveOnly().slice(0,100)})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
-  .then(function(x){chatMsgs.push(x.ok?{role:"assistant",content:x.j.answer}:{role:"err",content:x.j.error||"The assistant could not answer."})})
+  .then(function(x){chatMsgs.push(x.ok?{role:"assistant",content:x.j.answer,t:Date.now()}:{role:"err",content:x.j.error||"The assistant could not answer."})})
   .catch(function(e){chatMsgs.push({role:"err",content:"The dashboard did not answer: "+e})})
   .then(function(){chatBusy=false;chatType=true;chatSave();chatRender()})}
 $("chat-btn").onclick=function(){chatOpen($("chat").hidden)};
 $("chat-close").onclick=function(){chatOpen(false)};
-$("chat-clear").onclick=function(){chatMsgs=[];chatSave();chatRender()};
+$("chat-clear").onclick=function(){chatMsgs=[];chatBusy=false;chatSave();chatRender();$("chat-in").focus()};
 $("chat-form").onsubmit=function(ev){ev.preventDefault();var v=$("chat-in").value;$("chat-in").value="";chatSend(v)};
 CHIPS.forEach(function(t){var b=el("button",null,t);b.type="button";b.onclick=function(){chatSend(t)};$("chat-chips").appendChild(b)});
 chatRender();
+setTimeout(function(){if(!FD)fdLoad()},4000);
 
 var tab0=store("zd.tab");showTab(TABS.indexOf(tab0)>=0?tab0:"home");
 jLoad();

@@ -50,6 +50,15 @@ class PageFeatures(unittest.TestCase):
         self.assertNotIn("prompt(", mk)
         self.assertNotIn("innerHTML", mk)
 
+    def test_the_assistant_is_called_ai_assistant_and_starts_a_new_chat_each_day(self):
+        for needle in ('<span>AI Assistant</span>', 'aria-label="AI Assistant"', '<h3>AI Assistant</h3>', 'content:"AI Assistant"', 'store("zd.chat.day")===today()', "function chatDayCheck", "function chatFmt", ">New chat<"):
+            self.assertIn(needle, self.page)
+        self.assertNotIn("AI Bot", self.page.split("</style>")[1])      # the old name is gone from the page itself
+
+    def test_market_tiles_use_plain_names(self):
+        for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
+            self.assertIn(needle, self.page)
+
 
 class WindowsConfig(unittest.TestCase):
     def test_a_config_file_saved_with_a_byte_order_mark_still_reads(self):
