@@ -65,6 +65,7 @@ class PageFeatures(unittest.TestCase):
         keys = [item[0] for item in macro.WATCH]
         self.assertIn("USDJPY", keys)
         self.assertIn("XAGUSD", keys)
+        self.assertIn('var QM_FIRST=["GBPUSD","EURUSD","USDJPY","NQ","SPX","XAUUSD","XAGUSD"]', self.page)   # the quote monitor follows the same order and drops nothing
         self.assertIn("VIX", keys)                                      # still read: the mood and capital flow use it, it is just off the top strip
 
 

@@ -3795,7 +3795,9 @@ function qmRender(d){
   var th=el("thead"),hr=el("tr");["Market","Last","Chg","%","5D","1M","Trend","Range","AI bias"].forEach(function(h,i){var c=el("th",i>0&&i<6?"r":"",h);hr.appendChild(c)});th.appendChild(hr);tb.appendChild(th);
   var body=el("tbody"),lab={};MARKETS_ALL.forEach(function(m){lab[m[0]]=m[2]});
   var bi=macroBrief&&macroBrief.bias||{};
-  d.quotes.forEach(function(q,row){
+  /* your order first (GBP/USD, EUR/USD, USD/JPY, Nasdaq, S&P 500, Gold, Silver), then the rest as they were */
+  var QM_FIRST=["GBPUSD","EURUSD","USDJPY","NQ","SPX","XAUUSD","XAGUSD"];
+  d.quotes.map(function(q,i){var f=QM_FIRST.indexOf(q.key);return{q:q,k:f>=0?f:QM_FIRST.length+i}}).sort(function(a,b){return a.k-b.k}).map(function(x){return x.q}).forEach(function(q,row){
     var sp=qSeries(q),tr=el("tr"),cls=pctClass(q.pct);
     function td(txt,c){var x=el("td",c||"",txt);tr.appendChild(x);return x}
     tr.setAttribute("data-k",q.key);tr.style.setProperty("--n",row);
