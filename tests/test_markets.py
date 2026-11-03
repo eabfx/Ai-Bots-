@@ -72,6 +72,22 @@ class Fetch(unittest.TestCase):
         self.assertEqual(len(calls), n)                    # second ask is served from the short cache
         self.assertIn("interval=60m", [c for c in calls if "NQ" in c][0])
 
+    def test_a_short_reuse_window_spares_the_feed(self):
+        calls = []
+        now = [1000.0]
+
+        def fetch(path):
+            calls.append(path)
+            return chart(price=100.0 + len(calls))
+        first = markets.many([("ZZ=F", "5m")], fetch, clock=lambda: now[0], ttl=2.5)
+        again = markets.many([("ZZ=F", "5m")], fetch, clock=lambda: now[0] + 1, ttl=2.5)
+        self.assertEqual(len(calls), 1)                                   # inside 2.5 seconds: same answer, no new request
+        self.assertEqual(first["ZZ=F|5m"]["price"], again["ZZ=F|5m"]["price"])
+        now[0] += 3
+        later = markets.many([("ZZ=F", "5m")], fetch, clock=lambda: now[0], ttl=2.5)
+        self.assertEqual(len(calls), 2)                                   # after it: a fresh price
+        self.assertNotEqual(later["ZZ=F|5m"]["price"], first["ZZ=F|5m"]["price"])
+
     def test_bad_timeframe(self):
         with self.assertRaises(markets.MarketsError):
             markets.one("GC=F", "7m", lambda p: chart())

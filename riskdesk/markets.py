@@ -112,14 +112,14 @@ def parse(text, sym, tf):
             "digits": digits_for(price), "last_t": last[0], "at": int(time.time()), "bars": bars}
 
 
-def one(sym, tf, fetch=None, clock=time.time):
+def one(sym, tf, fetch=None, clock=time.time, ttl=None):
     sym = clean_symbol(sym)
     if tf not in TIMEFRAMES:
         raise MarketsError("timeframe must be one of %s" % ", ".join(TIMEFRAMES))
     key, now = (sym, tf), clock()
     with _LOCK:
         hit = _CACHE.get(key)
-    if hit and now - hit[0] < CACHE_SECS:
+    if hit and now - hit[0] < (CACHE_SECS if ttl is None else ttl):
         return hit[1]
     interval, rng, _ = TIMEFRAMES[tf]
     path = "/v8/finance/chart/%s?range=%s&interval=%s" % (urllib.parse.quote(sym, safe=""), rng, interval)
@@ -135,13 +135,14 @@ def one(sym, tf, fetch=None, clock=time.time):
     return out
 
 
-def many(pairs, fetch=None, clock=time.time):
-    """[(symbol, timeframe), ...] -> {"SYMBOL|tf": tile or {"error": "..."}}. Fetched side by side so six charts take one round trip."""
+def many(pairs, fetch=None, clock=time.time, ttl=None):
+    """[(symbol, timeframe), ...] -> {"SYMBOL|tf": tile or {"error": "..."}}. Fetched side by side so six charts take one round trip.
+    ttl is how many seconds an earlier answer for the same chart is reused (the page asks every few seconds, so the server passes a short one)."""
     pairs = list(dict.fromkeys((str(s), str(t)) for s, t in pairs))[:MAX_TILES]
 
     def get(p):
         try:
-            return one(p[0], p[1], fetch, clock)
+            return one(p[0], p[1], fetch, clock, ttl)
         except (MarketsError, z.ZoneError) as e:
             return {"error": str(e), "symbol": str(p[0])[:16], "tf": p[1]}
     with ThreadPoolExecutor(max_workers=6) as ex:

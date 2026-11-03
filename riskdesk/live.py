@@ -30,9 +30,10 @@ PATH = "/v8/finance/chart/%s?range=1d&interval=1d"
 
 # what each market is, so the page never passes a delayed futures price off as spot
 KIND = {"XAUUSD": "COMEX futures", "NQ": "CME futures", "OIL": "NYMEX futures", "DXY": "ICE futures index",
-        "EURUSD": "spot forex", "GBPUSD": "spot forex", "US10Y": "Cboe index", "VIX": "Cboe index", "SPX": "S&P index"}
+        "EURUSD": "spot forex", "GBPUSD": "spot forex", "US10Y": "Cboe index", "VIX": "Cboe index", "SPX": "S&P index",
+        "USDJPY": "spot forex", "XAGUSD": "COMEX futures"}
 # the biggest move (in %) believed between two readings a few seconds apart
-JUMP = {"EURUSD": 0.25, "GBPUSD": 0.25, "XAUUSD": 0.8, "NQ": 0.8, "SPX": 0.8, "OIL": 2.5, "DXY": 0.4, "US10Y": 5.0, "VIX": 12.0}
+JUMP = {"EURUSD": 0.25, "GBPUSD": 0.25, "XAUUSD": 0.8, "NQ": 0.8, "SPX": 0.8, "OIL": 2.5, "DXY": 0.4, "US10Y": 5.0, "VIX": 12.0, "USDJPY": 0.3, "XAGUSD": 1.5}
 DELAY_MIN, DELAY_MAX = 420, 840     # a steady gap of 7 to 14 minutes between the exchange time and now is a delayed feed
 CLOSED_AFTER = 1800                 # no new trade for half an hour: the market is shut (or the feed is stale)
 CHECK_PAIRS = [("EURUSD", "EUR/USD"), ("GBPUSD", "GBP/USD")]

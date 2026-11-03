@@ -4255,7 +4255,7 @@ function mkNum(v,dg){return Number(v).toLocaleString("en-US",{minimumFractionDig
 function mkErr(m){var e=$("mk-err");e.textContent=m||"";e.style.display=m?"":"none"}
 function mkSave(){clearTimeout(MK.saveT);MK.saveT=setTimeout(function(){fetch("/api/mkt/layout",{method:"POST",headers:HDRS,body:JSON.stringify({grid:MK.lay.grid,tf:MK.lay.tf,style:MK.lay.style,tiles:MK.lay.tiles})}).catch(function(){})},500)}
 function mkLive(ok){var b=$("mk-live"),t=$("mk-live-t");if(!b)return;b.className="mk-live"+(ok?" on":"");
-  if(ok){var n=new Date(MK.okAt);t.textContent="Live, updated "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+":"+("0"+n.getSeconds()).slice(-2)+", every 20 s"}
+  if(ok){var n=new Date(MK.okAt);t.textContent="Live, updated "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+":"+("0"+n.getSeconds()).slice(-2)+", every 3 s"}
   else t.textContent=MK.okAt?"Offline: showing the last prices":"Connecting..."}
 function mkLoad(){
   fetch("/api/mkt/layout").then(function(r){return r.json()}).then(function(j){
@@ -4430,13 +4430,14 @@ function mkFetch(){
   if(!MK.lay||MK.busy||!MK.lay.tiles.length){if(MK.lay&&!MK.lay.tiles.length)mkLive(true);return}
   MK.busy=true;var seen={},parts=[];MK.lay.tiles.forEach(function(t){var k=mkKey(t);if(!seen[k]){seen[k]=1;parts.push(encodeURIComponent(t.s)+":"+t.tf)}});
   fetch("/api/mkt/charts?c="+parts.join(",")).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"The charts did not load");return j})})
-  .then(function(j){for(var k in j)MK.data[k]=j[k];MK.okAt=Date.now();mkLive(true);mkErr("");mkPaintAll()})
-  .catch(function(e){mkLive(false);mkErr("The prices did not load: "+e.message)})
+  .then(function(j){for(var k in j)MK.data[k]=j[k];MK.okAt=Date.now();MK.gap=3000;mkLive(true);mkErr("");mkPaintAll()})
+  .catch(function(e){MK.gap=Math.min((MK.gap||3000)*2,20000);mkLive(false);mkErr("The prices did not load: "+e.message)})
   .then(function(){MK.busy=false})}
 function mkShow(){if(!MK.lay)mkLoad();else{mkBuild();mkFetch()}}
 function mkReset(){MK.lay=JSON.parse(JSON.stringify(MK_DEF));MK.data={};mkSave();if($("mk-grids")){mkBar();mkBuild();if(tabNow==="markets")mkFetch()}}
 $("mk-addf").onsubmit=function(e){e.preventDefault();var i=$("mk-sym");if(!MK.lay)return;mkAdd(i.value);if(!$("mk-err").textContent)i.value=""};
-setInterval(function(){if(tabNow==="markets"&&!document.hidden)mkFetch()},20000);
+/* the charts refresh every 3 seconds while Markets is open; if the feed struggles the gap grows (up to 20 s) and returns to 3 s when it recovers */
+(function loop(){var gap=MK.gap||3000;setTimeout(function(){if(tabNow==="markets"&&!document.hidden)mkFetch();loop()},gap)})();
 (function(){var q=0;function again(){cancelAnimationFrame(q);q=requestAnimationFrame(function(){if(tabNow==="markets"&&MK.lay)for(var i=0;i<MK.lay.tiles.length;i++)mkDraw(i)})}
   if(window.ResizeObserver)new ResizeObserver(again).observe($("mk-grid"));else window.addEventListener("resize",again);
   document.addEventListener("click",function(e){if(e.target&&e.target.id==="theme")setTimeout(again,60)})})();

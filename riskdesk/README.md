@@ -167,7 +167,7 @@ The **Funding** page totals every prop-firm account you hold, split into forex /
 
 ## Markets and Settings
 
-**Markets** is a board of live charts you choose. Pick a layout (1, 2x1, 2x2, 3x2, 3x3, 4x3), a timeframe (1m, 5m, 15m, 1h, 1d) and line or candles, for every chart at once or one chart at a time. Type any Yahoo symbol to add a chart (`GC=F`, `NQ=F`, `EURUSD=X`, `^GSPC`, `BTC-USD`, `NVDA`), click a symbol to change it, and use the arrows to reorder. Prices refresh every 20 seconds while the page is open. Forex is live; CME futures (`=F`) run about ten minutes behind on the free Yahoo feed. Your layout is saved in `markets.json` in the data folder.
+**Markets** is a board of live charts you choose. Pick a layout (1, 2x1, 2x2, 3x2, 3x3, 4x3), a timeframe (1m, 5m, 15m, 1h, 1d) and line or candles, for every chart at once or one chart at a time. Type any Yahoo symbol to add a chart (`GC=F`, `NQ=F`, `EURUSD=X`, `^GSPC`, `BTC-USD`, `NVDA`), click a symbol to change it, and use the arrows to reorder. Prices refresh every 3 seconds while Markets is open (the server reuses an answer for 2.5 seconds, and the page slows itself down if the feed struggles). Forex is live; CME futures (`=F`) run about ten minutes behind on the free Yahoo feed. Your layout is saved in `markets.json` in the data folder.
 
 **Settings** holds the preferences (theme, replay the intro, reset Home, reset charts) and the Connections content that used to be its own page. The `connections` command still works.
 

@@ -56,6 +56,17 @@ class PageFeatures(unittest.TestCase):
             self.assertIn(needle, self.page)
         self.assertNotIn("AI Bot", self.page.split("</style>")[1])      # the old name is gone from the page itself
 
+    def test_markets_refresh_every_three_seconds_and_back_off_when_the_feed_struggles(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        self.assertIn("var gap=MK.gap||3000", page)
+        self.assertIn("MK.gap=Math.min((MK.gap||3000)*2,20000)", page)
+        self.assertIn(", every 3 s", page)
+        self.assertIn("ttl=2.5", open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.py"), encoding="utf-8").read())
+        live = load("riskdesk", "live")
+        macro = load("riskdesk", "macro")
+        for key, *_ in macro.WATCH:
+            self.assertIn(key, live.KIND)                                  # every watched market says what kind of price it is
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

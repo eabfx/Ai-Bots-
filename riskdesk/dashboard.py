@@ -268,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
             if not pairs:
                 return self.send_json(400, {"error": "ask for charts like c=GC=F:5m,NQ=F:5m"})
             try:
-                self.send_json(200, markets.many(pairs, self.mkt_fetch))
+                self.send_json(200, markets.many(pairs, self.mkt_fetch, ttl=2.5))
             except Exception as e:
                 self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
         elif url.path == "/api/push/status":
