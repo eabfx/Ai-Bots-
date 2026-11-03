@@ -161,10 +161,6 @@ Kelly Terminal uses a terminal look: flat black, square panels with small title 
 - `1` to `8` jump to Home, Macro, Journal, Backtest, Trades, Alerts, Connections and Second Brain (when you are not typing in a box).
 - `` ` `` or `/` opens the command box: type a tab name, `brief` (write the market read now), `refresh` or `theme`.
 
-## Chart
-
-The Chart page draws candles for gold, Nasdaq, EURUSD, GBPUSD and MGC on 5m, 15m, 1h, 4h and 1D (Yahoo's free feed: futures run about 10 minutes late, forex is live). On top of the candles it draws the supply and demand zones the zone finder (`trader-zones/zones.py`) sees on that timeframe, the zones and daily/4h levels you saved in the Zones app (`my_zones.json`, `my_levels.json` next to `config.json`), and the live price, which moves the last candle. Scroll to zoom, drag to move, double-click to reset. It only reads; nothing is written.
-
 ## Phone alerts
 
 Alerts normally fire only while the page is open. Turn on **Phone alerts** on the Alerts page and the server also watches your price levels, high-impact news and the London and New York opens once a minute and sends them through [ntfy](https://ntfy.sh) (free app for iPhone and Android). The page shows a private topic name (`kelly-` and 16 random characters, kept in `push_topic.txt` in the trader folder): subscribe the ntfy app to it. Turning the switch off deletes the file. Only run this on one machine (the server), or you will get each alert twice.

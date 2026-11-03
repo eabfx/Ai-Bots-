@@ -26,7 +26,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zo
 sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import brain         # noqa: E402
-import chart         # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_api     # noqa: E402
@@ -248,15 +247,6 @@ class Handler(BaseHTTPRequestHandler):
             self.macro(parse_qs(url.query))
         elif url.path == "/api/push/status":
             self.send_json(200, self.pusher.state())
-        elif url.path == "/api/chart":
-            q = parse_qs(url.query)
-            try:
-                self.send_json(200, chart.snapshot((q.get("symbol") or [""])[0], (q.get("tf") or ["15m"])[0],
-                                                   self.config_path, self.offline, getattr(self, "chart_fetch", None)))
-            except z.ZoneError as e:
-                self.send_json(400, {"error": str(e)})
-            except Exception as e:                       # Yahoo down or slow: say so and keep serving
-                self.send_json(502, {"error": "Could not load candles: %s" % e})
         elif url.path == "/api/notion/status":
             self.send_json(200, self.notion_link.state if self.notion_link else {"connected": False})
         elif url.path == "/api/notion/journal":

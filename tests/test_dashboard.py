@@ -762,7 +762,7 @@ class TerminalLook(Server):
 
     def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
         _, _, page = self.get("/")
-        for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=0&&n<=9", "rdState"):
+        for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=9", "rdState"):
             self.assertIn(needle, page)
 
     def test_the_decorative_effects_are_switched_off_but_the_intro_stays(self):
@@ -1039,7 +1039,7 @@ class LivePrices(Server):
 
     def test_forward_test_is_its_own_page_over_the_same_layout_with_its_own_trades(self):
         _, _, page = self.get("/")
-        for needle in ('data-tab="forward">Forward Test<', 'var TABS=["home","macro","chart","journal","backtest","forward"',
+        for needle in ('data-tab="forward">Forward Test<', 'var TABS=["home","macro","journal","backtest","forward"',
                        "function isJ(t)", "return !t.skip&&typeOf(t)===jAcct", "Forward Test", "new in Forward Test"):
             self.assertIn(needle, page)
         self.assertIn('function typeOf(t){return t.acct!=="backtest"?"live":/forward/i.test(t.acctType||"")?"forward":"backtest"}', page)
