@@ -161,6 +161,10 @@ Kelly Terminal uses a terminal look: flat black, square panels with small title 
 - `1` to `8` jump to Home, Macro, Journal, Backtest, Trades, Alerts, Connections and Second Brain (when you are not typing in a box).
 - `` ` `` or `/` opens the command box: type a tab name, `brief` (write the market read now), `refresh` or `theme`.
 
+## Funding
+
+The **Funding** page totals every prop-firm account you hold, split into forex / CFD and futures and into three stages (in evaluation, passed but not activated, funded and active), with a progress bar to your funding goal, your pay-outs, the rules sheet per firm and a live-status card for each account. Most of it is copied read-only from your Notion page (the two funding breakdown tables, the pay-outs list, the goal line, the rules cheat sheet and the Account Scaling System databases), refreshed with the Notion link. Nothing is ever written to Notion. You can add accounts and pay-outs, change a stage or hide a Notion row on the page; those changes live in `funding.json` in the trader folder and are never overwritten by the next Notion copy. If Notion's typed totals disagree with its rows, the page adds up the rows and says so. **Connect accounts** shows what is linked today (Notion, live and read only) and what a real broker feed needs: prop firms have no public account API, so a live feed means a read-only key from you (for example a MetaApi investor password for MT4/MT5 accounts) placed in the trader folder.
+
 ## Phone alerts
 
 Alerts normally fire only while the page is open. Turn on **Phone alerts** on the Alerts page and the server also watches your price levels, high-impact news and the London and New York opens once a minute and sends them through [ntfy](https://ntfy.sh) (free app for iPhone and Android). The page shows a private topic name (`kelly-` and 16 random characters, kept in `push_topic.txt` in the trader folder): subscribe the ntfy app to it. Turning the switch off deletes the file. Only run this on one machine (the server), or you will get each alert twice.

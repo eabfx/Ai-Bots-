@@ -35,6 +35,13 @@ class PageFeatures(unittest.TestCase):
         self.assertNotIn("/api/chart", self.page)
 
 
+    def test_funding_page_is_wired_in(self):
+        for needle in ('data-tab="funding"', 'id="tab-funding"', "function fdLoad", "function fdRender", 'id="fd-conn"', 'id="fd-connpanel"',
+                       '"funding","macro"'.replace('"funding","macro"', '"trades","funding","alerts"'), 'if(name==="funding")fdLoad()', '"/api/funding"'):
+            self.assertIn(needle, self.page)
+        self.assertNotIn("prompt(", self.page.split("/* ---------------- funding ---------------- */")[1].split("/* ---------------- connections page")[0])
+
+
 class WindowsConfig(unittest.TestCase):
     def test_a_config_file_saved_with_a_byte_order_mark_still_reads(self):
         with tempfile.TemporaryDirectory() as tmp:

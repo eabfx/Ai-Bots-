@@ -1323,6 +1323,44 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 /* nine menu items: tighten the header on mid-size screens so nothing runs off the edge */
 @media(min-width:901px) and (max-width:1280px){#cmd{width:104px}.bar nav button{padding:0 8px!important}.bar{gap:8px}}
 @media(min-width:901px) and (max-width:1100px){.bar nav button .ni{display:none}.brainbtn .ni{display:none}#cmd{width:64px}.bar nav button{padding:0 7px!important}}
+/* funding page */
+#tab-funding [hidden]{display:none!important}
+.fbar{display:flex;height:12px;border:1px solid var(--line);border-radius:2px;background:var(--input);overflow:hidden;margin:10px 0 8px}
+.fbar i,.fkey i{display:block}
+.fbar i{height:100%;width:0;transition:width .5s ease}
+.f1{background:var(--up)}.f2{background:var(--text);opacity:.55}.f3{background:var(--muted);opacity:.45}
+.fkey{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.fkey span{display:inline-flex;align-items:center;gap:6px}.fkey i{width:10px;height:10px;border-radius:2px}
+.fd-goal{padding:12px 14px 14px}
+.fd-gtxt{font:600 20px var(--mono)}.fd-gtxt span{font:400 13px var(--sans,inherit);color:var(--muted);margin-left:8px}
+.fd-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fd-form{padding:12px 14px;border-bottom:1px solid var(--line)}
+.fd-scroll{max-height:none;padding:0}
+.fd-scroll table td,.fd-scroll table th{padding:7px 12px;white-space:nowrap;text-align:left}
+.fd-scroll table td.r,.fd-scroll table th.r{text-align:right}
+.fd-scroll table td .nt{max-width:220px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom;color:var(--muted)}
+.fst{display:inline-block;font:500 11px var(--mono);padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--muted)}
+.fst.funded{color:var(--up);border-color:var(--up)}.fst.passed{color:var(--text)}
+.fact{appearance:none;background:none;border:0;color:var(--muted);font:500 12px var(--mono);cursor:pointer;padding:2px 6px}.fact:hover{color:var(--text)}
+.fstage{display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;align-items:baseline;padding:9px 14px;border-bottom:1px solid var(--line)}
+.fstage:last-child{border-bottom:0}.fstage b{font-weight:500}.fstage .n{font:400 12px var(--mono);color:var(--muted)}.fstage .v{font:600 16px var(--mono);text-align:right}
+.fstat{padding:10px 14px;border-bottom:1px solid var(--line)}.fstat:last-child{border-bottom:0}
+.fstat-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fstat-h b{font-weight:600}.fstat-h span{font-size:12px;color:var(--muted)}
+.fmeter{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;margin-top:6px;font-size:12px}
+.fmeter .k{color:var(--muted)}.fmeter .v{font-family:var(--mono)}
+.fmeter .tr{height:6px;background:var(--input);border:1px solid var(--line);border-radius:2px;overflow:hidden}.fmeter .tr i{display:block;height:100%;background:var(--up)}.fmeter .tr i.dn{background:var(--down)}
+.ffirm{padding:10px 14px;border-bottom:1px solid var(--line)}.ffirm:last-child{border-bottom:0}
+.ffirm-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}.ffirm-h b{font-weight:600}.ffirm-h span{font:600 14px var(--mono)}
+.ffirm .s{font-size:12px;color:var(--muted);margin-top:2px}
+.ffirm details{margin-top:6px;font-size:12px}.ffirm summary{cursor:pointer;color:var(--muted)}
+.frules{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:6px}.frules dt{color:var(--muted)}.frules dd{margin:0}
+.fpay{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--line);font-size:13px}
+.fpay .v{font:600 14px var(--mono);color:var(--up)}
+.fconn{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fconn:last-child{border-bottom:0}.fconn .t{flex:1 1 280px;min-width:0}.fconn .t b{font-weight:600}.fconn .t div{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.45}
+.fconn .st{font:500 12px var(--mono)}.fconn .st.on{color:var(--up)}.fconn .st.off{color:var(--muted)}
+@media(max-width:520px){.fmeter{grid-template-columns:76px 1fr auto}}
 </style>
 </head>
 <body>
@@ -1336,6 +1374,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <button role="tab" aria-selected="false" data-tab="backtest">Backtest</button>
 <button role="tab" aria-selected="false" data-tab="forward">Forward Test</button>
 <button role="tab" aria-selected="false" data-tab="trades">Trades</button>
+<button role="tab" aria-selected="false" data-tab="funding">Funding</button>
 <button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
 <button role="tab" aria-selected="false" data-tab="connect">Connections</button>
 </nav>
@@ -1384,7 +1423,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
   var $$=function(q,r){return[].slice.call((r||document).querySelectorAll(q))};
   /* icons in the menu (wide screens show them) */
   var IC={home:"M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",macro:"M3 17l5-6 4 3 5-8 4 4M3 21h18",journal:"M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4zM5 17a3 3 0 013-3h11",
-    backtest:"M4 12a8 8 0 108-8M4 4v5h5M12 8v4l3 2",forward:"M4 12h13M13 6l6 6-6 6M4 5v14",trades:"M7 7h12l-3-3M17 17H5l3 3",alerts:"M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0",
+    backtest:"M4 12a8 8 0 108-8M4 4v5h5M12 8v4l3 2",forward:"M4 12h13M13 6l6 6-6 6M4 5v14",trades:"M7 7h12l-3-3M17 17H5l3 3",funding:"M3 7h15a3 3 0 013 3v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM3 7l12-3v3M16 14h2",alerts:"M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0",
     connect:"M9 7V3M15 7V3M7 7h10v4a5 5 0 01-10 0V7zM12 16v5",brain:"M9 4a3 3 0 00-3 3v1a3 3 0 00-2 3 3 3 0 002 3 3 3 0 003 4h1V4H9zM15 4a3 3 0 013 3v1a3 3 0 012 3 3 3 0 01-2 3 3 3 0 01-3 4h-1V4h1z"};
   function icon(name){var n="http://www.w3.org/2000/svg",s=document.createElementNS(n,"svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("class","ni");s.setAttribute("aria-hidden","true");
     var p=document.createElementNS(n,"path");p.setAttribute("d",IC[name]||IC.home);s.appendChild(p);return s}
@@ -1664,6 +1703,50 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 
 </section>
 
+<section class="tool" id="tab-funding" role="tabpanel" hidden>
+<h2 class="pt">Funding</h2>
+<p class="sub">Every prop-firm account you hold, forex and futures, with its size, stage, pay-outs and progress to your goal. It is copied from your Notion tables (read only) and you can add or change accounts here. Notion is never written to.</p>
+<div class="hnums" id="fd-sum"></div>
+<div class="hpanel"><div class="hp-h"><h3>Progress to goal</h3><button class="btn small ghost" id="fd-goal-edit" type="button">Change goal</button></div>
+<div class="fd-goal"><div class="fd-gtxt" id="fd-gtxt"></div><div class="fbar" id="fd-bar" role="img" aria-label="Funding progress"><i class="f1"></i><i class="f2"></i><i class="f3"></i></div>
+<div class="fkey"><span><i class="f1"></i>Funded and active</span><span><i class="f2"></i>Passed, not activated</span><span><i class="f3"></i>In evaluation</span></div>
+<div class="frow three" id="fd-goalform" hidden style="margin-top:12px"><div><label for="fd-goalin">Goal in dollars</label><input type="number" id="fd-goalin" min="1" step="any" placeholder="e.g. 1000000"></div></div>
+<div class="btnrow" id="fd-goalbtns" hidden><button class="btn small" id="fd-goal-save" type="button">Save goal</button><button class="btn small ghost" id="fd-goal-reset" type="button">Use the goal from Notion</button></div>
+<div class="err" id="fd-gerr" hidden></div></div></div>
+<div class="err" id="fd-warn" hidden></div>
+<div class="hgrid2">
+<div class="hpanel"><div class="hp-h"><h3>Forex / CFD</h3><span class="mute" id="fd-cfd-t" style="font-size:12px"></span></div><div id="fd-cfd"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Futures</h3><span class="mute" id="fd-fut-t" style="font-size:12px"></span></div><div id="fd-fut"></div></div>
+</div>
+<div class="hpanel"><div class="hp-h"><h3>Accounts</h3><div class="fd-tools"><div class="seg" id="fd-filter" role="group" aria-label="Show"><button type="button" class="on" data-f="all">All</button><button type="button" data-f="cfd">Forex / CFD</button><button type="button" data-f="futures">Futures</button></div><button class="btn small" id="fd-add" type="button">Add account</button></div></div>
+<div class="fd-form" id="fd-form" hidden>
+<div class="frow three"><div><label for="fd-firm">Prop firm</label><input type="text" id="fd-firm" list="fd-firms" maxlength="40" placeholder="e.g. Atlas Funded"><datalist id="fd-firms"></datalist></div>
+<div><label for="fd-market">Market</label><select id="fd-market"><option value="cfd">Forex / CFD</option><option value="futures">Futures</option></select></div>
+<div><label for="fd-size">Account size ($)</label><input type="number" id="fd-size" min="1" step="any" placeholder="e.g. 50000"></div>
+<div><label for="fd-stage">Stage</label><select id="fd-stage"><option value="ongoing">In evaluation</option><option value="passed">Passed, not activated</option><option value="funded">Funded and active</option></select></div>
+<div><label for="fd-note">Note (optional)</label><input type="text" id="fd-note" maxlength="120" placeholder="e.g. login, phase, date"></div></div>
+<div class="jsub">Optional live numbers, shown under Live status:</div>
+<div class="frow three" style="margin-top:8px"><div><label for="fd-phase">Phase</label><input type="text" id="fd-phase" maxlength="20" placeholder="e.g. 2 Step"></div>
+<div><label for="fd-profit">Profit now ($)</label><input type="number" id="fd-profit" step="any"></div>
+<div><label for="fd-target">Profit target ($)</label><input type="number" id="fd-target" step="any"></div>
+<div><label for="fd-dd">Drawdown used ($)</label><input type="number" id="fd-dd" step="any"></div>
+<div><label for="fd-maxdd">Max drawdown ($)</label><input type="number" id="fd-maxdd" step="any"></div></div>
+<div class="err" id="fd-err" hidden></div>
+<div class="btnrow"><button class="btn small" id="fd-save" type="button">Save account</button><button class="btn small ghost" id="fd-cancel" type="button">Cancel</button></div></div>
+<div class="hscroll fd-scroll" id="fd-acc"></div></div>
+<div class="hgrid2">
+<div class="hpanel"><div class="hp-h"><h3>Live status</h3><button class="btn small" id="fd-conn" type="button">Connect accounts</button></div><div id="fd-status"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>By firm</h3></div><div id="fd-firmlist"></div></div>
+</div>
+<div class="hpanel" id="fd-connpanel" hidden><div class="hp-h"><h3>Connect prop-firm accounts</h3><button class="btn small ghost" id="fd-conn-x" type="button">Close</button></div><div id="fd-conns"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Pay-outs</h3><span class="mute" id="fd-paid" style="font-size:12px"></span></div>
+<div class="frow three" style="margin:10px 12px 0"><div><label for="fd-pdate">Date</label><input type="date" id="fd-pdate"></div><div><label for="fd-pamt">Amount ($)</label><input type="number" id="fd-pamt" min="1" step="any"></div><div><label for="fd-pfirm">Firm</label><input type="text" id="fd-pfirm" maxlength="40" list="fd-firms"></div></div>
+<div class="err" id="fd-perr" hidden></div>
+<div class="btnrow" style="margin:0 12px 10px"><button class="btn small" id="fd-padd" type="button">Add pay-out</button></div>
+<div id="fd-pay"></div></div>
+<div class="btnrow" style="margin-top:4px"><button class="btn small ghost" id="fd-restore" type="button" hidden>Show hidden Notion rows and undo my changes to them</button></div>
+</section>
+
 <section class="tool" id="tab-alerts" role="tabpanel" hidden>
 <h2 class="pt">Alerts</h2>
 <p class="sub">Warnings for price levels, news, sessions and your own rules. They show on screen, as a desktop notification if you allow it, and with a short beep. With the page open they are checked every minute. Turn on phone alerts below and the server also watches price levels, news and session opens for you when the page is closed.</p>
@@ -1893,7 +1976,7 @@ function setTheme(t){
 $("theme").onclick=function(){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark")};
 setTheme(store("zd.theme")==="light"?"light":"dark");
 
-var TABS=["home","macro","journal","backtest","forward","brain","trades","alerts","connect"];
+var TABS=["home","macro","journal","backtest","forward","brain","trades","funding","alerts","connect"];
 function isJ(t){return t==="journal"||t==="backtest"||t==="forward"}      /* Journal, Backtest and Forward Test are one page over three separate sets of trades */
 function showTab(name){
   if(TABS.indexOf(name)<0)name="home";
@@ -1907,7 +1990,7 @@ function showTab(name){
   var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
   if(isJ(name)){jAcct=name==="journal"?"live":name;jAT="";jShown=30;jFormTab(name);jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
-  if(name==="alerts"){alRender();pushLoad()}if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
+  if(name==="funding")fdLoad();if(name==="alerts"){alRender();pushLoad()}if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
   dockChat(name==="home");
   pgHead(section);
 }
@@ -3838,6 +3921,113 @@ $("push-off").onclick=function(){pushDo("disable")};
 $("push-test").onclick=function(){var b=$("push-test");b.disabled=true;pushDo("test").then(function(s){var e=$("push-err");if(s&&s.ok===false){e.textContent=s.error||"The test could not be sent.";e.style.display=""}else if(s){e.style.display="none";b.textContent="Sent - check your phone"}}).then(function(){setTimeout(function(){b.disabled=false;b.textContent="Send a test"},4000)})};
 $("push-copy").onclick=function(){try{navigator.clipboard.writeText($("push-topic").textContent);$("push-copy").textContent="Copied";setTimeout(function(){$("push-copy").textContent="Copy"},1800)}catch(e){}};
 
+/* ---------------- funding ---------------- */
+var FD=null,FDF="all",FDEDIT="";
+function fdMoney(n){return n===null||n===undefined||isNaN(n)?"-":"$"+Math.round(n).toLocaleString("en-US")}
+function fdShort(n){n=+n||0;return n>=1e6?"$"+(Math.round(n/1e4)/100)+"M":n>=1e3?"$"+Math.round(n/1e3)+"k":"$"+Math.round(n)}
+function fdCall(body){return fetch("/api/funding",{method:"POST",headers:HDRS,body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Could not save that");return j})})}
+function fdLoad(){fetch("/api/funding").then(function(r){return r.json()}).then(function(s){if(!s||s.accounts===undefined)throw new Error("bad");FD=s;fdRender()}).catch(function(e){console.error("funding",e&&e.stack||e);var b=$("fd-sum");if(b&&!(FD&&b.children.length)){b.textContent="";b.appendChild(el("div","empty","The funding numbers did not load. Try again in a moment."))}})}
+function fdTotal(m){var t=FD.total[m],n=FD.count[m];return {all:t.ongoing+t.passed+t.funded,n:n.ongoing+n.passed+n.funded}}
+function fdRender(){
+  if(!FD)return;
+  var sum=$("fd-sum");sum.textContent="";
+  function card(k,v,s,c){var d=el("div","hnum");d.style.cursor="default";d.appendChild(el("div","k",k));d.appendChild(el("div","v"+(c?" "+c:""),v));d.appendChild(el("div","s",s));sum.appendChild(d)}
+  var c=fdTotal("cfd"),f=fdTotal("futures"),by=FD.by_stage;
+  card("Total funding",fdMoney(FD.all),(c.n+f.n)+" accounts, "+fdMoney(by.funded)+" funded and active");
+  card("Forex / CFD",fdMoney(c.all),c.n+" accounts");
+  card("Futures",fdMoney(f.all),f.n+" accounts");
+  card("Pay-outs received",fdMoney(FD.paid),FD.payouts.length+" pay-out"+(FD.payouts.length===1?"":"s"),FD.paid>0?"up":"");
+  var pct=FD.goal?Math.min(100,FD.all/FD.goal*100):0;
+  var g=$("fd-gtxt");g.textContent=fdMoney(FD.all)+" of "+fdMoney(FD.goal);g.appendChild(el("span",null,(Math.round(pct*10)/10)+"% of the goal"+(FD.goal_custom?" (your own goal)":"")));
+  var kids=$("fd-bar").children,parts=[by.funded,by.passed,by.ongoing],left=100;
+  for(var i=0;i<3;i++){var w=FD.goal?Math.min(left,parts[i]/FD.goal*100):0;left-=w;kids[i].style.width=w+"%"}
+  var wn=$("fd-warn");wn.hidden=!FD.warnings.length;wn.textContent="";
+  if(FD.warnings.length){wn.appendChild(el("b",null,"Check your Notion numbers"));FD.warnings.forEach(function(w){wn.appendChild(el("div",null,w))});wn.appendChild(el("div",null,"This page adds up the rows, not the typed totals. Fix the total in Notion, or change or hide a row here."))}
+  [["cfd","fd-cfd","fd-cfd-t"],["futures","fd-fut","fd-fut-t"]].forEach(function(m){
+    var box=$(m[1]);box.textContent="";var t=FD.total[m[0]],n=FD.count[m[0]];
+    ["funded","passed","ongoing"].forEach(function(s){var r=el("div","fstage"),l=el("div");l.appendChild(el("b",null,FD.stages[s]));r.appendChild(l);r.appendChild(el("span","n",n[s]+" account"+(n[s]===1?"":"s")));r.appendChild(el("span","v",fdMoney(t[s])));box.appendChild(r)});
+    $(m[2]).textContent=fdMoney(fdTotal(m[0]).all)});
+  fdAccounts();fdStatus();fdFirms();fdPayouts();fdConns();
+  $("fd-restore").hidden=!FD.hidden;
+  var dl=$("fd-firms");dl.textContent="";var seen={};FD.accounts.forEach(function(a){if(a.firm&&!seen[a.firm]){seen[a.firm]=1;var o=el("option");o.value=a.firm;dl.appendChild(o)}})}
+function fdAccounts(){
+  var box=$("fd-acc");box.textContent="";
+  var rows=FD.accounts.filter(function(a){return FDF==="all"||a.market===FDF}).sort(function(a,b){return (a.market===b.market?0:a.market==="cfd"?-1:1)||(b.size||0)-(a.size||0)});
+  if(!rows.length){var em=el("div","alempty");em.appendChild(el("b",null,"No accounts here yet"));em.appendChild(el("span",null,"Use Add account, or fill the funding tables in Notion and they appear within 20 minutes."));box.appendChild(em);return}
+  var t=el("table"),h=el("thead"),hr=el("tr");["Firm","Market","Size","Stage","Note",""].forEach(function(x,i){var th=el("th",i===2?"r":"",x);hr.appendChild(th)});h.appendChild(hr);t.appendChild(h);
+  var tb=el("tbody");
+  rows.forEach(function(a){var tr=el("tr");tr.appendChild(el("td",null,a.firm));tr.appendChild(el("td",null,FD.markets[a.market]||a.market));tr.appendChild(el("td","r",fdMoney(a.size)));
+    var td=el("td");td.appendChild(el("span","fst "+a.stage,FD.stages[a.stage]||a.stage));tr.appendChild(td);
+    var nt=el("td");var ns=el("span","nt",a.note||(a.source==="notion"?"From Notion":""));ns.title=ns.textContent;nt.appendChild(ns);tr.appendChild(nt);
+    var ac=el("td","r"),e=el("button","fact","Edit");e.type="button";e.onclick=function(){fdOpen(a)};
+    var x=el("button","fact",a.source==="notion"?"Hide":"Remove");x.type="button";x.onclick=function(){fdCall({action:"remove",id:a.id}).then(function(s){FD=s;fdRender()}).catch(function(er){nsNote("Funding",er.message)})};
+    ac.appendChild(e);ac.appendChild(x);tr.appendChild(ac);tb.appendChild(tr)});
+  t.appendChild(tb);box.appendChild(t)}
+function fdOpen(a){
+  FDEDIT=a?a.id:"";a=a||{market:"cfd",stage:"ongoing"};
+  var f=$("fd-form");f.hidden=false;$("fd-err").hidden=true;
+  $("fd-firm").value=a.firm||"";$("fd-market").value=a.market||"cfd";$("fd-size").value=a.size||"";$("fd-stage").value=a.stage||"ongoing";$("fd-note").value=a.note||"";
+  $("fd-phase").value=a.phase||"";["profit","target","dd","maxdd"].forEach(function(k){$("fd-"+k).value=a[k]===null||a[k]===undefined?"":a[k]});
+  $("fd-save").textContent=FDEDIT?"Save changes":"Save account";$("fd-firm").focus()}
+function fdSave(){
+  var fields={firm:$("fd-firm").value,market:$("fd-market").value,size:$("fd-size").value,stage:$("fd-stage").value,note:$("fd-note").value,phase:$("fd-phase").value};
+  ["profit","target","dd","maxdd"].forEach(function(k){fields[k]=$("fd-"+k).value});
+  var body=FDEDIT?{action:"edit",id:FDEDIT,fields:fields}:{action:"add",account:fields};
+  fdCall(body).then(function(s){FD=s;$("fd-form").hidden=true;FDEDIT="";fdRender()}).catch(function(e){var er=$("fd-err");er.textContent=e.message;er.hidden=false})}
+function fdBar(label,val,max,bad,txt){
+  var m=el("div","fmeter");m.appendChild(el("span","k",label));var tr=el("div","tr"),i=el("i",bad?"dn":"");i.style.width=(max>0?Math.max(0,Math.min(100,val/max*100)):0)+"%";tr.appendChild(i);m.appendChild(tr);m.appendChild(el("span","v",txt));return m}
+function fdStatus(){
+  var box=$("fd-status");box.textContent="";
+  if(!FD.status.length){var em=el("div","alempty");em.appendChild(el("b",null,"No live numbers yet"));em.appendChild(el("span",null,"Fill the Account Scaling System tables in Notion, or add profit and drawdown to an account here. Use Connect accounts to see how to get them live."));box.appendChild(em);return}
+  FD.status.forEach(function(s){
+    var d=el("div","fstat"),h=el("div","fstat-h");h.appendChild(el("b",null,(s.firm||"Account")+(s.size?" "+fdShort(s.size):"")));
+    h.appendChild(el("span",null,[s.phase,s.state,s.group].filter(Boolean).join(" · ")));d.appendChild(h);
+    if(s.target)d.appendChild(fdBar("Profit",s.profit||0,s.target,false,fdMoney(s.profit||0)+" / "+fdMoney(s.target)));
+    else if(s.profit!==null&&s.profit!==undefined)d.appendChild(fdBar("Profit",0,1,false,fdMoney(s.profit)));
+    if(s.maxdd)d.appendChild(fdBar("Drawdown",s.dd||0,s.maxdd,(s.dd||0)/s.maxdd>0.7,fdMoney(s.dd||0)+" / "+fdMoney(s.maxdd)));
+    box.appendChild(d)})}
+function fdFirms(){
+  var box=$("fd-firmlist");box.textContent="";
+  if(!FD.by_firm.length){box.appendChild(el("div","empty","No firms yet."));box.lastChild.style.padding="12px 14px";return}
+  FD.by_firm.forEach(function(f){
+    var d=el("div","ffirm"),h=el("div","ffirm-h");h.appendChild(el("b",null,f.firm));h.appendChild(el("span",null,fdMoney(f.total)));d.appendChild(h);
+    d.appendChild(el("div","s",f.count+" account"+(f.count===1?"":"s")+", "+fdMoney(f.funded)+" funded and active, "+f.markets.map(function(m){return FD.markets[m]}).join(" and ")));
+    if(f.rules&&f.rules.fields.length){var dt=el("details"),sm=el("summary",null,"Rules from your Notion sheet");dt.appendChild(sm);var dl=el("dl","frules");f.rules.fields.forEach(function(p){dl.appendChild(el("dt",null,p[0]));dl.appendChild(el("dd",null,p[1]))});dt.appendChild(dl);d.appendChild(dt)}
+    box.appendChild(d)})}
+function fdPayouts(){
+  $("fd-paid").textContent=fdMoney(FD.paid)+" in total";
+  var box=$("fd-pay");box.textContent="";
+  if(!FD.payouts.length){var e=el("div","empty","No pay-outs yet.");e.style.padding="0 14px 12px";box.appendChild(e);return}
+  FD.payouts.slice().reverse().forEach(function(p){var r=el("div","fpay"),l=el("span",null,p.date+(p.firm?" · "+p.firm:"")+(p.source==="notion"?" · from Notion":""));r.appendChild(l);
+    var rt=el("span");rt.appendChild(el("span","v",fdMoney(p.amount)));var x=el("button","fact",p.source==="notion"?"Hide":"Remove");x.type="button";x.onclick=function(){fdCall({action:"remove",id:p.id}).then(function(s){FD=s;fdRender()}).catch(function(er){nsNote("Funding",er.message)})};rt.appendChild(x);r.appendChild(rt);box.appendChild(r)})}
+function fdConns(){
+  var box=$("fd-conns");box.textContent="";
+  function row(title,state,on,text,btn){var r=el("div","fconn"),t=el("div","t");t.appendChild(el("b",null,title));t.appendChild(el("div",null,text));r.appendChild(t);
+    var s=el("div");s.appendChild(el("div","st "+(on?"on":"off"),state));if(btn)s.appendChild(btn);r.appendChild(s);box.appendChild(r)}
+  var rb=el("button","btn small ghost","Refresh now");rb.type="button";rb.style.marginTop="8px";
+  rb.onclick=function(){rb.disabled=true;rb.textContent="Refreshing...";fetch("/api/notion/refresh",{method:"POST",headers:HDRS,body:JSON.stringify({hub:true})}).then(function(r){return r.json()}).then(function(){fdLoad()}).catch(function(){}).then(function(){rb.disabled=false;rb.textContent="Refresh now"})};
+  var at=FD.notion.at?"Last copied "+FD.notion.at.replace("T"," ").slice(0,16)+".":"";
+  row("Notion (your funding tables and Account Scaling System)",FD.notion.found?"Live, read only":"No funding rows found",FD.notion.found,
+    (FD.notion.found?FD.notion.rows+" account rows and "+FD.status.filter(function(s){return s.source==="notion"}).length+" status rows copied. ":"The copy of your Notion page has no funding tables yet. ")+at+" It refreshes by itself about every 20 minutes. Nothing is ever written to Notion.",rb);
+  row("Numbers you type here","On",true,"Add an account, change a stage or enter profit and drawdown on the Accounts panel. These are saved on this dashboard only and never overwritten by Notion.");
+  var firms=FD.by_firm.map(function(f){return f.firm}).join(", ")||"your prop firms";
+  row("Live broker feed","Not connected",false,"Prop firms do not publish an account API for traders, so there is no one-click login. The honest options: MT4 and MT5 accounts can be read with a read-only investor password through MetaApi, and futures accounts through the platform they run on (Tradovate or Rithmic). That needs a key from you, placed in the trader folder on the server, and I never see or type it. Until then, keep the Account Scaling System table in Notion up to date and it shows here. Firms on this page: "+firms+".")}
+function fdInit(){
+  $("fd-add").onclick=function(){fdOpen(null)};
+  $("fd-cancel").onclick=function(){$("fd-form").hidden=true;FDEDIT=""};
+  $("fd-save").onclick=fdSave;
+  $("fd-conn").onclick=function(){var p=$("fd-connpanel");p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:"smooth",block:"nearest"})};
+  $("fd-conn-x").onclick=function(){$("fd-connpanel").hidden=true};
+  $("fd-filter").onclick=function(e){var b=e.target.closest("button[data-f]");if(!b)return;FDF=b.getAttribute("data-f");[].slice.call($("fd-filter").children).forEach(function(x){x.className=x===b?"on":""});fdAccounts()};
+  $("fd-goal-edit").onclick=function(){var open=$("fd-goalform").hidden;$("fd-goalform").hidden=!open;$("fd-goalbtns").hidden=!open;if(open){$("fd-goalin").value=FD&&FD.goal_custom?FD.goal:"";$("fd-goalin").focus()}};
+  function goalSet(v){fdCall({action:"goal",goal:v}).then(function(s){FD=s;$("fd-goalform").hidden=true;$("fd-goalbtns").hidden=true;$("fd-gerr").hidden=true;fdRender()}).catch(function(e){var er=$("fd-gerr");er.textContent=e.message;er.hidden=false})}
+  $("fd-goal-save").onclick=function(){goalSet($("fd-goalin").value)};
+  $("fd-goal-reset").onclick=function(){goalSet("")};
+  $("fd-padd").onclick=function(){fdCall({action:"payout",payout:{date:$("fd-pdate").value,amount:$("fd-pamt").value,firm:$("fd-pfirm").value}}).then(function(s){FD=s;$("fd-perr").hidden=true;$("fd-pamt").value="";fdRender()}).catch(function(e){var er=$("fd-perr");er.textContent=e.message;er.hidden=false})};
+  $("fd-restore").onclick=function(){fdCall({action:"restore"}).then(function(s){FD=s;fdRender()})};
+  var d=$("fd-pdate");if(d&&!d.value){var n=new Date();d.value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)}}
+fdInit();
+
 /* ---------------- connections page ---------------- */
 function connRender(){
   var box=$("conn-status");box.textContent="";dqRender();
@@ -3998,6 +4188,7 @@ jLoad();
   var CMDS=[["home","Home","1",function(){go("home")}],["macro","Macro desk","2",function(){go("macro")}],["journal","Journal","3",function(){go("journal")}],
     ["backtest","Backtest","4",function(){go("backtest")}],["forward","Forward Test","5",function(){go("forward")}],["trades","Trades","6",function(){go("trades")}],["alerts","Alerts","7",function(){go("alerts")}],
     ["connections","Connections","8",function(){go("connect")}],["brain","Second Brain","9",function(){go("brain")}],
+    ["funding","Funding and prop accounts","",function(){go("funding")}],
     ["brief","Write the market read now","",function(){go("macro");var b=$("h-brief");if(b)b.click()}],
     ["refresh","Refresh prices","",function(){var b=$("home-refresh");if(b)b.click()}],
     ["theme","Switch light / dark","",function(){var b=$("theme");if(b)b.click()}],

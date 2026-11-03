@@ -31,6 +31,7 @@ import macro         # noqa: E402
 import notion_api     # noqa: E402
 import autobrief     # noqa: E402
 import backup        # noqa: E402
+import funding       # noqa: E402
 import live          # noqa: E402
 import notion_import  # noqa: E402
 import pusher        # noqa: E402
@@ -50,6 +51,7 @@ class Handler(BaseHTTPRequestHandler):
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     live = None                                      # last prices every few seconds while the page is open (live.py), set by make_server
     backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
+    funding = None                                   # every prop-firm account and pay-out (funding.py), set by make_server
     pusher = None                                    # phone alerts while the page is closed (pusher.py), set by make_server
     brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
@@ -203,6 +205,8 @@ class Handler(BaseHTTPRequestHandler):
                 if act == "rules":
                     return self.send_json(200, self.pusher.set_rules(body.get("rules")))
                 raise z.ZoneError('action must be "enable", "disable", "test" or "rules"')
+            elif path == "/api/funding":
+                return self.send_json(200, self.funding.act(body))
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -224,7 +228,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, vault.VaultError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, funding.FundingError, vault.VaultError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -245,6 +249,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
             self.macro(parse_qs(url.query))
+        elif url.path == "/api/funding":
+            self.send_json(200, self.funding.state())
         elif url.path == "/api/push/status":
             self.send_json(200, self.pusher.state())
         elif url.path == "/api/notion/status":
@@ -415,6 +421,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler.backups = backup.Backups(handler.data_dir, config_path)
     handler.live = None if offline else live.LiveTicks(handler.macro_net)
     handler.pusher = pusher.Pusher(handler.data_dir, handler.macro_net)
+    handler.funding = funding.Funding(handler.data_dir, lambda: handler.notion_link.hub_doc if handler.notion_link else {})
     return DashboardServer(("127.0.0.1", port), handler)
 
 
