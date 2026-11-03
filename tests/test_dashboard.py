@@ -754,7 +754,7 @@ class TerminalLook(Server):
     def test_the_app_is_called_kelly_terminal_everywhere_you_can_see_it(self):
         _, _, page = self.get("/")
         self.assertIn("<title>Kelly Terminal</title>", page)
-        self.assertIn('<div class="logo"><span class="dot"></span>Kelly Terminal</div>', page)
+        self.assertIn('<div class="logo"><span class="dot"></span><span class="wm">Kelly<span class="us">_</span>Terminal</span></div>', page)
         self.assertNotIn("RiskDesk", page.replace("RiskDeskApp", ""))
         with urllib.request.urlopen("http://127.0.0.1:%d/manifest.webmanifest" % self.port, timeout=10) as r:
             manifest = json.loads(r.read())
