@@ -284,9 +284,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(404, {"error": "not found"})
         elif url.path == "/api/ticks":
             if not self.live:
-                return self.send_json(200, {"at": 0, "every": live.EVERY, "live": False, "error": "", "quotes": {}})
+                return self.send_json(200, {"at": 0, "every": live.EVERY, "live": False, "error": "", "quotes": {}, "spot": None, "checks": {}})
             self.live.poke()
             self.send_json(200, self.live.state())
+        elif url.path == "/api/quality":
+            if not self.live:
+                return self.send_json(200, {"at": 0, "live": False, "error": "", "rows": [], "spot": None, "checks": {}, "td": {"state": "off"}})
+            self.live.poke()
+            self.send_json(200, self.live.quality())
         elif url.path == "/api/connections":
             # what is set up, for the Connections page: yes or no only, never a key
             self.send_json(200, {"hosted": bool(self.auth_settings), "backup_prices": bool(macro.twelve_key(self.data_dir))})

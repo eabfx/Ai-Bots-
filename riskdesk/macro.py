@@ -93,6 +93,14 @@ class Net:
         url = "https://api.twelvedata.com/quote?symbol=%s&apikey=%s" % (urllib.parse.quote(symbol, safe=""), urllib.parse.quote(key, safe=""))
         return self.get(url)
 
+    def twelve_price(self, symbol):
+        """The live price of one symbol from Twelve Data (one credit). Returns None when no key is set."""
+        key = twelve_key(self.key_dir)
+        if not key:
+            return None
+        url = "https://api.twelvedata.com/price?symbol=%s&apikey=%s" % (urllib.parse.quote(symbol, safe=""), urllib.parse.quote(key, safe=""))
+        return self.get(url)
+
     def get(self, url, timeout=15, attempts=2):
         """One request, tried again once when the connection itself fails (a slow handshake or a dropped packet). A real
         answer such as HTTP 429 is not retried."""

@@ -926,6 +926,117 @@ class LivePrices(Server):
         self.assertEqual(json.loads(js)["quotes"]["XAUUSD"]["price"], 3900.0)
         self.assertGreater(lt.wanted_until, self.clock[0])
 
+    # ---- accuracy: freshness, stray ticks, second opinion
+    def test_a_steady_ten_minute_gap_is_called_delayed_and_a_growing_gap_is_not(self):
+        self.make(lambda p: "")
+        live = self.live
+        steady = [(1000.0 + 3 * i, 400.0 + 3 * i) for i in range(5)]            # the exchange clock moves, the gap stays 600
+        self.assertEqual(live.classify(steady), ("delayed", 600.0))
+        fresh = [(1000.0 + 3 * i, 997.0 + 3 * i) for i in range(5)]
+        self.assertEqual(live.classify(fresh)[0], "live")
+        stuck = [(1000.0 + 3 * i, 400.0) for i in range(5)]                       # no new trade: the gap only grows
+        self.assertEqual(live.classify(stuck)[0], "quiet")
+        self.assertEqual(live.classify([(60000.0, 900.0)])[0], "closed")
+        self.assertEqual(live.classify([(1000.0, 0)])[0], "unknown")
+
+    def test_the_state_carries_how_fresh_each_price_is(self):
+        lt = self.make(lambda path: self.chart(3900.0, int(self.clock[0]) - 600))
+        for _ in range(4):
+            self.clock[0] += 3
+            lt.round()
+        q = lt.state()["quotes"]["XAUUSD"]
+        self.assertEqual((q["state"], q["delay"]), ("delayed", 600))
+
+    def test_a_stray_tick_is_held_back_until_the_next_reading_agrees(self):
+        px = [3900.0]
+        lt = self.make(lambda p: self.chart(px[0]) if "GC" in p else self.chart(28000.0))
+        lt.round()
+        px[0] = 3999.0                                                            # +2.5% in three seconds is not a real move
+        self.clock[0] += 3
+        lt.round()
+        self.assertEqual(lt.state()["quotes"]["XAUUSD"]["price"], 3900.0)
+        self.assertEqual(lt.rejected["XAUUSD"], 1)
+        self.clock[0] += 3
+        lt.round()                                                                # a second reading agrees: the jump is real
+        self.assertEqual(lt.state()["quotes"]["XAUUSD"]["price"], 3999.0)
+
+    def test_a_reopening_gap_after_a_quiet_spell_is_shown_at_once(self):
+        px = [3900.0]
+        lt = self.make(lambda p: self.chart(px[0]) if "GC" in p else self.chart(28000.0))
+        lt.round()
+        px[0] = 3990.0
+        self.clock[0] += 3600
+        lt.round()
+        self.assertEqual(lt.state()["quotes"]["XAUUSD"]["price"], 3990.0)
+
+    def make_checked(self, twelve):
+        import live
+        import macro
+        self.live, self.macro = live, macro
+        yahoo = self
+
+        class Net:
+            def yahoo(_, path):
+                return yahoo.chart(1.1186 if "EUR" in path else 3917.0 if "GC" in path else 1.3414)
+
+            def twelve_price(_, symbol):
+                return twelve(symbol)
+
+            def twelve(_, symbol):
+                return json.dumps({"previous_close": "3890.00"})
+        self.clock = [1000.0]
+        return live.LiveTicks(Net(), items=[("XAUUSD", "Gold", "GC=F", 2), ("EURUSD", "EUR/USD", "EURUSD=X", 5),
+                                            ("GBPUSD", "GBP/USD", "GBPUSD=X", 5)], clock=lambda: self.clock[0])
+
+    def test_gold_spot_and_the_pair_checks_come_from_the_second_source_and_are_counted(self):
+        prices = {"XAU/USD": "3912.40", "EUR/USD": "1.11798", "GBP/USD": "1.34140"}
+        lt = self.make_checked(lambda sym: json.dumps({"price": prices[sym]}))
+        lt.round()
+        calls = lt.verify()
+        self.assertEqual(calls, 4)                                                # gold spot, gold previous close, EUR/USD, GBP/USD
+        st = lt.state()
+        self.assertEqual(st["spot"]["price"], 3912.4)
+        self.assertAlmostEqual(st["spot"]["change"], 22.4)
+        self.assertFalse(st["checks"]["EURUSD"]["ok"])                            # 1.1186 against 1.11798 is 6.2 pips
+        self.assertAlmostEqual(st["checks"]["EURUSD"]["diff"], -6.2, places=1)
+        self.assertTrue(st["checks"]["GBPUSD"]["ok"])
+        self.assertEqual(lt.quality()["td"]["used"], 4)
+
+    def test_it_makes_no_second_source_calls_without_a_key(self):
+        lt = self.make_checked(lambda sym: None)
+        lt.round()
+        lt.verify()
+        self.assertEqual(lt.quality()["td"]["state"], "off")
+        self.assertEqual(lt.quality()["td"]["used"], 0)
+        self.assertIsNone(lt.state()["spot"])
+        self.assertEqual(lt.verify(), 0)                                          # and it does not ask again straight away
+
+    def test_a_rate_limit_backs_off_and_the_daily_allowance_is_a_hard_stop(self):
+        lt = self.make_checked(lambda sym: json.dumps({"status": "error", "code": 429, "message": "too many requests"}))
+        lt.round()
+        lt.verify()
+        self.assertEqual(lt.quality()["td"]["state"], "limited")
+        self.assertEqual(lt.verify(), 0)                                          # paused
+        import time
+        lt2 = self.make_checked(lambda sym: json.dumps({"price": "3900"}))
+        lt2.td["used"], lt2.td["day"] = 10 ** 6, time.strftime("%Y-%m-%d", time.gmtime(1000.0))
+        lt2.round()
+        lt2.verify()
+        self.assertIsNone(lt2.state()["spot"])
+
+    def test_the_quality_route_and_the_page_have_the_data_quality_panel(self):
+        lt = self.make(lambda path: self.chart(3900.0))
+        lt.round()
+        self.server.RequestHandlerClass.live = lt
+        code, _, js = self.get("/api/quality")
+        self.assertEqual(code, 200)
+        out = json.loads(js)
+        self.assertEqual(out["rows"][0]["key"], "XAUUSD")
+        self.assertEqual(out["rows"][0]["kind"], "COMEX futures")
+        _, _, page = self.get("/")
+        for needle in ('id="dq-table"', "function dqRender", "function freshPaint", 'fetch("/api/quality")'):
+            self.assertIn(needle, page)
+
     def test_the_page_moves_numbers_in_place_and_flashes_the_ones_that_changed(self):
         _, _, page = self.get("/")
         for needle in ('fetch("/api/ticks")', "function paintQuote", "@keyframes flup", "@keyframes fldn",

@@ -1259,6 +1259,19 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 @keyframes mkc{to{transform:scaleX(1)}}
 @keyframes mkb{0%,55%{opacity:1}56%,100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){#intro svg .tl,#intro svg .kk,#intro svg .cur{animation:none;opacity:1;transform:none}}
+
+/* data accuracy: a small label beside any price that is not fully live, and the Data quality table */
+.fl{text-transform:none;font:500 10px var(--mono);letter-spacing:.02em;color:var(--warn);margin-left:7px;white-space:nowrap;font-style:normal;font-weight:500}
+.fl.shut{color:var(--muted)}
+.tile .tn .fl{margin-left:6px}
+.spotln{display:flex;gap:8px;align-items:baseline;font:12px var(--mono);margin:2px 0 6px;color:var(--muted)}
+.spotln b{color:var(--text);font-weight:600}.spotln em{font-style:normal;font-size:11px}
+.dqwrap{overflow-x:auto;margin-top:10px}
+table.dq td.dqs{font-weight:600}table.dq td.dqs.warn{color:var(--warn)}
+table.dq td.dqk{color:var(--muted);font-size:11px}
+.dqx{margin-top:12px;display:grid;gap:6px;font:12px var(--mono);color:var(--muted)}
+.dqx div b{color:var(--text);font-weight:500}.dqx .warn{color:var(--warn)}
+@media(min-width:861px) and (max-width:1120px){.bar nav button{padding:8px 8px}.bar nav{gap:0}}
 </style>
 </head>
 <body>
@@ -1545,6 +1558,12 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 <h2 class="pt">Connections</h2>
 <p class="sub">Where Kelly_Terminal gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
 <div class="hnums" id="conn-status"></div>
+<div class="card" id="dq-card">
+<h3 class="jh">Data quality</h3>
+<p class="sub" id="dq-sub">Checking the price feeds...</p>
+<div class="dqwrap"><table class="qm dq" id="dq-table"></table></div>
+<div class="dqx" id="dq-x"></div>
+</div>
 <div class="cgrid2">
 <div class="card" id="nl-card">
 <h3 class="jh">Notion live link</h3>
@@ -3138,7 +3157,7 @@ window.rdState=function(){return{d:macroData,b:macroBrief,n:briefNext,live:liveC
 function briefNote(){
   var n=$("h-mk-note");if(!n)return;
   var t=function(ms){var d=new Date(ms);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)};
-  var txt="Live prices from Yahoo, moving every few seconds while this page is open"+(macroData?" (snapshot "+macroData.as_of+")":"")+". ";
+  var late=Object.keys(liveFresh).filter(function(k){return liveFresh[k].state==="delayed"}).length,txt="Prices from Yahoo, refreshed every few seconds while this page is open"+(late?"; futures arrive about 10 minutes late and are tagged":"")+(macroData?" (snapshot "+macroData.as_of+")":"")+". ";
   if(macroBrief&&macroBrief.at){txt+="Market read and bias written "+t(macroBrief.at*1000)+(macroBrief.auto?" automatically":"")+(briefNext?", next one about "+t(briefNext*1000):"")+"."}
   else if(briefErr)txt+=briefErr;
   else txt+="The first market read is being written.";
@@ -3383,9 +3402,10 @@ function liveTick(){
   liveBusy=true;
   fetch("/api/ticks").then(function(r){return r.ok?r.json():null}).then(function(j){
     if(!j||!j.quotes)return;
-    for(var k in j.quotes)liveLast[k]=j.quotes[k].price;
+    for(var k in j.quotes){liveLast[k]=j.quotes[k].price;liveFresh[k]=j.quotes[k]}
+    liveSpot=j.spot||null;liveChecks=j.checks||{};
     if(Object.keys(j.quotes).length)liveAtMs=Date.now();
-    liveApply(macroData,j.quotes);
+    liveApply(macroData,j.quotes);freshPaint();
     var h=$("h-asof"),nt=$("qm-note");
     if(j.live&&j.at){var tm=new Date(j.at*1000).toLocaleTimeString("en-GB",{timeZone:"Europe/Dublin"});liveClock=tm;
       document.body.classList.add("feedlive");if(h){h.textContent="Live, updated "+tm+" Dublin";h.classList.add("islive")}
@@ -3562,7 +3582,7 @@ $("al-clear").onclick=function(){alLog=[];store("zd.alerts.log","[]");alRender()
 
 /* ---------------- connections page ---------------- */
 function connRender(){
-  var box=$("conn-status");box.textContent="";
+  var box=$("conn-status");box.textContent="";dqRender();
   function card(k,v,s,c){var d=el("div","hnum");d.style.cursor="default";d.appendChild(el("div","k",k));var x=el("div","v",v);x.style.fontSize="16px";if(c)x.className+=" "+c;d.appendChild(x);d.appendChild(el("div","s",s));box.appendChild(d);return x}
   var ai=card("AI assistant","Checking...","");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){ai.textContent=s.ready?"Connected":"No key";ai.className="v "+(s.ready?"up":"down");ai.nextSibling.textContent=s.ready?s.service+", "+s.model:"Save a Gemini or Claude key in the trader folder"}).catch(function(){ai.textContent="Unreachable"});
@@ -3573,12 +3593,77 @@ function connRender(){
   card("Calendar and news","ForexFactory + Google News",macroData?macroData.events.length+" releases, "+macroData.headlines.length+" headlines":"Loading...","flat");
   card("Journal storage",jReady?"Saved "+where:"Browser only",jReady?trades.length+" trades in the journal folder "+where:"The dashboard did not answer",jReady?"up":"down");
   fetch("/api/connections").then(function(r){return r.json()}).then(function(s){
-    if(s.backup_prices){px.textContent="Yahoo + Twelve Data";px.className="v up";px.nextSibling.textContent="Twelve Data answers for gold and the currency pairs if Yahoo fails"}
+    if(s.backup_prices){px.textContent="Yahoo + Twelve Data";px.className="v up";px.nextSibling.textContent="Twelve Data gives live gold spot and double-checks EUR/USD and GBP/USD. Futures from Yahoo run about 10 minutes late"}
     gs.textContent=s.hosted?"On":"Off";gs.className="v "+(s.hosted?"up":"flat");
     gs.nextSibling.textContent=s.hosted?"Only your Google address can open this page":"Local copy: no sign-in needed on this PC"}).catch(function(){gs.textContent="Unknown"});
   fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){
     if(s.connected){nt.textContent="Live, read only";nt.className="v up";nt.nextSibling.textContent=s.error?s.error:(s.journal_rows||0)+" journal rows, "+(s.hub_pages||0)+" pages copied. Nothing is ever written to Notion"}
     else{nt.textContent="Not linked";nt.nextSibling.textContent="Add a Notion key to link it (steps under Notion live link below)"}}).catch(function(){nt.textContent="Unknown"})}
+
+
+/* ---------------- data accuracy: freshness labels, gold spot, the Data quality panel ---------------- */
+var liveFresh={},liveSpot=null,liveChecks={};
+function ago(s){return s<90?Math.round(s)+"s":s<5400?Math.round(s/60)+"m":Math.round(s/3600)+"h"}
+function freshText(k){
+  var f=liveFresh[k],c=liveChecks[k];if(!f)return "";
+  if(f.state==="delayed")return Math.max(1,Math.round(f.delay/60))+"m late";
+  if(f.state==="closed")return "closed";
+  if(f.state==="quiet"&&f.age>300)return Math.round(f.age/60)+"m old";
+  if(c&&!c.ok)return "check";
+  return ""}
+function freshTitle(k){
+  var f=liveFresh[k],c=liveChecks[k];if(!f)return "";
+  var t=f.state==="delayed"?"This feed arrives about "+Math.round(f.delay/60)+" minutes after the trade (free futures data).":f.state==="closed"?"No new trade for "+ago(f.age)+": the market looks closed.":f.state==="quiet"?"Last trade "+ago(f.age)+" ago.":"Live: last trade "+ago(f.age)+" ago.";
+  if(c)t+=" Second source "+(c.ok?"agrees":"differs")+" ("+(c.diff>0?"+":"")+c.diff+" "+c.unit+").";
+  return t}
+function spotPaint(){
+  var s=liveSpot,cards=document.querySelectorAll('.mc[data-k="XAUUSD"]');
+  for(var i=0;i<cards.length;i++){var c=cards[i],ln=c.querySelector(".spotln");
+    if(!s){if(ln)ln.parentNode.removeChild(ln);continue}
+    if(!ln){ln=el("div","spotln");ln.appendChild(el("span",null,"Spot XAU/USD"));ln.appendChild(el("b"));ln.appendChild(el("em"));c.insertBefore(ln,c.children[2]||null)}
+    ln.children[1].textContent=fmt(s.price,2);
+    var em=ln.children[2];em.textContent=(s.pct!==undefined?pctText(s.pct)+", ":"")+(s.age<=90?"live":ago(s.age)+" old");em.className=s.pct!==undefined?pctClass(s.pct):""}}
+function freshPaint(){
+  for(var k in liveFresh){
+    var t=freshText(k),tt=freshTitle(k),roots=document.querySelectorAll('.tile[data-k="'+k+'"],tr[data-k="'+k+'"],.mc[data-k="'+k+'"]');
+    for(var i=0;i<roots.length;i++){var r=roots[i],h=r.classList.contains("tile")?r.querySelector(".tn"):r.classList.contains("mc")?r.querySelector(".mcl"):r.querySelector("td.qn"),f=h?h.querySelector(".fl"):null;
+      if(!h)continue;
+      if(t){if(!f){f=el("i","fl");(r.classList.contains("mc")?h.insertBefore(f,h.querySelector(".lv")):h.appendChild(f))}
+        if(f.textContent!==t)f.textContent=t;f.className="fl"+(t==="closed"?" shut":"");if(tt&&r.title!==tt&&!r.classList.contains("tile"))r.title=tt}
+      else if(f)f.parentNode.removeChild(f)}}
+  spotPaint()}
+var dqBusy=false;
+function dqRender(){
+  if(tabNow!=="connect"||document.hidden||dqBusy)return;dqBusy=true;
+  fetch("/api/quality").then(function(r){return r.ok?r.json():null}).then(function(d){
+    var tb=$("dq-table"),sub=$("dq-sub"),x=$("dq-x");if(!d||!tb)return;
+    var late=d.rows.filter(function(r){return r.state==="delayed"}),shut=d.rows.filter(function(r){return r.state==="closed"}),nm=function(r){return TILE_NAMES[r.key]||r.name};
+    sub.textContent=!d.rows.length?"The live feed is not running.":!d.live?"Waiting for the first prices...":
+      (late.length?late.map(nm).join(", ")+(late.length>1?" are":" is")+" about "+Math.round(late[0].delay/60)+" minutes late: Yahoo's free futures data is delayed. ":"Every open market is live. ")+
+      (shut.length?shut.map(nm).join(", ")+" "+(shut.length>1?"look":"looks")+" closed. ":"")+"A label beside a price says when it is not fully live.";
+    tb.textContent="";
+    var hd=el("thead"),hr=el("tr");["Market","Feed","Latest trade","Reads","Speed","Held back"].forEach(function(h,i){var th=el("th",i>1?"r":null,h);hr.appendChild(th)});hd.appendChild(hr);tb.appendChild(hd);
+    var bd=el("tbody");
+    function row(name,kind,st,tone,age,reads,ms,held){var tr=el("tr"),a=el("td","qn",name);if(kind)a.appendChild(el("div","dqk",kind));tr.appendChild(a);
+      tr.appendChild(el("td","dqs "+tone,st));[age,reads,ms,held].forEach(function(v){tr.appendChild(el("td","r",v))});bd.appendChild(tr)}
+    var SN={live:["Live","up"],delayed:["Delayed","warn"],quiet:["Quiet","flat"],closed:["Closed","flat"],waiting:["Waiting","flat"],unknown:["Unknown","flat"]};
+    d.rows.forEach(function(r){var s=SN[r.state]||SN.unknown;
+      row(nm(r),r.kind,s[0],s[1],r.state==="delayed"?Math.round(r.delay/60)+"m behind":r.state==="waiting"?"-":ago(r.age)+" ago",r.ok+" ok"+(r.fail?", "+r.fail+" failed":""),r.ms!=null?r.ms+" ms":"-",String(r.held))});
+    if(d.spot)row("Gold spot (XAU/USD)","Twelve Data, real-time spot",d.spot.age<=90?"Live":"Quiet",d.spot.age<=90?"up":"flat",ago(d.spot.age)+" ago","","","");
+    tb.appendChild(bd);
+    x.textContent="";
+    function line(h,t,cls){var l=el("div",cls||null);l.appendChild(el("b",null,h+" "));l.appendChild(document.createTextNode(t));x.appendChild(l)}
+    var td=d.td||{};
+    if(td.state==="off")line("Second opinion","off. Add a Twelve Data key to check prices against another source and get live gold spot.");
+    else{line("Second opinion","Twelve Data "+(td.state==="on"?"on":td.state==="limited"?"rate limited, backing off":"not answering"+(td.error?" ("+td.error+")":""))+". "+(td.used||0)+" of "+(td.budget||0)+" credits used today.",td.state==="on"?"":"warn");
+      var ks=Object.keys(d.checks||{});
+      if(!ks.length)line("Cross-check","waiting for the first comparison (every 5 minutes).");
+      ks.forEach(function(k){var c=d.checks[k];line(TILE_NAMES[k]||k,"Yahoo "+fmt(c.ours,5)+" against Twelve Data "+fmt(c.other,5)+": "+Math.abs(c.diff)+" "+c.unit+" apart. "+(c.ok?"They agree.":"They differ by more than "+d.pip_tolerance+" "+c.unit+", so treat the last digits with care."),c.ok?"":"warn")});
+      if(d.spot){var gc=d.rows.filter(function(r){return r.key==="XAUUSD"})[0];
+        if(gc&&gc.price)line("Gold","futures "+fmt(gc.price,2)+(gc.state==="delayed"?" (delayed) ":" ")+"against spot "+fmt(d.spot.price,2)+". Futures normally sit a few dollars above spot, and the delay adds the move of the last "+(gc.state==="delayed"?Math.round(gc.delay/60):0)+" minutes.")}}
+    line("Held back","a reading that jumps further than a market plausibly moves in seconds waits for the next reading to agree before it is shown.");
+  }).catch(function(){}).then(function(){dqBusy=false})}
+setInterval(dqRender,3000);
 
 /* ---------------- chat box ---------------- */
 var chatMsgs=[],chatBusy=false;

@@ -75,6 +75,19 @@ It gives the last price and the change since the previous close, with no small c
 
 While Home or Macro is open, the page asks for fresh prices every 2 seconds, and Kelly Terminal asks Yahoo for each market's last price about every 3 seconds (`live.py`). Every number that changes is rewritten in place and flashes green for up or red for down, and the small dot beside "Live, updated" shows the feed is running. Nothing is invented: a price that did not move stays still, and a market whose answer failed keeps its last real price. It only asks Yahoo while a page is open and slows itself down if Yahoo asks it to. Yahoo's free feed is not tick by tick like a paid terminal, so expect a change every few seconds, not every millisecond. It stops when you switch to another tab or the window is hidden.
 
+## Data accuracy
+
+What each price really is (measured against the feeds on 3 November 2026):
+
+- **Yahoo's free CME futures run about 10 minutes late**: gold (GC), Nasdaq (NQ), crude oil and the dollar index. Their exchange clock keeps a steady ten minute gap behind the real time. Forex pairs from Yahoo are live to within about a minute.
+- Kelly Terminal measures that gap itself and tags the price ("10m late", "closed", "15m old") on Home, the Quote monitor and the Markets cards. The Data quality panel under Connections lists every feed with its state, age, read count, speed and how many stray ticks were held back.
+- **Gold spot** (XAU/USD) is read live from Twelve Data (every 30 seconds) when a key is set and shown beside the delayed gold futures price. Futures normally sit a few dollars above spot.
+- **Second opinion**: every 5 minutes EUR/USD and GBP/USD are compared with Twelve Data. More than 2.5 pips apart is flagged ("check").
+- **Bad ticks**: a reading that jumps further than the market plausibly moves in a few seconds is held back until the next reading agrees. A normal reopening gap after a quiet spell is shown at once.
+- Twelve Data credits are counted and capped per day (780 of the free plan's 800, change it with `TWELVEDATA_DAILY_CREDITS`); a rate limit makes it back off.
+
+What the free feeds cannot do is tick-accurate futures. For real-time NQ and MGC the options are a paid feed from the exchange or a data vendor (Twelve Data's paid plans, Polygon, Databento) or your broker's own price API.
+
 ## Running it online with Google sign-in
 
 This is optional. The copy on your PC does not change: sign-in only switches on when `config.json` has an `"auth"`
