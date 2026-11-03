@@ -484,11 +484,13 @@ def mood(quotes):
     return {"label": label, "score": score, "reasons": reasons or ["no big moves in the S&P 500, Nasdaq, VIX or dollar"]}
 
 
-BRIEF_LABELS = ["Headline", "Overview", "Mood", "Tone", "Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD", "Releases to watch", "Careful around",
+BRIEF_LABELS = ["Headline", "Overview", "Mood", "Tone", "Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD",
+                "Dollar (DXY)", "US 10Y yield", "VIX", "S&P 500", "Crude oil (CL)", "Releases to watch", "Careful around",
                 "Event notes", "One thing to check on your own charts"]
 
 
-MARKET_LABELS = ("Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD")
+MARKET_LABELS = ("Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD", "Dollar (DXY)", "US 10Y yield", "VIX", "S&P 500", "Crude oil (CL)")
+TRADED_LABELS = MARKET_LABELS[:4]        # the four the trader trades; the other five give context
 
 
 def split_brief(text):
@@ -507,7 +509,7 @@ def split_brief(text):
     # some answers leave out the four market labels and just run four Bias blocks in the order asked for: read them in that order
     if not any(l in out for l in MARKET_LABELS):
         biases_at = list(re.finditer(r"(?im)^[ \t#*]*Bias[ \t*]*:", text))
-        if len(biases_at) == len(MARKET_LABELS):
+        if len(biases_at) in (len(TRADED_LABELS), len(MARKET_LABELS)):
             starts = [m.start() for m in marks]
             for k, bm in enumerate(biases_at):
                 nxt = biases_at[k + 1].start() if k + 1 < len(biases_at) else min([s for s in starts if s > bm.start()] or [len(text)])
@@ -579,14 +581,18 @@ Ground rules:
 - Plain text, short paragraphs, no tables, no markdown headings, no bold. Use these labelled parts in this order:
   Headline (one line, under 14 words, the main story of the day), Overview (three to five sentences: what is moving
   and why, and how the four markets line up), Mood (the shape below), Tone (two sentences on risk appetite), then one
-  part each for Gold and MGC, Nasdaq (NQ), EURUSD and GBPUSD, then Releases to watch (the next ones with Dublin time,
+  part each for Gold and MGC, Nasdaq (NQ), EURUSD, GBPUSD, Dollar (DXY), US 10Y yield, VIX, S&P 500 and Crude oil (CL),
+  then Releases to watch (the next ones with Dublin time,
   forecast and previous when given, and which markets they hit), Careful around (the Dublin times to be careful),
   Event notes (the shape below) and One thing to check on your own charts.
 - Mood has exactly two lines:
   Mood: Risk-on or Risk-off or Mixed
   Confidence: a whole number from 0 to 100
-- Each of the four market parts starts with its own label on a line by itself (Gold and MGC, Nasdaq (NQ), EURUSD,
-  GBPUSD, written exactly like that), then follows this exact shape, one labelled line each:
+- Each of the nine market parts starts with its own label on a line by itself (Gold and MGC, Nasdaq (NQ), EURUSD,
+  GBPUSD, Dollar (DXY), US 10Y yield, VIX, S&P 500, Crude oil (CL), written exactly like that), then follows this
+  exact shape, one labelled line each. The trader trades the first four and watches the other five for context, so
+  keep the five short (one sentence each for Sentiment and Fundamentals). For US 10Y yield, VIX and Crude, Bullish
+  means the price is more likely to rise, Bearish more likely to fall:
   Bias: Bullish or Bearish or Neutral
   Confidence: a whole number from 0 to 100 (under 45 when signals disagree or data is missing, 45 to 69 when most
   agree, 70 or more only when sentiment and fundamentals clearly agree)
@@ -596,7 +602,7 @@ Ground rules:
 - Event notes: one line for each of the next four high or medium impact releases in the data, in this shape:
   Event: <the release title exactly as listed> | <one sentence on what a beat or a miss could do and to which markets>
   Skip this part if no releases are listed.
-- Keep it under 750 words."""
+- Keep it under 1100 words."""
 
 
 MARKET_FIELDS = ("Bias", "Confidence", "Conviction", "Sentiment", "Fundamentals", "Changes if")
@@ -631,9 +637,9 @@ def parse_market(text):
 
 
 def biases(parts):
-    """{part label: parsed bias} for the four markets the AI wrote a readable bias for."""
+    """{part label: parsed bias} for each of the nine markets the AI wrote a readable bias for."""
     out = {}
-    for label in ("Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD"):
+    for label in MARKET_LABELS:
         got = parse_market((parts or {}).get(label, ""))
         if got:
             out[label] = got

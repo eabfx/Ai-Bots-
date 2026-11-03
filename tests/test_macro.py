@@ -270,7 +270,8 @@ class Mood(unittest.TestCase):
 class SplitBrief(unittest.TestCase):
     TEXT = ("Headline: Gold jumps.\n\nOverview: Yields slid.\n\nMood: Risk-on\nConfidence: 70\n\n"
             "Tone: Cautious.\nVIX up.\n\nGold and MGC: Held near highs.\n\nNasdaq (NQ): Pulled back.\n\n"
-            "EURUSD: Quiet.\n\nGBPUSD: Quiet.\n\nReleases to watch: PCE at 12:30.\n\nCareful around: 12:30.\n\n"
+            "EURUSD: Quiet.\n\nGBPUSD: Quiet.\n\nDollar (DXY): Steady.\n\nUS 10Y yield: Down.\n\nVIX: Up.\n\nS&P 500: Flat.\n\n"
+            "Crude oil (CL): Lower.\n\nReleases to watch: PCE at 12:30.\n\nCareful around: 12:30.\n\n"
             "Event notes: Event: PCE | hot print hits gold\n\nOne thing to check on your own charts: the daily level.")
 
     def test_the_labelled_parts_are_found(self):
@@ -424,6 +425,12 @@ class BriefWithoutMarketLabels(unittest.TestCase):
         self.assertEqual([(k, v["bias"], v["confidence"]) for k, v in got.items()],
                          [("Gold and MGC", "bearish", 35), ("Nasdaq (NQ)", "neutral", 40), ("EURUSD", "bullish", 60), ("GBPUSD", "bearish", 55)])
         self.assertEqual(parts["Tone"], "Guarded.")                 # the blocks are not left inside the Tone part
+
+    def test_nine_unlabelled_blocks_go_to_all_nine_markets(self):
+        block = "Bias: Bullish\nConfidence: 60\nSentiment: a.\nFundamentals: b.\nChanges if: c.\n\n"
+        text = "Headline: x\n\nOverview: y\n\nMood: Mixed\nConfidence: 40\n\nTone: z\n\n" + block * 9 + "Releases to watch: q\n"
+        got = macro.biases(macro.split_brief(text))
+        self.assertEqual(list(got), list(macro.MARKET_LABELS))
 
     def test_any_other_number_of_blocks_is_left_alone(self):
         parts = macro.split_brief(self.ANSWER.replace("Bias: Bullish", "Lean: Bullish"))

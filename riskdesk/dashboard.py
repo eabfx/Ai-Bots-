@@ -189,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/notion/refresh":
                 if not self.notion_link:
                     return self.send_json(200, {"connected": False})
-                return self.send_json(200, self.notion_link.refresh())
+                return self.send_json(200, self.notion_link.refresh(with_hub=bool(body.get("hub", True))))
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
                 snap = macro.snapshot(now, self.macro_net)
                 pv = coach.provider(self.config_path)
                 answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, str(body.get("focus") or "")), pv,
-                                        self.coach_post, 1800)
+                                        self.coach_post, 3200)
                 parts = macro.split_brief(answer)
                 doc = self.brief_keeper.store(answer, snap["as_of"], parts) if self.brief_keeper else {}
                 return self.send_json(200, dict(doc) if doc else dict(macro.desk(parts), answer=answer, as_of=snap["as_of"],

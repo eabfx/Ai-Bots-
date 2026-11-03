@@ -105,7 +105,7 @@ class Keeper:
                 return None
             now = macro.z.parse_now(None)
             snap = macro.snapshot(now, self.net, True)
-            answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, ""), pv, self.post, 1800)
+            answer = coach.generate(macro.BRIEF_SYSTEM, macro.brief_messages(snap, ""), pv, self.post, 3200)
             return self.store(answer, snap["as_of"], macro.split_brief(answer), auto=True)
         except Exception as e:                                  # the background job must never die
             self.error = "%s: %s" % (type(e).__name__, e)

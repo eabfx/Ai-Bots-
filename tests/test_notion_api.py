@@ -175,11 +175,17 @@ class Wiring(unittest.TestCase):
         self.assertIn("notion_link.start()", SERVER)
 
     def test_the_second_brain_tab_and_the_journal_merge_are_in_the_page(self):
-        for needle in ('data-tab="brain">Second Brain<', 'class="brainbtn"', "background:var(--accent);color:var(--onaccent)", 'id="tab-brain"', 'id="sb-root"', 'src="/brain.js"', "function nsSync()", "/api/notion/journal",
+        for needle in ('data-tab="brain">Second Brain<', 'class="brainbtn"', "background:var(--accent);color:var(--onaccent)", 'id="tab-brain"', 'id="sb-root"', 'src="/brain.js"', "function nsSync(force)", "/api/notion/journal",
                        "/api/notion/refresh", 'id="nl-card"', "Read content", "Thoughts + Emotions"):
             self.assertIn(needle, PAGE)
         self.assertNotIn("#9a92ff", PAGE)                            # the button is plain white and black now
         self.assertIn('"home","macro","journal","backtest","brain"', PAGE)
+
+    def test_the_sync_buttons_pull_from_notion_and_say_where_each_trade_went(self):
+        self.assertEqual(PAGE.count("data-nsync"), 5)                # Home, Journal and the Connections routine share one handler
+        for needle in ("function nsPull(", "new in Journal", "new in Backtest", "Already up to date", 'visibilitychange', "body.hasnotion .nsb"):
+            self.assertIn(needle, PAGE)
+        self.assertIn('refresh(with_hub=bool(body.get("hub", True)))', SERVER)     # the button reads the journal only, so it takes seconds
 
     def test_a_row_filled_in_later_updates_the_trade_but_keeps_what_you_wrote_here(self):
         self.assertIn('n.no!==undefined?byNo[n.no+"|"+n.date]:null', PAGE)

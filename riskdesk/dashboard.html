@@ -1272,6 +1272,13 @@ table.dq td.dqk{color:var(--muted);font-size:11px}
 .dqx{margin-top:12px;display:grid;gap:6px;font:12px var(--mono);color:var(--muted)}
 .dqx div b{color:var(--text);font-weight:500}.dqx .warn{color:var(--warn)}
 @media(min-width:861px) and (max-width:1120px){.bar nav button{padding:8px 8px}.bar nav{gap:0}}
+
+/* Notion sync buttons: only shown once Notion is linked */
+.nsb{display:none}body.hasnotion .nsb{display:inline-flex}
+.nsb.busy,#nl-sync.busy{opacity:.7;pointer-events:none}
+.nsb.busy::before{content:"";width:9px;height:9px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:7px;animation:nsspin .8s linear infinite}
+@keyframes nsspin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.nsb.busy::before{animation:none}}
 </style>
 </head>
 <body>
@@ -1426,7 +1433,7 @@ table.dq td.dqk{color:var(--muted);font-size:11px}
 <section class="tool active" id="tab-home" role="tabpanel">
 <div class="hhead">
 <div><div class="eyebrow" id="h-date"></div><h2 class="pt" id="h-greet">Good morning</h2></div>
-<div class="hright"><span class="hclock" id="h-clock"></span><span class="mute" id="h-asof" style="font-size:12px"></span><button class="btn small ghost" id="home-refresh" type="button">Refresh</button></div>
+<div class="hright"><span class="hclock" id="h-clock"></span><span class="mute" id="h-asof" style="font-size:12px"></span><button class="btn small ghost nsb" data-nsync type="button">Sync Notion</button><button class="btn small ghost" id="home-refresh" type="button">Refresh</button></div>
 </div>
 <div class="err" id="h-err" style="display:none"></div>
 <div id="h-sessions" hidden></div>
@@ -1640,7 +1647,7 @@ table.dq td.dqk{color:var(--muted);font-size:11px}
 <div class="jhead">
 <div><h2 class="pt" id="j-title">Journal</h2>
 <p class="sub" id="j-sub">Your trades, your numbers.</p></div>
-<div class="btnrow" style="margin:0"><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Add a trade</button></div>
+<div class="btnrow" style="margin:0"><button class="btn small ghost nsb" data-nsync type="button">Sync Notion</button><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Add a trade</button></div>
 </div>
 
 <div class="card hcard" id="h-card">
@@ -2853,15 +2860,13 @@ function nlStatus(){
     $("nl-sync").disabled=false;
     t.textContent="Linked, read-only. Journal rows checked "+(s.at||"not yet")+" ("+(s.journal_rows||0)+" rows), pages copied "+(s.hub_at||"not yet")+" ("+(s.hub_pages||0)+" pages). It checks every few minutes while Kelly_Terminal is running.";
     if(s.error){e.textContent=s.error;e.style.display=""}}).catch(function(){})}
-$("nl-sync").onclick=function(){
-  var b=$("nl-sync");b.disabled=true;b.textContent="Reading Notion...";
-  fetch("/api/notion/refresh",{method:"POST",headers:HDRS,body:"{}"}).then(function(r){return r.json()}).then(function(){nsSync();nlStatus()}).catch(function(){}).then(function(){b.disabled=false;b.textContent="Sync now"})};
+$("nl-sync").onclick=function(){nsPull(false)};
 /* merge rule: a Notion row is the same trade as one with its Trade No. on its date. A row you filled in later updates the trade; what you wrote here (notes, screenshot) is kept */
 var NSF=["inst","dir","tag","risk","pl","r","riskPct","zone","strategy","session","partials","bias","acct","skip","unit"],nsAt="";
-function nsSync(){
-  if(dormant||!jReady)return Promise.resolve();
+function nsSync(force){
+  if(dormant||!jReady)return Promise.resolve(null);
   return fetch("/api/notion/journal").then(function(r){return r.json()}).then(function(j){
-    if(!j||!j.at||j.at===nsAt)return;nsAt=j.at;
+    if(!j||!j.at||(j.at===nsAt&&!force))return null;nsAt=j.at;
     var fresh=(j.trades||[]).map(cleanTrade).filter(function(t){return t}),byNo={},have={};
     trades.forEach(function(t){have[ntKey(t)]=1;if(t.no!==undefined)(byNo[t.no+"|"+t.date]=byNo[t.no+"|"+t.date]||[]).push(t)});
     var add=[],upd=0;
@@ -2874,11 +2879,38 @@ function nsSync(){
       if(!o.notes&&n.notes){o.notes=n.notes;ch=true}
       if(!o.img&&n.img){o.img=n.img;ch=true}
       if(ch)upd++});
-    if(!add.length&&!upd)return;
-    if(trades.length+add.length>20000)return;
+    var res={rows:fresh.length,live:add.filter(function(t){return t.acct!=="backtest"}).length,bt:add.filter(function(t){return t.acct==="backtest"}).length,upd:upd,at:j.at};
+    if(!add.length&&!upd)return res;
+    if(trades.length+add.length>20000)return res;
     trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
-    jSave();jRender();jStatus("From Notion: "+add.length+" new, "+upd+" updated.")}).catch(function(){})}
-setInterval(function(){if(!document.hidden)nsSync()},60000);setTimeout(nsSync,4000);
+    jSave();jRender();
+    jStatus("From Notion: "+add.length+" new, "+upd+" updated.");return res}).catch(function(){return null})}
+/* the Sync Notion buttons (Home, Journal, Connections): read Notion now, then put each new trade where it belongs and say where it went */
+var nsBusy=false,nsLast=0;
+function nsNote(title,msg){
+  var box=$("toasts"),t=el("div","toast"),body=el("div");body.appendChild(el("b",null,title));body.appendChild(document.createTextNode(msg));t.appendChild(body);
+  var x=el("button","tx","\u00d7");x.type="button";x.setAttribute("aria-label","Dismiss");x.onclick=function(){if(t.parentNode)t.parentNode.removeChild(t)};t.appendChild(x);
+  box.appendChild(t);while(box.children.length>4)box.removeChild(box.firstChild);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},12000)}
+function nsPull(silent){
+  if(nsBusy)return;nsBusy=true;nsLast=Date.now();
+  var bs=document.querySelectorAll("[data-nsync],#nl-sync");for(var i=0;i<bs.length;i++)if(!silent)bs[i].classList.add("busy");
+  fetch("/api/notion/refresh",{method:"POST",headers:HDRS,body:JSON.stringify({hub:false})}).then(function(r){return r.json()}).then(function(s){
+    if(s.connected===false){if(!silent)nsNote("Notion is not linked","Add the Notion key first (Connections).");return}
+    if(s.error){if(!silent)nsNote("Notion did not answer",s.error);return}
+    return nsSync(true).then(function(r){
+      if(!r)return;var n=r.live+r.bt;
+      var live=liveOnly().length,bt=trades.filter(function(t){return t.acct==="backtest"&&!t.skip}).length;
+      if(n||r.upd){nsNote("Synced from Notion",(r.live?r.live+" new in Journal":"")+(r.live&&r.bt?", ":"")+(r.bt?r.bt+" new in Backtest":"")+(r.upd?(n?", ":"")+r.upd+" updated":"")+". Journal now has "+live+" trades, Backtest "+bt+".")}
+      else if(!silent)nsNote("Already up to date","Notion has "+r.rows+" rows and every one is here. Journal "+live+" trades, Backtest "+bt+". Checked "+s.at+".")})})
+  .catch(function(){if(!silent)nsNote("Could not reach Notion","The dashboard did not answer. Try again in a moment.")})
+  .then(function(){nsBusy=false;var b2=document.querySelectorAll("[data-nsync],#nl-sync");for(var k=0;k<b2.length;k++)b2[k].classList.remove("busy");nlStatus()})}
+Array.prototype.forEach.call(document.querySelectorAll("[data-nsync]"),function(b){b.onclick=function(){nsPull(false)}});
+fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){if(s&&s.connected)document.body.classList.add("hasnotion")}).catch(function(){});
+/* coming back to the dashboard after using Notion: pull quietly, and say so only if something new arrived */
+function nsBack(){if(document.hidden||dormant||Date.now()-nsLast<90000||!document.body.classList.contains("hasnotion"))return;nsPull(true)}
+document.addEventListener("visibilitychange",nsBack);window.addEventListener("focus",nsBack);
+function nsAuto(){nsSync().then(function(r){if(r&&(r.live||r.bt))nsNote("New from Notion",(r.live?r.live+" new in Journal":"")+(r.live&&r.bt?", ":"")+(r.bt?r.bt+" new in Backtest":"")+".")})}
+setInterval(function(){if(!document.hidden)nsAuto()},60000);setTimeout(nsAuto,4000);
 function coachStatus(){
   var box=$("coach-setup");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){
@@ -2929,7 +2961,9 @@ jRender();
 
 /* ---------------- macro desk ---------------- */
 var macroData=null,macroAt=0,macroBusy=false,macroBrief=null,calSpan=24;
+var EXTRA_MARKETS=[["DXY","US Dollar Index","Dollar (DXY)"],["US10Y","US 10 year yield","US 10Y yield"],["VIX","VIX","VIX"],["SPX","S&P 500","S&P 500"],["OIL","Crude oil (CL)","Crude oil (CL)"]];
 var MARKETS=[["XAUUSD","Gold (XAUUSD, MGC)","Gold and MGC"],["NQ","Nasdaq 100 (NQ)","Nasdaq (NQ)"],["EURUSD","EUR/USD","EURUSD"],["GBPUSD","GBP/USD","GBPUSD"]];
+var MARKETS_ALL=MARKETS.concat(EXTRA_MARKETS);
 function dur(min){
   var a=Math.abs(Math.round(min)),d=Math.floor(a/1440),h=Math.floor(a%1440/60),m=a%60;
   return d>0?d+"d "+h+"h":h>0?h+"h "+m+"m":m+"m"}
@@ -3101,18 +3135,18 @@ function deskRender(d){
   mr.appendChild(mt);c.appendChild(mr);grid.appendChild(c);
   /* bias across */
   c=el("div","card dkc");c.appendChild(el("div","mlabel","Bias across your markets"));
-  var cnt={bullish:0,bearish:0,neutral:0,pending:0};MARKETS.forEach(function(m){var a=bi[m[2]];cnt[a?a.bias:"pending"]++});
-  c.appendChild(el("div","mbig",MARKETS.length+" followed"));
+  var cnt={bullish:0,bearish:0,neutral:0,pending:0};MARKETS_ALL.forEach(function(m){var a=bi[m[2]];cnt[a?a.bias:"pending"]++});
+  c.appendChild(el("div","mbig",MARKETS_ALL.length+" followed"));
   var sb=el("div","dkstack");["bullish","bearish","neutral","pending"].forEach(function(k){if(cnt[k]){var i=el("i",k);i.style.flex=cnt[k];sb.appendChild(i)}});c.appendChild(sb);
   var lg=el("div","dklg");["bullish","bearish","neutral","pending"].forEach(function(k){var sp=el("span");sp.appendChild(el("i",k));sp.appendChild(document.createTextNode(cnt[k]+" "+k));lg.appendChild(sp)});c.appendChild(lg);grid.appendChild(c);
   /* highest conviction */
   c=el("div","card dkc");c.appendChild(el("div","mlabel","Highest conviction"));
-  var best=null;MARKETS.forEach(function(m){var a=bi[m[2]];if(a&&a.confidence!==null&&(!best||a.confidence>best.a.confidence))best={m:m,a:a}});
+  var best=null;MARKETS_ALL.forEach(function(m){var a=bi[m[2]];if(a&&a.confidence!==null&&(!best||a.confidence>best.a.confidence))best={m:m,a:a}});
   if(best){var q=quoteBy(d,best.m[0]),cl=best.a.bias==="bullish"?"up":best.a.bias==="bearish"?"down":"flat",r=el("div","dkbest");
     r.appendChild(el("b",null,best.m[0]));r.appendChild(el("span","aipill "+cl,best.a.bias));if(q)r.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));c.appendChild(r);
     c.appendChild(el("div","mmore",best.m[1]+" \u00B7 "+best.a.confidence+"% confidence"));
     var mv=null,br=null;d.quotes.forEach(function(x){if(x.pct!==null&&(!mv||Math.abs(x.pct)>Math.abs(mv.pct)))mv=x});
-    MARKETS.forEach(function(m){var a=bi[m[2]];if(a&&a.bias==="bearish"&&(!br||a.confidence>br.a.confidence))br={m:m,a:a}});
+    MARKETS_ALL.forEach(function(m){var a=bi[m[2]];if(a&&a.bias==="bearish"&&(!br||a.confidence>br.a.confidence))br={m:m,a:a}});
     c.appendChild(el("div","mmore","Biggest mover: "+(mv?mv.key+" "+pctText(mv.pct):"-")+(br?" \u00B7 Strongest bearish: "+br.m[0]+" "+br.a.confidence+"%":"")))}
   else c.appendChild(el("div","mmore","Shows once the AI has written its first bias."));
   grid.appendChild(c);
@@ -3133,11 +3167,11 @@ function deskRender(d){
   var cols=el("div","dkcols"),col=function(t){var x=el("div");x.appendChild(el("div","dkcl",t));cols.appendChild(x);return x};
   var mvc=col("Movers today");d.quotes.filter(function(x){return x.pct!==null}).sort(function(a,b){return Math.abs(b.pct)-Math.abs(a.pct)}).slice(0,3).forEach(function(x){
     var r=el("div","dkrow");r.appendChild(el("b",null,x.key));r.appendChild(el("span",pctClass(x.pct),pctText(x.pct)));mvc.appendChild(r)});
-  var ch=col("Bias changed"),lbl={};MARKETS.forEach(function(m){lbl[m[2]]=m[0]});
+  var ch=col("Bias changed"),lbl={};MARKETS_ALL.forEach(function(m){lbl[m[2]]=m[0]});
   if(briefChanges.length)briefChanges.slice(-3).reverse().forEach(function(x){var r=el("div","dkrow");r.appendChild(el("b",null,lbl[x.market]||x.market));
     r.appendChild(el("span","aipill mini flat",x.from));r.appendChild(el("span",null,"\u2192"));r.appendChild(el("span","aipill mini "+(x.to==="bullish"?"up":x.to==="bearish"?"down":"flat"),x.to));r.appendChild(el("em",null,agoText(x.at)));ch.appendChild(r)});
   else ch.appendChild(el("div","mmore","No change yet."));
-  var ag=col("Against the desk"),any=false;MARKETS.forEach(function(m){var a=bi[m[2]],q=quoteBy(d,m[0]);
+  var ag=col("Against the desk"),any=false;MARKETS_ALL.forEach(function(m){var a=bi[m[2]],q=quoteBy(d,m[0]);
     if(a&&q&&q.pct!==null&&((a.bias==="bullish"&&q.pct<0)||(a.bias==="bearish"&&q.pct>0))){any=true;var r=el("div","dkrow");r.appendChild(el("b",null,m[0]));r.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));
       r.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":"down"),a.bias));ag.appendChild(r)}});
   if(!any)ag.appendChild(el("div","mmore","Nothing is moving against its bias."));
@@ -3343,7 +3377,7 @@ var qmShown=false;
 function qmRender(d){
   var tb=$("h-qm");if(!tb)return;tb.textContent="";tb.classList.toggle("enter",!qmShown);qmShown=true;
   var th=el("thead"),hr=el("tr");["Market","Last","Chg","%","5D","1M","Trend","Range","AI bias"].forEach(function(h,i){var c=el("th",i>0&&i<6?"r":"",h);hr.appendChild(c)});th.appendChild(hr);tb.appendChild(th);
-  var body=el("tbody"),lab={};MARKETS.forEach(function(m){lab[m[0]]=m[2]});
+  var body=el("tbody"),lab={};MARKETS_ALL.forEach(function(m){lab[m[0]]=m[2]});
   var bi=macroBrief&&macroBrief.bias||{};
   d.quotes.forEach(function(q,row){
     var sp=qSeries(q),tr=el("tr"),cls=pctClass(q.pct);
@@ -3362,7 +3396,7 @@ function qmRender(d){
     if(rp!==null){var bar=el("div","qbar"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,rp))+"%";bar.appendChild(dot);rg.appendChild(bar);rg.title="Position in the 1 month range"}
     var a=bi[lab[q.key]],bc=td("");
     if(!a){bc.appendChild(el("span","qcf",lab[q.key]?"no read yet":"-"))}
-    if(a){bc.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat"),a.bias));
+    if(a){bc.title=((a.sentiment||"")+" "+(a.fundamentals||"")).trim();bc.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat"),a.bias));
       if(a.confidence!==null&&a.confidence!==undefined)bc.appendChild(el("span","qcf",a.confidence+"%"))}
     tr.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};
     body.appendChild(tr)});
@@ -3692,7 +3726,7 @@ function chatRender(){
   log.scrollTop=log.scrollHeight}
 function chatContext(){
   var c={tab:tabNow},b=[];
-  MARKETS.forEach(function(m){var a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]];if(a)b.push(m[0]+" "+a.bias+(a.conviction?" ("+a.conviction+")":""))});if(b.length)c.bias="AI bias today: "+b.join(", ");
+  MARKETS_ALL.forEach(function(m){var a=macroBrief&&macroBrief.bias&&macroBrief.bias[m[2]];if(a)b.push(m[0]+" "+a.bias+(a.conviction?" ("+a.conviction+")":""))});if(b.length)c.bias="AI bias today: "+b.join(", ");
   return c}
 function chatSend(text){
   text=(text||"").trim();if(!text||chatBusy)return;
