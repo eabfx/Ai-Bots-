@@ -174,6 +174,8 @@ The **Funding** page totals every prop-firm account you hold, split into forex /
 ## Staying running and staying current
 
 - **Crash keeper (Windows).** `RiskDeskApp.ps1` starts `keepalive.ps1` hidden. It runs the server and starts it again three seconds after any crash, noting each one in `server-restarts.log` in the trader folder. `stop-server.ps1` stops the keeper and the server.
+- **Phone alert if something stops.** `watch.ps1` (started by the keeper) checks every two minutes. If the server on the PC stops answering for about eight minutes, or kellyterminal.com for about six, it sends a phone alert through your private Phone alerts topic, and another when it is back. It also tells you when the PC has just started. It stays silent until Phone alerts is switched on, and always notes what it would have sent in `server-restarts.log`.
+- **Backups.** The daily zip also goes to the folder named by `backup_copy_to` in `trader\config.json` (now `L:\KellyTerminalBackups`, the second WD drive), where the newest 60 are kept.
 - **Apps update themselves.** The server publishes its version at `/version.json` (no sign-in needed) and the page carries the same version. An installed app, phone or tablet that is running an older page shows a refresh bar and reloads. Settings shows the version and has a check-for-update button.
 - **Hosted copy.** kellyterminal.com pulls from GitHub hourly and restarts, so a new version reaches phones within about an hour.
 - **App icon.** Icons are cache-busted with `?v=k3` in the page and manifest. Android refreshes an installed icon on its own within about a day. iPhone and iPad copy the icon when the app is added, so remove it and add it again (Safari, Share, Add to Home Screen) to see a new icon.
