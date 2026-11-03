@@ -1325,6 +1325,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 @media(min-width:901px) and (max-width:1100px){.bar nav button .ni{display:none}.brainbtn .ni{display:none}#cmd{width:64px}.bar nav button{padding:0 7px!important}}
 /* funding page */
 #tab-funding [hidden]{display:none!important}
+.fd-warn{padding:0 0 8px;border-left:2px solid var(--muted)}.fd-warn-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px 2px}.fd-warn-h b{font-weight:600}.fd-warn-l{padding:2px 14px;font-size:13px;color:var(--muted)}
 .fd-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
 .fd-live{display:inline-flex;align-items:center;gap:8px;font:400 12px var(--mono);color:var(--muted)}
 .fd-live i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}.fd-live.on i{background:var(--up)}
@@ -1723,7 +1724,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="frow three" id="fd-goalform" hidden style="margin-top:12px"><div><label for="fd-goalin">Goal in dollars</label><input type="number" id="fd-goalin" min="1" step="any" placeholder="e.g. 1000000"></div></div>
 <div class="btnrow" id="fd-goalbtns" hidden><button class="btn small" id="fd-goal-save" type="button">Save goal</button><button class="btn small ghost" id="fd-goal-reset" type="button">Use the goal from Notion</button></div>
 <div class="err" id="fd-gerr" hidden></div></div></div>
-<div class="err" id="fd-warn" hidden></div>
+<div class="hpanel fd-warn" id="fd-warn" hidden></div>
 <div class="hgrid2">
 <div class="hpanel"><div class="hp-h"><h3>Forex / CFD</h3><span class="mute" id="fd-cfd-t" style="font-size:12px"></span></div><div id="fd-cfd"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Futures</h3><span class="mute" id="fd-fut-t" style="font-size:12px"></span></div><div id="fd-fut"></div></div>
@@ -1753,7 +1754,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="err" id="fd-perr" hidden></div>
 <div class="btnrow" style="margin:0 12px 10px"><button class="btn small" id="fd-padd" type="button">Add pay-out</button></div>
 <div id="fd-pay"></div></div>
-<div class="btnrow" style="margin-top:4px"><button class="btn small ghost" id="fd-restore" type="button" hidden>Show hidden Notion rows and undo my changes to them</button></div>
+<div class="btnrow" style="margin-top:4px"><button class="btn small ghost" id="fd-restore" type="button" hidden>Bring back removed Notion rows and undo my changes to them</button></div>
 </section>
 
 <section class="tool" id="tab-alerts" role="tabpanel" hidden>
@@ -3960,8 +3961,9 @@ function fdRender(){
   var kids=$("fd-bar").children,k0=FD.calc.evals>0?FD.shown.evals/FD.calc.evals:1,parts=[FD.shown.funded,by.passed*k0,by.ongoing*k0],left=100;
   if(FD.calc.evals<=0&&FD.shown.evals>0)parts=[FD.shown.funded,0,FD.shown.evals];
   for(var i=0;i<3;i++){var w=FD.goal?Math.min(left,parts[i]/FD.goal*100):0;left-=w;kids[i].style.width=w+"%"}
-  var wn=$("fd-warn");wn.hidden=!FD.warnings.length;wn.textContent="";
-  if(FD.warnings.length){wn.appendChild(el("b",null,"Check your Notion numbers"));FD.warnings.forEach(function(w){wn.appendChild(el("div",null,w))});wn.appendChild(el("div",null,"This page adds up the rows, not the typed totals. Fix the total in Notion, or change or hide a row here."))}
+  var wn=$("fd-warn"),wkey=FD.warnings.join("|"),gone=jget("zd.fdwarn")===wkey;wn.hidden=!FD.warnings.length||gone;wn.textContent="";
+  if(!wn.hidden){var wh=el("div","fd-warn-h");wh.appendChild(el("b",null,"Your Notion totals do not match their rows"));var wx=el("button","fact","Dismiss");wx.type="button";wx.onclick=function(){jset("zd.fdwarn",wkey);wn.hidden=true};wh.appendChild(wx);wn.appendChild(wh);
+    FD.warnings.forEach(function(w){wn.appendChild(el("div","fd-warn-l",w))});wn.appendChild(el("div","fd-warn-l","This page adds up the rows, so its numbers are the real ones. Fix the total in Notion, change or hide a row here, or dismiss this. It comes back only if the numbers change."))}
   [["cfd","fd-cfd","fd-cfd-t"],["futures","fd-fut","fd-fut-t"]].forEach(function(m){
     var box=$(m[1]);box.textContent="";var t=FD.total[m[0]],n=FD.count[m[0]];
     ["funded","passed","ongoing"].forEach(function(s){var r=el("div","fstage"),l=el("div");l.appendChild(el("b",null,FD.stages[s]));r.appendChild(l);r.appendChild(el("span","n",n[s]+" account"+(n[s]===1?"":"s")));r.appendChild(el("span","v",fdMoney(t[s])));box.appendChild(r)});
@@ -3979,7 +3981,7 @@ function fdAccounts(){
     var td=el("td");td.appendChild(el("span","fst "+a.stage,FD.stages[a.stage]||a.stage));tr.appendChild(td);
     var nt=el("td");var ns=el("span","nt",a.note||(a.source==="notion"?"From Notion":""));ns.title=ns.textContent;nt.appendChild(ns);tr.appendChild(nt);
     var ac=el("td","r"),e=el("button","fact","Edit");e.type="button";e.onclick=function(){fdOpen(a)};
-    var x=el("button","fact",a.source==="notion"?"Hide":"Remove");x.type="button";x.onclick=function(){fdCall({action:"remove",id:a.id}).then(function(s){FD=s;fdRender()}).catch(function(er){nsNote("Funding",er.message)})};
+    var x=el("button","fact","Remove");x.type="button";x.title="Remove this account from the page";x.onclick=function(){fdCall({action:"remove",id:a.id}).then(function(s){FD=s;fdRender();nsNote("Removed",a.firm+" "+fdMoney(a.size)+(a.source==="notion"?". Your Notion is untouched; the button at the bottom of this page brings removed Notion rows back.":"."))}).catch(function(er){nsNote("Funding",er.message)})};
     ac.appendChild(e);ac.appendChild(x);tr.appendChild(ac);tb.appendChild(tr)});
   t.appendChild(tb);box.appendChild(t)}
 function fdOpen(a){
@@ -4018,7 +4020,7 @@ function fdPayouts(){
   var box=$("fd-pay");box.textContent="";
   if(!FD.payouts.length){var e=el("div","empty","No pay-outs yet.");e.style.padding="0 14px 12px";box.appendChild(e);return}
   FD.payouts.slice().reverse().forEach(function(p){var r=el("div","fpay"),l=el("span",null,p.date+(p.firm?" · "+p.firm:"")+(p.source==="notion"?" · from Notion":""));r.appendChild(l);
-    var rt=el("span");rt.appendChild(el("span","v",fdMoney(p.amount)));var x=el("button","fact",p.source==="notion"?"Hide":"Remove");x.type="button";x.onclick=function(){fdCall({action:"remove",id:p.id}).then(function(s){FD=s;fdRender()}).catch(function(er){nsNote("Funding",er.message)})};rt.appendChild(x);r.appendChild(rt);box.appendChild(r)})}
+    var rt=el("span");rt.appendChild(el("span","v",fdMoney(p.amount)));var x=el("button","fact","Remove");x.type="button";x.onclick=function(){fdCall({action:"remove",id:p.id}).then(function(s){FD=s;fdRender()}).catch(function(er){nsNote("Funding",er.message)})};rt.appendChild(x);r.appendChild(rt);box.appendChild(r)})}
 function fdConns(){
   var box=$("fd-conns");box.textContent="";
   function row(title,state,on,text,btn){var r=el("div","fconn"),t=el("div","t");t.appendChild(el("b",null,title));t.appendChild(el("div",null,text));r.appendChild(t);
