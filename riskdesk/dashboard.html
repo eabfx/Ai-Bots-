@@ -8,8 +8,8 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=kelly">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=kelly">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Kelly Terminal">
-<title>Kelly Terminal</title>
+<meta name="apple-mobile-web-app-title" content="Kelly_Terminal">
+<title>Kelly_Terminal</title>
 <style>
 :root{
   --bgc:#111;--bg:linear-gradient(180deg,#0a0a0a 0%,#111 55%,#181818 100%);
@@ -1205,6 +1205,48 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 .logo .us{color:var(--up);animation:cursor 1.1s step-end infinite}
 @keyframes cursor{0%,55%{opacity:1}56%,100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.chat .m.new,.cgrid button,.ctyp i,.cmark i,.logo .us{animation:none}}
+/* ===== Alerts and Connections ===== */
+#al-sum,#conn-status{margin:0 0 8px}
+#al-sum .hnum,#conn-status .hnum{animation:qin .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*60ms)}
+#tab-alerts .ckrow{padding:10px 2px}
+#tab-alerts .ckrow input{width:30px;height:16px;border-radius:9px;border:1px solid var(--hover);background:var(--panel2);position:relative;display:block;flex:none;transition:background .2s,border-color .2s}
+#tab-alerts .ckrow input::after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;border:0;border-radius:50%;background:var(--muted);transform:none;margin:0;transition:left .22s cubic-bezier(.3,1.4,.5,1),background .2s}
+#tab-alerts .ckrow input:checked{background:color-mix(in srgb,var(--up) 25%,var(--panel2));border-color:var(--up)}
+#tab-alerts .ckrow input:checked::after{left:16px;background:var(--up);transform:none}
+.alempty{display:flex;flex-direction:column;gap:4px;padding:18px 14px;border:1px dashed var(--line);margin-top:10px}
+.alempty b{font:600 13px var(--sans)}.alempty span{font:400 12px/1.5 var(--sans);color:var(--muted);max-width:420px}
+.alrow{position:relative;display:grid;grid-template-columns:minmax(120px,.9fr) minmax(0,1.4fr) auto auto;gap:14px;align-items:center;padding:10px 4px 10px 12px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);animation:qin .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*40ms);transition:background .15s}
+.alrow::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;background:var(--flat);transition:background .3s}
+.alrow:hover{background:var(--panel2)}
+.alrow.close::before{background:var(--warn);animation:calpulse 1.2s ease-in-out infinite}.alrow.fired::before{background:var(--up)}
+.all b{display:block;font:600 13px var(--mono)}
+.aldir{font:500 11px var(--mono);color:var(--muted)}.aldir.up{color:var(--up)}.aldir.down{color:var(--down)}
+.albar{height:4px;background:var(--line);overflow:hidden}
+.albar i{display:block;height:100%;width:0;background:linear-gradient(90deg,color-mix(in srgb,var(--text) 30%,transparent),var(--text));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.alrow.close .albar i{background:var(--warn)}.alrow.fired .albar i{background:var(--up)}
+.alnow{display:block;margin-top:5px;font:11px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.alrow .st{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--muted)}
+.alrow .st.hit{color:var(--up);border-color:var(--up)}
+.altl{position:relative;display:flex;gap:12px;padding:10px 4px 10px 2px;animation:qin .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*40ms)}
+.altl i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--text);margin-top:5px;box-shadow:0 0 0 3px var(--panel2)}
+.altl::before{content:"";position:absolute;left:5px;top:20px;bottom:-4px;width:1px;background:var(--line)}.altl:last-child::before{display:none}
+.alth{display:flex;gap:10px;align-items:baseline}.alth b{font:600 13px var(--sans)}.alth span{font:11px var(--mono);color:var(--muted)}
+#tab-alerts select,#tab-alerts input[type=number]{font:400 13px var(--mono);border-radius:2px!important;transition:border-color .2s,box-shadow .2s}
+#tab-alerts select:focus,#tab-alerts input[type=number]:focus{outline:none;border-color:var(--hover);box-shadow:0 0 0 3px color-mix(in srgb,var(--text) 8%,transparent)}
+.cgrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
+.cgrid2>#nl-card,.cgrid2>#imp-card{grid-column:1/-1}
+@media(max-width:900px){.cgrid2{grid-template-columns:1fr}}
+.cgrid2 .card{position:relative;overflow:hidden;transition:border-color .2s}
+.cgrid2 .card:hover{border-color:var(--hover)}
+.cgrid2 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--line);transition:background .25s}
+.cgrid2 .card:hover::before{background:var(--text)}
+.cgrid2 .card .sub{font:400 13px/1.6 var(--sans);max-width:760px}
+.cgrid2 .card h3.jh{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin-bottom:8px}
+#conn-status .hnum .v{display:flex;align-items:center;gap:8px}
+#conn-status .hnum .v::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--flat)}
+#conn-status .hnum .v.up::before{background:var(--up);animation:dotbeat 1.8s ease-in-out infinite}
+#conn-status .hnum .v.down::before{background:var(--down)}
+@media(prefers-reduced-motion:reduce){#al-sum .hnum,#conn-status .hnum,.alrow,.altl,#conn-status .hnum .v.up::before,.alrow.close::before{animation:none}}
 </style>
 </head>
 <body>
@@ -1489,8 +1531,9 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 
 <section class="tool" id="tab-connect" role="tabpanel" hidden>
 <h2 class="pt">Connections</h2>
-<p class="sub">Where Kelly Terminal gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
+<p class="sub">Where Kelly_Terminal gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
 <div class="hnums" id="conn-status"></div>
+<div class="cgrid2">
 <div class="card" id="nl-card">
 <h3 class="jh">Notion live link</h3>
 <p class="sub" style="margin-bottom:10px" id="nl-text">Checking...</p>
@@ -1533,12 +1576,14 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 <div class="hint">Times are used exactly as they appear in the file, so they only count as Dublin time if your broker exports Dublin time. Many brokers put the opening side on a closing row, so check the direction column in the preview. If your profit column is already net of fees, leave fees empty.</div>
 </div>
 </div>
+</div>
 
 </section>
 
 <section class="tool" id="tab-alerts" role="tabpanel" hidden>
 <h2 class="pt">Alerts</h2>
-<p class="sub">Warnings for price levels, news, sessions and your own rules. They show on screen, as a desktop notification if you allow it, and with a short beep. They only work while Kelly Terminal is open in a browser tab, because that is where the prices are checked (every minute).</p>
+<p class="sub">Warnings for price levels, news, sessions and your own rules. They show on screen, as a desktop notification if you allow it, and with a short beep. They only work while Kelly_Terminal is open in a browser tab, because that is where the prices are checked (every minute).</p>
+<div class="hnums" id="al-sum"></div>
 <div class="hgrid2">
 <div class="hpanel"><div class="hp-h"><h3>Price levels</h3></div>
 <div class="frow three"><div><label for="al-sym">Market</label><select id="al-sym"></select></div>
@@ -1695,7 +1740,7 @@ table.qm td.qt{width:76px}.mspk{width:64px}
 <div class="cnote">Sends your question and the numbers on screen (journal totals, macro prices, calendar) to Google or Anthropic, whichever key you saved. Explains and reviews. It never places an order and never says what to take.</div>
 </div>
 
-<footer><div class="foot"><p><strong>Risk disclaimer:</strong> Kelly Terminal shows signals and calculators for educational purposes only. It is not investment advice and it never places an order. Trading forex, futures and CFDs carries a high risk of loss. Verify contract specifications with your broker before trading.</p></div></footer>
+<footer><div class="foot"><p><strong>Risk disclaimer:</strong> Kelly_Terminal shows signals and calculators for educational purposes only. It is not investment advice and it never places an order. Trading forex, futures and CFDs carries a high risk of loss. Verify contract specifications with your broker before trading.</p></div></footer>
 
 <script src="/brain.js"></script>
 <script>
@@ -1755,7 +1800,7 @@ function showTab(name){
 (function(){var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)(function(b){b.onclick=function(){showTab(b.getAttribute("data-tab"))}})(bs[i])})();
 
-/* ---------------- trades: position size and risk/reward (from Kelly Terminal) ---------------- */
+/* ---------------- trades: position size and risk/reward (from Kelly_Terminal) ---------------- */
 var INSTRUMENTS=[
  {g:"Forex majors",id:"EURUSD",name:"EUR/USD",unit:"pip",vpl:10,cur:"USD",size:"lots",note:"1 pip = 0.0001. $10 per pip per standard lot (100k)."},
  {g:"Forex majors",id:"GBPUSD",name:"GBP/USD",unit:"pip",vpl:10,cur:"USD",size:"lots",note:"1 pip = 0.0001. $10 per pip per standard lot."},
@@ -1895,7 +1940,7 @@ $("pf-use").onclick=function(){
 
 function setSeg(box,attr,val){var bs=box.querySelectorAll("button");
   for(var i=0;i<bs.length;i++)bs[i].classList.toggle("on",bs[i].getAttribute(attr)===val)}
-/* ---------------- journal (same data format as Kelly Terminal, so its backups restore here) ---------------- */
+/* ---------------- journal (same data format as Kelly_Terminal, so its backups restore here) ---------------- */
 var JKEY="riskdesk_journal_v1",mem={},persistent=true,trades=[];
 function jget(k){try{return localStorage.getItem(k)}catch(e){persistent=false;return mem[k]===undefined?null:mem[k]}}
 function jset(k,v){try{localStorage.setItem(k,v)}catch(e){persistent=false;mem[k]=String(v)}}
@@ -2772,10 +2817,10 @@ function nlStatus(){
   fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){
     var t=$("nl-text"),e=$("nl-err");e.style.display="none";
     if(!s.connected){
-      t.textContent="Not linked yet. 1) In Notion go to notion.so/profile/integrations, press New integration, name it Kelly Terminal and tick ONLY Read content. 2) Copy its secret into a plain text file called notion_key.txt in your trader folder, with nothing else in it. 3) Open your Trade Journal page in Notion, press the ... menu, Connections, and add Kelly Terminal. 4) Restart Kelly Terminal. After that new journal rows and your pages appear here by themselves. The link can only read: it is not able to change anything in Notion, and it never opens your Thoughts + Emotions page.";
+      t.textContent="Not linked yet. 1) In Notion go to notion.so/profile/integrations, press New integration, name it Kelly_Terminal and tick ONLY Read content. 2) Copy its secret into a plain text file called notion_key.txt in your trader folder, with nothing else in it. 3) Open your Trade Journal page in Notion, press the ... menu, Connections, and add Kelly_Terminal. 4) Restart Kelly_Terminal. After that new journal rows and your pages appear here by themselves. The link can only read: it is not able to change anything in Notion, and it never opens your Thoughts + Emotions page.";
       $("nl-sync").disabled=true;return}
     $("nl-sync").disabled=false;
-    t.textContent="Linked, read-only. Journal rows checked "+(s.at||"not yet")+" ("+(s.journal_rows||0)+" rows), pages copied "+(s.hub_at||"not yet")+" ("+(s.hub_pages||0)+" pages). It checks every few minutes while Kelly Terminal is running.";
+    t.textContent="Linked, read-only. Journal rows checked "+(s.at||"not yet")+" ("+(s.journal_rows||0)+" rows), pages copied "+(s.hub_at||"not yet")+" ("+(s.hub_pages||0)+" pages). It checks every few minutes while Kelly_Terminal is running.";
     if(s.error){e.textContent=s.error;e.style.display=""}}).catch(function(){})}
 $("nl-sync").onclick=function(){
   var b=$("nl-sync");b.disabled=true;b.textContent="Reading Notion...";
@@ -3053,7 +3098,7 @@ function deskRender(d){
   var ob=el("button","btn ghost small","Write it now");ob.type="button";ob.onclick=function(){var b=$("h-brief");if(b)b.click();ob.disabled=true;ob.textContent="Writing..."};h.appendChild(ob);ov.appendChild(h);
   if(B.headline||B.overview){ov.appendChild(el("div","dkhead",B.headline||""));ov.appendChild(el("div","dkov",B.overview||(B.parts&&B.parts.Tone)||""));
     ov.appendChild(el("div","dksrc","Source: live Yahoo prices, economic calendar and news headlines \u00B7 written "+agoText(B.at)+(B.auto?" automatically":"")))}
-  else ov.appendChild(el("div","mmore","The overview is written every hour. The first one appears shortly after Kelly Terminal starts, or press Write it now."));
+  else ov.appendChild(el("div","mmore","The overview is written every hour. The first one appears shortly after Kelly_Terminal starts, or press Write it now."));
   var cols=el("div","dkcols"),col=function(t){var x=el("div");x.appendChild(el("div","dkcl",t));cols.appendChild(x);return x};
   var mvc=col("Movers today");d.quotes.filter(function(x){return x.pct!==null}).sort(function(a,b){return Math.abs(b.pct)-Math.abs(a.pct)}).slice(0,3).forEach(function(x){
     var r=el("div","dkrow");r.appendChild(el("b",null,x.key));r.appendChild(el("span",pctClass(x.pct),pctText(x.pct)));mvc.appendChild(r)});
@@ -3075,7 +3120,7 @@ function deskRender(d){
     list.appendChild(it)});
   if(!shown.length)list.appendChild(el("div","mmore","Nothing listed soon."));ev.appendChild(list);row.appendChild(ev);wrap.appendChild(row);
   return wrap}
-/* the hourly market read: written by Kelly Terminal itself every hour from live data, so it is here when you open the page */
+/* the hourly market read: written by Kelly_Terminal itself every hour from live data, so it is here when you open the page */
 var briefNext=0,briefErr="";
 window.rdState=function(){return{d:macroData,b:macroBrief,n:briefNext,live:liveClock}};
 function briefNote(){
@@ -3316,13 +3361,13 @@ function liveApply(d,quotes){
   var moved=0;
   d.quotes.forEach(function(q){var t=quotes[q.key];if(!t||!isFinite(t.price)||t.price===q.price)return;
     var dir=t.price>q.price?1:-1;q.price=t.price;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}moved++;paintQuote(q,dir)});
-  if(moved)flowUpdate();
+  if(moved){flowUpdate();alPriceCheck(d);if(tabNow==="alerts")alLive()}
   return moved}
 function liveMerge(d){        /* a fresh snapshot must not roll a price back to something older than the last live tick */
   if(Date.now()-liveAtMs>20000)return;
   d.quotes.forEach(function(q){var p=liveLast[q.key];if(p!==undefined){q.price=p;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}}})}
 function liveTick(){
-  if(liveBusy||document.hidden||dormant||!macroData||(tabNow!=="home"&&tabNow!=="macro"))return;
+  if(liveBusy||document.hidden||dormant||!macroData||(tabNow!=="home"&&tabNow!=="macro"&&tabNow!=="alerts"))return;
   liveBusy=true;
   fetch("/api/ticks").then(function(r){return r.ok?r.json():null}).then(function(j){
     if(!j||!j.quotes)return;
@@ -3433,14 +3478,17 @@ function alFire(title,msg){
   var box=$("toasts"),t=el("div","toast"),body=el("div");body.appendChild(el("b",null,title));body.appendChild(document.createTextNode(msg));t.appendChild(body);
   var x=el("button","tx","\u00d7");x.type="button";x.setAttribute("aria-label","Dismiss");x.onclick=function(){if(t.parentNode)t.parentNode.removeChild(t)};t.appendChild(x);
   box.appendChild(t);while(box.children.length>4)box.removeChild(box.firstChild);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},30000);
-  try{if(window.Notification&&Notification.permission==="granted")new Notification("Kelly Terminal: "+title,{body:msg})}catch(e){}
+  try{if(window.Notification&&Notification.permission==="granted")new Notification("Kelly_Terminal: "+title,{body:msg})}catch(e){}
   alBeep();if(tabNow==="alerts")alRender()}
-function alertCheck(d){
+function alPriceCheck(d){
   if(dormant)return;
   var changed=false;
   AL.price.forEach(function(a){if(a.done)return;var q=quoteBy(d,a.sym);if(!q)return;
     if(a.dir==="above"?q.price>=a.level:q.price<=a.level){a.done=new Date().toISOString();changed=true;alFire(a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level,"Price is now "+fmt(q.price,q.digits)+".")}});
-  if(changed){alSave();if(tabNow==="alerts")alRender()}
+  if(changed){alSave();if(tabNow==="alerts")alRender()}}
+function alertCheck(d){
+  if(dormant)return;
+  alPriceCheck(d);
   if(AL.news)d.events.forEach(function(e){if(e.impact==="High"&&e.minutes>0&&e.minutes<=AL.newsMins&&alOnce("n|"+e.when+"|"+e.title))alFire("High-impact news in "+dur(e.minutes),e.country+" "+e.title+(e.forecast?" (forecast "+e.forecast+")":""))});
   if(AL.sess)d.sessions.forEach(function(s){if((s.name==="London"||s.name==="New York")&&!s.open&&s.minutes>0&&s.minutes<=15&&alOnce("s|"+s.name))alFire(s.name+" opens in "+dur(s.minutes),"Check your plan and the checklist on Home.")});
   ruleCheck()}
@@ -3456,14 +3504,36 @@ function alRender(){
   var p=window.Notification?Notification.permission:"unsupported";
   $("al-permstate").textContent=p==="granted"?"Desktop notifications are on.":p==="denied"?"Desktop notifications are blocked in this browser. On-screen alerts still work.":p==="unsupported"?"This browser has no desktop notifications. On-screen alerts still work.":"Desktop notifications are off until you allow them.";
   var list=$("al-list");list.textContent="";
-  if(!AL.price.length)list.appendChild(el("div","empty","No price alerts yet."));
-  AL.price.forEach(function(a,i){var r=el("div","alrow"),q=macroData?quoteBy(macroData,a.sym):null;
-    r.appendChild(el("span",null,a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level+(q?"  (now "+fmt(q.price,q.digits)+")":"")));
-    r.appendChild(el("span","st"+(a.done?" hit":""),a.done?"Fired":"Waiting"));
+  if(!AL.price.length){var em=el("div","alempty");em.appendChild(el("b",null,"No price alerts yet"));em.appendChild(el("span",null,"Pick a market, a direction and a level. Kelly_Terminal checks it with every price update while this page is open."));list.appendChild(em)}
+  AL.price.forEach(function(a,i){var r=el("div","alrow"+(a.done?" fired":"")),q=macroData?quoteBy(macroData,a.sym):null;r.setAttribute("data-i",i);r.style.setProperty("--n",i);
+    var l=el("div","all");l.appendChild(el("b",null,a.sym));l.appendChild(el("span","aldir "+(a.dir==="above"?"up":"down"),(a.dir==="above"?"\u25B2 above ":"\u25BC below ")+a.level));r.appendChild(l);
+    var m=el("div","alm"),bar=el("div","albar");bar.appendChild(el("i"));m.appendChild(bar);m.appendChild(el("span","alnow",""));r.appendChild(m);
+    r.appendChild(el("span","st"+(a.done?" hit":""),a.done?"Fired":"Armed"));
     var x=el("button","del","x");x.type="button";x.setAttribute("aria-label","Remove alert");x.onclick=function(){AL.price.splice(i,1);alSave();alRender()};r.appendChild(x);list.appendChild(r)});
+  alLive();
   var lg=$("al-log");lg.textContent="";
-  if(!alLog.length)lg.appendChild(el("div","empty","Nothing has fired yet."));
-  alLog.forEach(function(x){var r=el("div","jfact");r.appendChild(el("b",null,x.t+"  "+(x.h||"")));r.appendChild(el("div","jsub",x.m));lg.appendChild(r)})}
+  if(!alLog.length){var e2=el("div","alempty");e2.appendChild(el("b",null,"Nothing has fired yet"));e2.appendChild(el("span",null,"Alerts that fire are listed here, newest first."));lg.appendChild(e2)}
+  alLog.forEach(function(x,n){var r=el("div","altl");r.style.setProperty("--n",n);r.appendChild(el("i"));var b=el("div");var h=el("div","alth");h.appendChild(el("b",null,x.h||""));h.appendChild(el("span",null,x.t));b.appendChild(h);b.appendChild(el("div","jsub",x.m));r.appendChild(b);lg.appendChild(r)});
+  alSummary()}
+/* how far each armed level is from the live price, kept current while the Alerts page is open */
+function alLive(){
+  var rows=document.querySelectorAll("#al-list .alrow");
+  for(var i=0;i<rows.length;i++){var a=AL.price[+rows[i].getAttribute("data-i")];if(!a)continue;
+    var q=macroData?quoteBy(macroData,a.sym):null,now=rows[i].querySelector(".alnow"),bar=rows[i].querySelector(".albar i");
+    if(!q){now.textContent="no price yet";bar.style.width="0%";continue}
+    var dist=(a.level-q.price)/q.price*100,near=a.done?100:Math.max(0,Math.min(100,100-Math.abs(dist)*20));
+    var tx="now "+fmt(q.price,q.digits)+(a.done?"":", "+(a.dir==="above"?(dist>=0?"":"-"):(dist<=0?"":"-"))+Math.abs(dist).toFixed(2)+"% away");if(now.textContent!==tx)now.textContent=tx;
+    bar.style.width=near+"%";rows[i].classList.toggle("close",!a.done&&Math.abs(dist)<0.3)}}
+function alSummary(){
+  var box=$("al-sum");if(!box)return;box.textContent="";
+  var armed=AL.price.filter(function(a){return!a.done}).length,fired=AL.price.length-armed,n=new Date(),dm=n.getDate()+"/"+(n.getMonth()+1);
+  var todayN=alLog.filter(function(x){return typeof x.t==="string"&&x.t.slice(-dm.length)===dm}).length;
+  var p=window.Notification?Notification.permission:"unsupported";
+  function card(k,v,sub,tone){var c=el("div","hnum"+(tone?" "+tone:""));c.style.cursor="default";c.style.setProperty("--n",box.children.length);c.appendChild(el("div","k",k));c.appendChild(el("div","v"+(tone?" "+tone:""),v));c.appendChild(el("div","s",sub));box.appendChild(c)}
+  card("Price alerts",armed+" armed",fired?fired+" already fired":"none fired",armed?"up":"");
+  card("News warnings",AL.news?"On":"Off",AL.news?AL.newsMins+" minutes before high-impact releases":"turned off",AL.news?"up":"");
+  card("Fired today",String(todayN),todayN?"see Recent alerts below":"nothing yet","");
+  card("Desktop notifications",p==="granted"?"On":p==="denied"?"Blocked":p==="unsupported"?"Not available":"Not asked",p==="granted"?"alerts also pop up outside the page":"on-screen alerts still work",p==="granted"?"up":"")}
 $("al-add").onclick=function(){
   var e=$("al-err");e.style.display="none";var lv=parseFloat($("al-level").value);
   function bad(m){e.textContent=m;e.style.display=""}
@@ -3545,7 +3615,7 @@ chatRender();
 
 var tab0=store("zd.tab");showTab(TABS.indexOf(tab0)>=0?tab0:"home");
 jLoad();
-/* one Kelly Terminal tab at a time: when a newer tab opens in this browser, older ones stop (no double alerts, no stale saves) and say so */
+/* one Kelly_Terminal tab at a time: when a newer tab opens in this browser, older ones stop (no double alerts, no stale saves) and say so */
 (function(){
   if(typeof BroadcastChannel==="undefined")return;
   var me=String(Date.now())+"-"+Math.random().toString(36).slice(2),born=Date.now(),bc;
@@ -3554,17 +3624,17 @@ jLoad();
     if(dormant)return;dormant=true;
     var o=el("div",null);o.id="oldtab";o.setAttribute("role","alert");
     o.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;background:var(--bg,#000);color:var(--fg,#fff);font:16px/1.5 system-ui,sans-serif";
-    o.appendChild(el("h2",null,"Kelly Terminal is open in a newer tab"));
+    o.appendChild(el("h2",null,"Kelly_Terminal is open in a newer tab"));
     o.appendChild(el("div",null,"This tab has stopped so nothing is saved or alerted twice. You can close it."));
     var b=el("button","btn","Use this tab instead");b.type="button";b.onclick=function(){location.reload()};o.appendChild(b);
-    document.body.appendChild(o);document.title="(closed) Kelly Terminal";
+    document.body.appendChild(o);document.title="(closed) Kelly_Terminal";
     try{window.close()}catch(e){}}
   bc.onmessage=function(e){var m=e.data;if(m&&m.id!==me&&m.born>=born&&!(m.born===born&&m.id<me))sleep()};
   bc.postMessage({id:me,born:born})})();
 })();
 </script>
 <div id="cmdhelp" role="listbox" aria-label="Commands"></div>
-<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span id="sb-bk"></span><span class="sp"></span><span>Signals only. No orders.</span></div>
+<div id="statusbar" aria-label="Status"><span class="sp0" id="sb-sess"></span><span id="sb-clock"></span><span id="sb-px"></span><span id="sb-ai"></span><span id="sb-bk"></span><span class="sp"></span><span>Read only. Never trades for you.</span></div>
 <script>
 /* terminal bar: numbered tabs, a command box (` focuses it), a status bar */
 (function(){

@@ -126,7 +126,7 @@ class Handler(BaseHTTPRequestHandler):
             except signin.AuthError as e:
                 msg = html.escape(str(e))
                 page = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-                        "<title>Kelly Terminal sign-in</title><body style='font:16px system-ui;background:#0a0a0a;color:#f2f2f0;padding:40px'>"
+                        "<title>Kelly_Terminal sign-in</title><body style='font:16px system-ui;background:#0a0a0a;color:#f2f2f0;padding:40px'>"
                         "<h2>Could not sign you in</h2><p>%s.</p><p><a style='color:#fff' href='/auth/login'>Try again</a></p>" % msg)
                 return self.send(403, page, "text/html; charset=utf-8")
             self.redirect("/", [signin.session_cookie(s, email, now), gone])

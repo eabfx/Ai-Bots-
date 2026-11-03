@@ -56,7 +56,7 @@ class Server(unittest.TestCase):
 class Basics(Server):
     def test_the_page_is_riskdesk_with_a_dark_and_light_theme_and_no_zones_parts(self):
         _, _, body = self.get("/")
-        self.assertIn("<title>Kelly Terminal</title>", body)
+        self.assertIn("<title>Kelly_Terminal</title>", body)
         self.assertIn('id="theme"', body)
         self.assertIn('store("zd.theme"', body)
         self.assertIn(':root[data-theme="light"]', body)
@@ -753,12 +753,12 @@ class TerminalLook(Server):
 
     def test_the_app_is_called_kelly_terminal_everywhere_you_can_see_it(self):
         _, _, page = self.get("/")
-        self.assertIn("<title>Kelly Terminal</title>", page)
+        self.assertIn("<title>Kelly_Terminal</title>", page)
         self.assertIn('<div class="logo"><span class="dot"></span><span class="wm">Kelly<span class="us">_</span>Terminal</span></div>', page)
         self.assertNotIn("RiskDesk", page.replace("RiskDeskApp", ""))
         with urllib.request.urlopen("http://127.0.0.1:%d/manifest.webmanifest" % self.port, timeout=10) as r:
             manifest = json.loads(r.read())
-        self.assertEqual(manifest["name"], "Kelly Terminal")
+        self.assertEqual(manifest["name"], "Kelly_Terminal")
 
     def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
         _, _, page = self.get("/")

@@ -1,6 +1,6 @@
 {
-  "name": "Kelly Terminal",
-  "short_name": "Kelly",
+  "name": "Kelly_Terminal",
+  "short_name": "Kelly_",
   "description": "Trading journal, macro desk and risk tools. Signals only, never places an order.",
   "id": "/",
   "start_url": "/",
