@@ -31,6 +31,7 @@ import macro         # noqa: E402
 import notion_api     # noqa: E402
 import autobrief     # noqa: E402
 import backup        # noqa: E402
+import live          # noqa: E402
 import notion_import  # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
@@ -46,6 +47,7 @@ class Handler(BaseHTTPRequestHandler):
     allowed_hosts = frozenset()                      # extra names this dashboard answers to, for example a Tailscale name (see README)
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
+    live = None                                      # last prices every few seconds while the page is open (live.py), set by make_server
     backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
     brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
@@ -280,6 +282,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(200, found[0], found[1], "private, max-age=31536000, immutable")     # the name is a fingerprint of the picture
             else:
                 self.send_json(404, {"error": "not found"})
+        elif url.path == "/api/ticks":
+            if not self.live:
+                return self.send_json(200, {"at": 0, "every": live.EVERY, "live": False, "error": "", "quotes": {}})
+            self.live.poke()
+            self.send_json(200, self.live.state())
         elif url.path == "/api/connections":
             # what is set up, for the Connections page: yes or no only, never a key
             self.send_json(200, {"hosted": bool(self.auth_settings), "backup_prices": bool(macro.twelve_key(self.data_dir))})
@@ -386,6 +393,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler.vault = vault.Vault(handler.data_dir)
     handler.brief_keeper = autobrief.Keeper(handler.data_dir, config_path, handler.macro_net, lambda *a, **k: handler.coach_post(*a, **k))
     handler.backups = backup.Backups(handler.data_dir, config_path)
+    handler.live = None if offline else live.LiveTicks(handler.macro_net)
     return DashboardServer(("127.0.0.1", port), handler)
 
 
@@ -450,6 +458,8 @@ def main(argv=None):
         if server.RequestHandlerClass.notion_link.token:
             server.RequestHandlerClass.notion_link.start()
         server.RequestHandlerClass.backups.start()
+        if server.RequestHandlerClass.live and not args.offline:
+            server.RequestHandlerClass.live.start()
         if not args.offline:
             server.RequestHandlerClass.brief_keeper.start()
         server.serve_forever()

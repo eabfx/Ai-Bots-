@@ -775,6 +775,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
 .stat{position:relative;box-shadow:var(--shadow),inset 0 1px 0 var(--glowsoft)}
 @media(prefers-reduced-motion:reduce){.seg.ready::before{transition:none}.t-r,.t-r:hover{transform:none}}
 @keyframes tk{from{background:var(--tkc)}to{background:transparent}}
+/* a price that just changed lights up in its direction and fades, like a terminal */
+@keyframes flup{0%{background:color-mix(in srgb,var(--up) 42%,transparent);color:var(--up)}100%{background:transparent}}
+@keyframes fldn{0%{background:color-mix(in srgb,var(--down) 42%,transparent);color:var(--down)}100%{background:transparent}}
+.flup{animation:flup 1s ease-out}.fldn{animation:fldn 1s ease-out}
+.islive::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--up);margin-right:6px;vertical-align:1px;animation:dotbeat 1.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.flup,.fldn,.islive::before{animation:none}}
 .px.tickup{--tkc:color-mix(in srgb,var(--up) 28%,transparent);animation:tk 1.4s ease-out}.px.tickdn{--tkc:color-mix(in srgb,var(--down) 28%,transparent);animation:tk 1.4s ease-out}
 @media(prefers-reduced-motion:reduce){.px.tickup,.px.tickdn{animation:none}}
 /* ===== terminal pack: flat black, square panels with title bars, dense mono data, top bar + status bar. Last in the file on purpose, it overrides the earlier looks. ===== */
@@ -2826,7 +2832,7 @@ window.rdState=function(){return{d:macroData,b:macroBrief,n:briefNext}};
 function briefNote(){
   var n=$("h-mk-note");if(!n)return;
   var t=function(ms){var d=new Date(ms);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)};
-  var txt="Live prices from Yahoo, refreshed every minute"+(macroData?" (last "+macroData.as_of+")":"")+". ";
+  var txt="Live prices from Yahoo, moving every few seconds while this page is open"+(macroData?" (snapshot "+macroData.as_of+")":"")+". ";
   if(macroBrief&&macroBrief.at){txt+="Market read and bias written "+t(macroBrief.at*1000)+(macroBrief.auto?" automatically":"")+(briefNext?", next one about "+t(briefNext*1000):"")+"."}
   else if(briefErr)txt+=briefErr;
   else txt+="The first market read is being written.";
@@ -2848,7 +2854,7 @@ function loadMacro(force){
   fetch("/api/macro"+(force?"?refresh=1":"")).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
   .then(function(x){
     if(!x.ok){fail(x.j.error||"The macro desk could not load.");return}
-    $("h-err").style.display="none";macroData=x.j;macroAt=Date.now();renderAll(macroData)})
+    $("h-err").style.display="none";macroData=x.j;macroAt=Date.now();liveMerge(macroData);renderAll(macroData)})
   .catch(function(e){fail("The dashboard did not answer: "+e)})
   .then(function(){macroBusy=false;$("macro-refresh").disabled=false;$("macro-refresh").textContent="Refresh";$("home-refresh").disabled=false})}
 $("macro-refresh").onclick=function(){loadMacro(true)};
@@ -2868,9 +2874,9 @@ function macroRender(d){
   var mh=el("h2","dkh","Your markets");mh.style.margin="6px 0 10px";out.appendChild(mh);
   var mk=el("div","mkts");
   MARKETS.forEach(function(m){
-    var q=quoteBy(d,m[0]),c=el("div","mkt"),top=el("div","top");top.appendChild(el("h3",null,m[1]));
-    if(q)top.appendChild(el("span","mute",pctText(q.pct)));c.appendChild(top);
-    var px=el("div","px",q?fmt(q.price,q.digits):"-");if(q)px.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";c.appendChild(px);
+    var q=quoteBy(d,m[0]),c=el("div","mkt"),top=el("div","top");top.appendChild(el("h3",null,m[1]));c.setAttribute("data-k",m[0]);
+    if(q){var mp=el("span","mute",pctText(q.pct));mp.setAttribute("data-f","pct");top.appendChild(mp)}c.appendChild(top);
+    var px=el("div","px",q?fmt(q.price,q.digits):"-");px.setAttribute("data-f","px");if(q)px.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";c.appendChild(px);
     if(q){c.appendChild(sparkline(q.spark,pctClass(q.pct)));c.appendChild(el("div","mute",q.name+", last month"+(q.when?", updated "+q.when:"")))}
     c.appendChild(aiBias(m,false));
     var ask=el("button","btn ghost small","Ask the assistant");ask.type="button";ask.style.marginTop="10px";
@@ -2944,11 +2950,11 @@ var TILE_NAMES={XAUUSD:"Gold",NQ:"Nasdaq",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",DXY:
 function tilesRender(d){
   var box=$("h-tiles");if(!box)return;box.textContent="";
   d.quotes.forEach(function(q){
-    var t=el("button","tile");t.type="button";t.title=q.name+" - open the macro desk";
+    var t=el("button","tile");t.type="button";t.title=q.name+" - open the macro desk";t.setAttribute("data-k",q.key);
     t.appendChild(el("span","tn",TILE_NAMES[q.key]||q.key));
-    var px=el("span","tp",fmt(q.price,q.digits)),lp=lastTile[q.key];
+    var px=el("span","tp",fmt(q.price,q.digits)),lp=lastTile[q.key];px.setAttribute("data-f","px");
     if(lp!==undefined&&lp!==q.price)px.classList.add(q.price>lp?"tickup":"tickdn");lastTile[q.key]=q.price;t.appendChild(px);
-    t.appendChild(el("span","tc "+pctClass(q.pct),pctText(q.pct)));
+    var tcs=el("span","tc "+pctClass(q.pct),pctText(q.pct));tcs.setAttribute("data-f","pct");t.appendChild(tcs);
     t.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};box.appendChild(t)})}
 var lastTile={};
 function qmRender(d){
@@ -2959,10 +2965,11 @@ function qmRender(d){
   d.quotes.forEach(function(q){
     var sp=(q.spark||[]).filter(function(v){return isFinite(v)}),tr=el("tr"),cls=pctClass(q.pct);
     function td(txt,c){var x=el("td",c||"",txt);tr.appendChild(x);return x}
+    tr.setAttribute("data-k",q.key);
     var n=td(TILE_NAMES[q.key]||q.key);n.title=q.name;n.className="qn";
-    td(fmt(q.price,q.digits),"r");
-    td(q.change===null||q.change===undefined?"-":(q.change>0?"+":"")+fmt(q.change,q.digits),"r "+cls);
-    td(pctText(q.pct),"r "+cls);
+    td(fmt(q.price,q.digits),"r").setAttribute("data-f","px");
+    td(q.change===null||q.change===undefined?"-":(q.change>0?"+":"")+fmt(q.change,q.digits),"r "+cls).setAttribute("data-f","chg");
+    td(pctText(q.pct),"r "+cls).setAttribute("data-f","pct");
     var f5=sp.length>=6?(q.price/sp[sp.length-6]-1)*100:null,f1=sp.length>=15?(q.price/sp[0]-1)*100:null;
     td(f5===null?"-":pctText(f5),"r "+(f5===null?"":pctClass(f5)));td(f1===null?"-":pctText(f1),"r "+(f1===null?"":pctClass(f1)));
     var rg=td("","qr");
@@ -2976,15 +2983,50 @@ function qmRender(d){
   tb.appendChild(body);
   var nt=$("qm-note");if(nt)nt.textContent=d.quotes.length+" markets";}
 var lastPx={};      /* the last price shown for each market, so a change can flash */
+/* live prices: while Home or Macro is open the server is asked for fresh prices every 2 seconds (live.py), and every number that
+   changed is rewritten in place and flashes green (up) or red (down). Nothing is invented: a price that did not move stays still. */
+var liveLast={},liveAtMs=0,liveBusy=false,liveClock="",REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function flash(n,dir){if(!n||REDUCED)return;n.classList.remove("flup","fldn");void n.offsetWidth;n.classList.add(dir>0?"flup":"fldn")}
+function paintQuote(q,dir){
+  var roots=document.querySelectorAll('[data-k="'+q.key+'"]');
+  for(var i=0;i<roots.length;i++){var fs=roots[i].querySelectorAll("[data-f]");
+    for(var j=0;j<fs.length;j++){var n=fs[j],f=n.getAttribute("data-f"),tone=pctClass(q.pct);
+      if(f==="px"){n.textContent=fmt(q.price,q.digits);if(n.style.color)n.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";
+        if(/\b(up|down|flat)\b/.test(n.className))n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}
+      else if(f==="chg"){if(q.change!==null&&q.change!==undefined){n.textContent=(q.change>0?"+":"")+fmt(q.change,q.digits);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}}
+      else if(f==="pct"){n.textContent=pctText(q.pct);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+(tone?" "+tone:"");flash(n,dir)}}}}
+function liveApply(d,quotes){
+  var moved=0;
+  d.quotes.forEach(function(q){var t=quotes[q.key];if(!t||!isFinite(t.price)||t.price===q.price)return;
+    var dir=t.price>q.price?1:-1;q.price=t.price;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}moved++;paintQuote(q,dir)});
+  return moved}
+function liveMerge(d){        /* a fresh snapshot must not roll a price back to something older than the last live tick */
+  if(Date.now()-liveAtMs>20000)return;
+  d.quotes.forEach(function(q){var p=liveLast[q.key];if(p!==undefined){q.price=p;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}}})}
+function liveTick(){
+  if(liveBusy||document.hidden||dormant||!macroData||(tabNow!=="home"&&tabNow!=="macro"))return;
+  liveBusy=true;
+  fetch("/api/ticks").then(function(r){return r.ok?r.json():null}).then(function(j){
+    if(!j||!j.quotes)return;
+    for(var k in j.quotes)liveLast[k]=j.quotes[k].price;
+    if(Object.keys(j.quotes).length)liveAtMs=Date.now();
+    liveApply(macroData,j.quotes);
+    var h=$("h-asof"),nt=$("qm-note");
+    if(j.live&&j.at){var tm=new Date(j.at*1000).toLocaleTimeString("en-GB",{timeZone:"Europe/Dublin"});liveClock=tm;
+      if(h){h.textContent="Live, updated "+tm+" Dublin";h.classList.add("islive")}
+      if(nt)nt.textContent=macroData.quotes.length+" markets, live"}
+    else if(h)h.classList.remove("islive")})
+  .catch(function(){}).then(function(){liveBusy=false})}
+setInterval(liveTick,2000);
 function homeRender(d){
   $("h-asof").textContent="Prices as of "+d.as_of;briefNote();
   var s=$("h-sessions");s.textContent="";s.appendChild(sessionStrip(d));
   homeNums();
   var mk=$("h-mkts");mk.textContent="";
   MARKETS.forEach(function(m){
-    var q=quoteBy(d,m[0]),c=el("div","hm"),t=el("div","t");t.appendChild(el("b",null,m[0]));
-    if(q)t.appendChild(el("span",pctClass(q.pct),pctText(q.pct)));c.appendChild(t);
-    var pxe=el("div","px "+(q?pctClass(q.pct):""),q?fmt(q.price,q.digits):"-");
+    var q=quoteBy(d,m[0]),c=el("div","hm"),t=el("div","t");t.appendChild(el("b",null,m[0]));c.setAttribute("data-k",m[0]);
+    if(q){var hp=el("span",pctClass(q.pct),pctText(q.pct));hp.setAttribute("data-f","pct");t.appendChild(hp)}c.appendChild(t);
+    var pxe=el("div","px "+(q?pctClass(q.pct):""),q?fmt(q.price,q.digits):"-");pxe.setAttribute("data-f","px");
     if(q){var lp=lastPx[m[0]];if(lp!==undefined&&lp!==q.price)pxe.classList.add(q.price>lp?"tickup":"tickdn");lastPx[m[0]]=q.price}
     c.appendChild(pxe);
     if(q)c.appendChild(sparkline(q.spark,pctClass(q.pct)));
@@ -2997,7 +3039,7 @@ function homeRender(d){
   var fr=el("div");fr.style.marginTop="10px";flowRows(fr,d,8);fl.appendChild(fr);
   tilesRender(d);qmRender(d);
   var tk=$("h-ticker");tk.textContent="";
-  d.quotes.forEach(function(q){var sp=el("span");sp.appendChild(el("b",null,q.key));sp.appendChild(document.createTextNode(fmt(q.price,q.digits)+" "));sp.appendChild(el("em",pctClass(q.pct),pctText(q.pct)));tk.appendChild(sp)});
+  d.quotes.forEach(function(q){var sp=el("span");sp.setAttribute("data-k",q.key);sp.appendChild(el("b",null,q.key));var tpx=el("i",null,fmt(q.price,q.digits));tpx.setAttribute("data-f","px");sp.appendChild(tpx);sp.appendChild(document.createTextNode(" "));var tem=el("em",pctClass(q.pct),pctText(q.pct));tem.setAttribute("data-f","pct");sp.appendChild(tem);tk.appendChild(sp)});
   var nw=$("h-news");nw.textContent="";
   d.headlines.slice(0,10).forEach(function(h){var it=el("div","it"),line=el("div");
     if(h.link){var a=el("a",null,h.title);a.href=h.link;a.target="_blank";a.rel="noopener noreferrer";line.appendChild(a)}else line.appendChild(el("span",null,h.title));
@@ -3240,7 +3282,7 @@ jLoad();
       if(more){el.appendChild(document.createTextNode(" "+more[0]+" "));var c=document.createElement("b");c.textContent=more[1];el.appendChild(c)}}
     put($("sb-clock"),"Dublin","b",dub);
     var st=window.rdState?window.rdState():{};
-    if(st.d)put($("sb-px"),"Prices","ok","live",["as of",st.d.as_of]);else put($("sb-px"),"Prices","bad","waiting");
+    if(st.d)put($("sb-px"),"Prices","ok","live",["as of",liveClock||st.d.as_of]);else put($("sb-px"),"Prices","bad","waiting");
     if(st.b&&st.b.at)put($("sb-ai"),"AI read","b",hm(st.b.at*1000),st.n?["next",hm(st.n*1000)]:null);else put($("sb-ai"),"AI read","bad","none yet")}
   var bk={};function loadBk(){fetch("/api/backup").then(function(r){return r.json()}).then(function(d){bk=d||{}}).catch(function(){})}
   function bkShow(){var el=$("sb-bk");if(!el)return;

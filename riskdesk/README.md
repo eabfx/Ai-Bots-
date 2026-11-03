@@ -71,6 +71,10 @@ The free plan covers gold and the currency pairs, not the indices (Nasdaq, VIX, 
 oil), so those stay Yahoo only. The backup is asked only when Yahoo has failed, so it uses very few of the free requests.
 It gives the last price and the change since the previous close, with no small chart.
 
+## Live prices
+
+While Home or Macro is open, the page asks for fresh prices every 2 seconds, and Kelly Terminal asks Yahoo for each market's last price about every 3 seconds (`live.py`). Every number that changes is rewritten in place and flashes green for up or red for down, and the small dot beside "Live, updated" shows the feed is running. Nothing is invented: a price that did not move stays still, and a market whose answer failed keeps its last real price. It only asks Yahoo while a page is open and slows itself down if Yahoo asks it to. Yahoo's free feed is not tick by tick like a paid terminal, so expect a change every few seconds, not every millisecond. It stops when you switch to another tab or the window is hidden.
+
 ## Running it online with Google sign-in
 
 This is optional. The copy on your PC does not change: sign-in only switches on when `config.json` has an `"auth"`

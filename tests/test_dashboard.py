@@ -843,3 +843,91 @@ class DailyBackup(unittest.TestCase):
             page = fh.read()
         self.assertIn('id="sb-bk"', page)
         self.assertIn("/api/backup", page)
+
+
+class LivePrices(Server):
+    """Prices that move every few seconds while the page is open (live.py)."""
+
+    @staticmethod
+    def chart(price, when=1800000000):
+        return json.dumps({"chart": {"result": [{"meta": {"regularMarketPrice": price, "regularMarketTime": when}}]}})
+
+    def make(self, answers, **kw):
+        import live
+        import macro
+        self.live, self.macro = live, macro
+
+        class FakeNet:
+            def yahoo(_, path):
+                a = answers(path)
+                if isinstance(a, Exception):
+                    raise a
+                return a
+        self.clock = [1000.0]
+        return live.LiveTicks(FakeNet(), items=[("XAUUSD", "Gold", "GC=F", 2), ("NQ", "Nasdaq", "NQ=F", 2)],
+                              clock=lambda: self.clock[0], **kw)
+
+    def test_a_round_keeps_each_markets_last_real_price(self):
+        lt = self.make(lambda path: self.chart(3900.5 if "GC" in path else 28000.25))
+        self.assertEqual(lt.round(), 2)
+        st = lt.state()
+        self.assertEqual(st["quotes"]["XAUUSD"]["price"], 3900.5)
+        self.assertEqual(st["quotes"]["NQ"]["price"], 28000.25)
+        self.assertTrue(st["live"])
+
+    def test_a_failed_market_keeps_its_old_price_and_never_gets_an_invented_one(self):
+        state = {"gold": self.chart(3900.0)}
+        lt = self.make(lambda path: state["gold"] if "GC" in path else self.macro.MacroError("HTTP 500"))
+        lt.round()
+        self.assertNotIn("NQ", lt.state()["quotes"])
+        state["gold"] = self.macro.MacroError("HTTP 500")
+        lt.round()
+        self.assertEqual(lt.state()["quotes"]["XAUUSD"]["price"], 3900.0)
+        self.assertEqual(lt.state()["error"].count("XAUUSD"), 1)
+
+    def test_it_slows_down_when_yahoo_says_slow_down_and_recovers(self):
+        def answers(path):
+            return self.macro.MacroError("HTTP 429") if self.throttle else self.chart(1.0)
+        self.throttle = True
+        lt = self.make(answers)
+        lt.round()
+        self.assertGreaterEqual(lt.state()["every"], 2 * self.live.EVERY)
+        lt.round()
+        self.assertLessEqual(lt.state()["every"], self.live.SLOWEST + self.live.EVERY)
+        self.throttle = False
+        lt.round()
+        self.assertEqual(lt.state()["every"], self.live.EVERY)
+
+    def test_it_only_fetches_while_the_page_is_watching(self):
+        import time
+        calls = []
+        lt = self.make(lambda path: calls.append(path) or self.chart(1.0), every=0.05)
+        lt.clock = time.time
+        lt.start()
+        self.addCleanup(lt.stop.set)
+        time.sleep(0.4)
+        self.assertEqual(calls, [])                      # nobody asked yet
+        lt.poke()
+        time.sleep(0.4)
+        self.assertGreater(len(calls), 0)
+
+    def test_an_answer_without_a_price_is_an_error_not_a_zero(self):
+        self.make(lambda p: "")
+        for bad in ("{}", "not json", json.dumps({"chart": {"result": [{"meta": {}}]}})):
+            with self.assertRaises(self.macro.MacroError):
+                self.live.parse_price(bad)
+
+    def test_the_route_serves_the_live_state_and_wakes_the_fetcher(self):
+        lt = self.make(lambda path: self.chart(3900.0))
+        lt.round()
+        self.server.RequestHandlerClass.live = lt
+        code, _, js = self.get("/api/ticks")
+        self.assertEqual(code, 200)
+        self.assertEqual(json.loads(js)["quotes"]["XAUUSD"]["price"], 3900.0)
+        self.assertGreater(lt.wanted_until, self.clock[0])
+
+    def test_the_page_moves_numbers_in_place_and_flashes_the_ones_that_changed(self):
+        _, _, page = self.get("/")
+        for needle in ('fetch("/api/ticks")', "function paintQuote", "@keyframes flup", "@keyframes fldn",
+                       'setAttribute("data-f","px")', "prefers-reduced-motion"):
+            self.assertIn(needle, page)
