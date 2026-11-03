@@ -1063,6 +1063,34 @@ table.qm.enter tbody tr{animation:qin .5s cubic-bezier(.2,.8,.2,1) both;animatio
 .hmood b{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border:1px solid currentColor;border-radius:2px}
 .hmood b.up{background:color-mix(in srgb,var(--up) 14%,transparent)}.hmood b.down{background:color-mix(in srgb,var(--down) 14%,transparent)}
 @media(prefers-reduced-motion:reduce){table.qm.enter tbody tr{animation:none}.flowbar i,.qbar i{transition:none}td[data-f=px]::after,.tp::after{animation:none!important}}
+/* ===== Markets cards (Home and Macro): name and ticker, heat pill, a rolling price, a sparkline with a live dot, facts, then the AI read ===== */
+.mc{position:relative;display:flex;flex-direction:column;padding:12px 14px 12px!important;background:var(--panel2);overflow:hidden;transition:border-color .2s,transform .3s cubic-bezier(.2,.8,.2,1)}
+.mc:hover{transform:translateY(-2px);border-color:var(--hover)}
+.mc::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--flat),transparent 70%);opacity:.7}
+.mc.up::before{background:linear-gradient(90deg,var(--up),transparent 75%)}.mc.down::before{background:linear-gradient(90deg,var(--down),transparent 75%)}
+.mct{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mcl{display:flex;align-items:baseline;gap:8px;min-width:0}
+.mcl b{font:600 14px var(--sans);letter-spacing:-.005em;white-space:nowrap}
+.mcl span{font:500 11px var(--mono);color:var(--muted);letter-spacing:.04em}
+.mcl .lv{display:none;width:5px;height:5px;border-radius:50%;background:var(--up);align-self:center;animation:dotbeat 1.6s ease-in-out infinite}
+body.feedlive .mcl .lv{display:inline-block}
+.mcp{font:600 12px var(--mono);padding:2px 7px;border-radius:2px;color:var(--muted);transition:background .6s}
+.mcp.up{color:var(--up)}.mcp.down{color:var(--down)}
+.mcpx{display:flex;align-items:baseline;gap:20px;margin:10px 0 0}
+.mcv{position:relative;font:600 24px/1.2 var(--mono);letter-spacing:-.02em;color:var(--text);padding:0 3px;margin:0 -3px;border-radius:2px;font-variant-numeric:tabular-nums}
+.mcv.flup::after,.mcv.fldn::after{position:absolute;right:-15px;top:50%;margin-top:-6px;line-height:12px;font-size:10px;animation:arw 1.3s ease-out forwards}
+.mcv.flup::after{content:"\25B2";color:var(--up)}.mcv.fldn::after{content:"\25BC";color:var(--down)}
+.mcc{font:500 12px var(--mono);color:var(--muted)}.mcc.up{color:var(--up)}.mcc.down{color:var(--down)}
+.mc>svg{width:100%;height:56px;margin:6px 0 2px;overflow:visible}
+.sgrid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4;opacity:.7}
+.sr{animation:ring 2s ease-out infinite}
+@keyframes ring{0%{stroke-width:6;stroke-opacity:.45}100%{stroke-width:20;stroke-opacity:0}}
+.mc .hfacts{margin:6px 0 2px;font:500 12px var(--mono)}
+.mc .hfacts .hf i{font-size:10px}
+.mcf{font:400 11px var(--sans);color:var(--muted);margin:2px 0 0}
+.mc .aib{margin-top:10px}
+.hmk.enter .mc,.mkts.enter .mc{animation:qin .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*70ms)}
+@media(prefers-reduced-motion:reduce){.hmk.enter .mc,.mkts.enter .mc,.sr,.mcl .lv{animation:none}.mc,.mc:hover{transform:none}.mcv::after{animation:none!important}}
 </style>
 </head>
 <body>
@@ -2715,20 +2743,27 @@ var MARKETS=[["XAUUSD","Gold (XAUUSD, MGC)","Gold and MGC"],["NQ","Nasdaq 100 (N
 function dur(min){
   var a=Math.abs(Math.round(min)),d=Math.floor(a/1440),h=Math.floor(a%1440/60),m=a%60;
   return d>0?d+"d "+h+"h":h>0?h+"h "+m+"m":m+"m"}
-function pctClass(p){return p===null||p===undefined?"":p>0?"up":p<0?"down":"flat"}
-function pctText(p){return p===null||p===undefined||!isFinite(p)?"-":(p>0?"+":"")+p.toFixed(2)+"%"}
+function pctClass(p){return p===null||p===undefined?"":Math.abs(p)<0.005?"flat":p>0?"up":"down"}
+function pctText(p){return p===null||p===undefined||!isFinite(p)?"-":Math.abs(p)<0.005?"0.00%":(p>0?"+":"")+p.toFixed(2)+"%"}
 function sparkPts(vals,w,h,pad){
   var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),span=hi-lo||1;
   return vals.map(function(v,i){return[i/(vals.length-1)*w,h-pad-(v-lo)/span*(h-2*pad)]})}
 function sparkColor(cls){return cls==="down"?"var(--down)":cls==="flat"?"var(--flat)":"var(--up)"}
+var sparkN=0;
 function sparkline(vals,cls){
   var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
-  svg.setAttribute("viewBox","0 0 200 46");svg.setAttribute("preserveAspectRatio","none");svg.setAttribute("aria-hidden","true");
+  function mk(t,at){var e=document.createElementNS(ns,t);for(var k in at)e.setAttribute(k,at[k]);return e}
+  svg.setAttribute("viewBox","0 0 200 56");svg.setAttribute("preserveAspectRatio","none");svg.setAttribute("aria-hidden","true");
   if(!vals||vals.length<2)return svg;
-  svg.setAttribute("data-f","spk");svg.setAttribute("data-w","200");svg.setAttribute("data-h","46");svg.setAttribute("data-pad","4");
-  var p=document.createElementNS(ns,"polyline");p.setAttribute("points",sparkPts(vals,200,46,4).map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" "));p.setAttribute("fill","none");
-  p.setAttribute("stroke",sparkColor(cls));p.setAttribute("stroke-width","2");p.setAttribute("vector-effect","non-scaling-stroke");
-  svg.appendChild(p);return svg}
+  svg.setAttribute("data-f","spk");svg.setAttribute("data-w","200");svg.setAttribute("data-h","56");svg.setAttribute("data-pad","6");svg.setAttribute("data-big","1");
+  var id="sg"+(++sparkN),c=sparkColor(cls),defs=mk("defs",{}),g=mk("linearGradient",{id:id,x1:"0",y1:"0",x2:"0",y2:"1"});
+  [["0",".30"],["1","0"]].forEach(function(o){var st=mk("stop",{offset:o[0],"stop-opacity":o[1]});st.style.stopColor=c;g.appendChild(st)});defs.appendChild(g);svg.appendChild(defs);
+  [14,28,42].forEach(function(y){svg.appendChild(mk("line",{x1:"0",x2:"200",y1:y,y2:y,class:"sgrid","vector-effect":"non-scaling-stroke"}))});
+  svg.appendChild(mk("polygon",{class:"sa",fill:"url(#"+id+")"}));
+  svg.appendChild(mk("polyline",{class:"sl",fill:"none",stroke:c,"stroke-width":"1.8","stroke-linejoin":"round","stroke-linecap":"round","vector-effect":"non-scaling-stroke"}));
+  svg.appendChild(mk("path",{class:"sr",fill:"none",stroke:c,"stroke-linecap":"round","vector-effect":"non-scaling-stroke"}));
+  svg.appendChild(mk("path",{class:"sd",fill:"none",stroke:c,"stroke-width":"6","stroke-linecap":"round","vector-effect":"non-scaling-stroke"}));
+  sparkRedraw(svg,vals,cls);return svg}
 /* the small trend line in the quote monitor: the last point is a dot that moves with the live price */
 function miniSpark(vals,cls){
   var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
@@ -2742,12 +2777,33 @@ function miniSpark(vals,cls){
   return svg}
 function sparkRedraw(svg,vals,cls){
   var pl=svg.querySelector("polyline");if(!pl||vals.length<2)return;
-  var w=+svg.getAttribute("data-w"),h=+svg.getAttribute("data-h"),pad=+svg.getAttribute("data-pad"),pts=sparkPts(vals,w,h,pad),c=sparkColor(cls);
-  pl.setAttribute("points",pts.map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" "));pl.setAttribute("stroke",c);
-  var dot=svg.querySelector("circle");if(dot){var l=pts[pts.length-1];dot.setAttribute("cx",l[0].toFixed(1));dot.setAttribute("cy",l[1].toFixed(1));dot.setAttribute("fill",c)}}
+  var w=+svg.getAttribute("data-w"),h=+svg.getAttribute("data-h"),pad=+svg.getAttribute("data-pad"),pts=sparkPts(vals,w,h,pad),c=sparkColor(cls),l=pts[pts.length-1];
+  var str=pts.map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" ");
+  pl.setAttribute("points",str);pl.setAttribute("stroke",c);
+  var dot=svg.querySelector("circle");if(dot){dot.setAttribute("cx",l[0].toFixed(1));dot.setAttribute("cy",l[1].toFixed(1));dot.setAttribute("fill",c)}
+  if(svg.getAttribute("data-big")){
+    var ar=svg.querySelector(".sa");if(ar)ar.setAttribute("points",str+" "+w+","+h+" 0,"+h);
+    var d="M"+l[0].toFixed(1)+" "+l[1].toFixed(1)+"h0";["sd","sr"].forEach(function(k){var e=svg.querySelector("."+k);if(e){e.setAttribute("d",d);e.setAttribute("stroke",c)}});
+    svg.querySelectorAll("stop").forEach(function(st){st.style.stopColor=c})}}
 /* the month of daily closes with the live price as the last point */
 function qSeries(q){var sp=(q.spark||[]).filter(function(v){return isFinite(v)});if(sp.length)sp[sp.length-1]=q.price;return sp}
 function rangePos(q){var sp=qSeries(q);if(sp.length<10)return null;var lo=Math.min.apply(null,sp),hi=Math.max.apply(null,sp);return hi>lo?(q.price-lo)/(hi-lo)*100:50}
+/* the Markets cards on Home and Macro share one build */
+var mcShown={};
+function mcTop(q,title,sub){
+  var top=el("div","mct"),l=el("div","mcl");l.appendChild(el("b",null,title));if(sub)l.appendChild(el("span",null,sub));l.appendChild(el("i","lv"));top.appendChild(l);
+  if(q){var p=el("span","mcp "+pctClass(q.pct),pctText(q.pct));p.setAttribute("data-f","pct");p.setAttribute("data-heat","1");heat(p,q.pct);top.appendChild(p)}
+  return top}
+function mcPrice(q){
+  var row=el("div","mcpx"),px=el("span","mcv",q?fmt(q.price,q.digits):"-");px.setAttribute("data-f","px");px.setAttribute("data-tween","1");row.appendChild(px);
+  if(q&&q.change!==null&&q.change!==undefined){var c=el("span","mcc "+pctClass(q.pct),(q.change>0?"+":"")+fmt(q.change,q.digits));c.setAttribute("data-f","chg");row.appendChild(c)}
+  return row}
+function mcGrid(box,where){var first=!mcShown[where];mcShown[where]=true;box.classList.toggle("enter",first)}
+function tween(n,to,digits){
+  var from=parseFloat(n.getAttribute("data-v")),t0=performance.now();n.setAttribute("data-v",to);
+  if(!isFinite(from)||REDUCED){n.textContent=fmt(to,digits);return}
+  var id=(n._tw=(n._tw||0)+1);
+  (function step(t){if(n._tw!==id)return;var k=Math.min(1,(t-t0)/450),e=1-Math.pow(1-k,3);n.textContent=fmt(k<1?from+(to-from)*e:to,digits);if(k<1)requestAnimationFrame(step)})(t0)}
 function quoteBy(d,key){for(var i=0;i<d.quotes.length;i++)if(d.quotes[i].key===key)return d.quotes[i];return null}
 function sessionStrip(d){
   var ss=el("div","msess");
@@ -2787,13 +2843,13 @@ function mkFacts(q){
   var box=el("div","hfacts"),sp=(q.spark||[]).filter(function(v){return isFinite(v)});
   function row(k,v,cls){var r=el("span","hf");r.appendChild(el("i",null,k));r.appendChild(el("b",cls||"",v));box.appendChild(r)}
   if(q.prev!==null&&q.prev!==undefined)row("Prev close",fmt(q.prev,q.digits));
-  if(sp.length>=6){var a=sp[sp.length-6],ch=(q.price/a-1)*100;row("5 days",pctText(ch),pctClass(ch))}
-  if(sp.length>=15){var m=(q.price/sp[0]-1)*100;row("1 month",pctText(m),pctClass(m))}
+  if(sp.length>=6){var a=sp[sp.length-6],ch=(q.price/a-1)*100;row("5 days",pctText(ch),pctClass(ch));box.lastChild.lastChild.setAttribute("data-f","d5")}
+  if(sp.length>=15){var m=(q.price/sp[0]-1)*100;row("1 month",pctText(m),pctClass(m));box.lastChild.lastChild.setAttribute("data-f","m1")}
   if(sp.length>=10){
     var lo=Math.min.apply(null,sp.concat([q.price])),hi=Math.max.apply(null,sp.concat([q.price])),pos=hi>lo?(q.price-lo)/(hi-lo)*100:50;
     var rg=el("div","hrange");rg.title="Where the price sits between its 1 month low and high";
     var lab=el("div","hrl");lab.appendChild(el("span",null,fmt(lo,q.digits)));lab.appendChild(el("span",null,fmt(hi,q.digits)));
-    var tr=el("div","hrt"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";tr.appendChild(dot);rg.appendChild(tr);rg.appendChild(lab);box.appendChild(rg)}
+    var tr=el("div","hrt"),dot=el("i");tr.setAttribute("data-f","rg");dot.style.left=Math.max(2,Math.min(98,pos))+"%";tr.appendChild(dot);rg.appendChild(tr);rg.appendChild(lab);box.appendChild(rg)}
   return box}
 /* the AI's bias for one market: a lean, with its confidence and the sentiment and fundamentals behind it */
 function agoText(at){if(!at)return"";var m=Math.max(0,Math.round((Date.now()/1000-at)/60));return m<1?"just now":m<60?m+"m ago":Math.floor(m/60)+"h ago"}
@@ -2951,12 +3007,11 @@ function macroRender(d){
   out.appendChild(fc);
   /* your markets */
   var mh=el("h2","dkh","Your markets");mh.style.margin="6px 0 10px";out.appendChild(mh);
-  var mk=el("div","mkts");
-  MARKETS.forEach(function(m){
-    var q=quoteBy(d,m[0]),c=el("div","mkt"),top=el("div","top");top.appendChild(el("h3",null,m[1]));c.setAttribute("data-k",m[0]);
-    if(q){var mp=el("span","mute",pctText(q.pct));mp.setAttribute("data-f","pct");top.appendChild(mp)}c.appendChild(top);
-    var px=el("div","px",q?fmt(q.price,q.digits):"-");px.setAttribute("data-f","px");if(q)px.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";c.appendChild(px);
-    if(q){c.appendChild(sparkline(q.spark,pctClass(q.pct)));c.appendChild(el("div","mute",q.name+", last month"+(q.when?", updated "+q.when:"")))}
+  var mk=el("div","mkts");mcGrid(mk,"macro");
+  MARKETS.forEach(function(m,n){
+    var q=quoteBy(d,m[0]),c=el("div","mkt mc "+(q?pctClass(q.pct):""));c.setAttribute("data-k",m[0]);c.style.setProperty("--n",n);
+    c.appendChild(mcTop(q,TILE_NAMES[m[0]]||m[1],m[0]));c.appendChild(mcPrice(q));
+    if(q){c.appendChild(sparkline(qSeries(q),pctClass(q.pct)));c.appendChild(mkFacts(q));c.appendChild(el("div","mcf",q.name+(q.when?", updated "+q.when:"")))}
     c.appendChild(aiBias(m,false));
     var ask=el("button","btn ghost small","Ask the assistant");ask.type="button";ask.style.marginTop="10px";
     ask.onclick=function(){chatOpen(true);chatSend("What is going on with "+m[1]+" right now, and what should I check on my own charts?")};
@@ -3075,8 +3130,9 @@ function heat(n,pct){
 function paintQuote(q,dir){
   var roots=document.querySelectorAll('[data-k="'+q.key+'"]');
   for(var i=0;i<roots.length;i++){var fs=roots[i].querySelectorAll("[data-f]");
+    if(roots[i].classList.contains("mc")){roots[i].classList.remove("up","down","flat");if(pctClass(q.pct))roots[i].classList.add(pctClass(q.pct))}
     for(var j=0;j<fs.length;j++){var n=fs[j],f=n.getAttribute("data-f"),tone=pctClass(q.pct);
-      if(f==="px"){n.textContent=fmt(q.price,q.digits);if(n.style.color)n.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";
+      if(f==="px"){if(n.hasAttribute("data-tween"))tween(n,q.price,q.digits);else n.textContent=fmt(q.price,q.digits);if(n.style.color)n.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";
         if(/\b(up|down|flat)\b/.test(n.className))n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}
       else if(f==="chg"){if(q.change!==null&&q.change!==undefined){n.textContent=(q.change>0?"+":"")+fmt(q.change,q.digits);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}}
       else if(f==="pct"){n.textContent=pctText(q.pct);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+(tone?" "+tone:"");if(n.hasAttribute("data-heat"))heat(n,q.pct);flash(n,dir)}
@@ -3103,9 +3159,9 @@ function liveTick(){
     liveApply(macroData,j.quotes);
     var h=$("h-asof"),nt=$("qm-note");
     if(j.live&&j.at){var tm=new Date(j.at*1000).toLocaleTimeString("en-GB",{timeZone:"Europe/Dublin"});liveClock=tm;
-      if(h){h.textContent="Live, updated "+tm+" Dublin";h.classList.add("islive")}
+      document.body.classList.add("feedlive");if(h){h.textContent="Live, updated "+tm+" Dublin";h.classList.add("islive")}
       if(nt)nt.textContent=macroData.quotes.length+" markets, live"}
-    else if(h)h.classList.remove("islive")})
+    else{document.body.classList.remove("feedlive");if(h)h.classList.remove("islive")}})
   .catch(function(){}).then(function(){liveBusy=false})}
 setInterval(liveTick,2000);
 function homeRender(d){
@@ -3113,14 +3169,11 @@ function homeRender(d){
   var s=$("h-sessions");s.textContent="";s.appendChild(sessionStrip(d));
   homeNums();
   var mk=$("h-mkts");mk.textContent="";
-  MARKETS.forEach(function(m){
-    var q=quoteBy(d,m[0]),c=el("div","hm"),t=el("div","t");t.appendChild(el("b",null,m[0]));c.setAttribute("data-k",m[0]);
-    if(q){var hp=el("span",pctClass(q.pct),pctText(q.pct));hp.setAttribute("data-f","pct");t.appendChild(hp)}c.appendChild(t);
-    var pxe=el("div","px "+(q?pctClass(q.pct):""),q?fmt(q.price,q.digits):"-");pxe.setAttribute("data-f","px");
-    if(q){var lp=lastPx[m[0]];if(lp!==undefined&&lp!==q.price)pxe.classList.add(q.price>lp?"tickup":"tickdn");lastPx[m[0]]=q.price}
-    c.appendChild(pxe);
-    if(q)c.appendChild(sparkline(q.spark,pctClass(q.pct)));
-    if(q)c.appendChild(mkFacts(q));
+  mcGrid(mk,"home");
+  MARKETS.forEach(function(m,n){
+    var q=quoteBy(d,m[0]),c=el("div","hm mc "+(q?pctClass(q.pct):""));c.setAttribute("data-k",m[0]);c.style.setProperty("--n",n);
+    c.appendChild(mcTop(q,TILE_NAMES[m[0]]||m[0],m[0]));c.appendChild(mcPrice(q));
+    if(q){c.appendChild(sparkline(qSeries(q),pctClass(q.pct)));c.appendChild(mkFacts(q))}
     c.appendChild(aiBias(m,true));
     mk.appendChild(c)});
   var fl=$("h-flow");fl.textContent="";
