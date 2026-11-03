@@ -568,7 +568,7 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn("if(at)t.acctType=at;else delete t.acctType;jSave();jRender()", self.PAGE)
 
     def test_the_page_can_be_installed_as_an_app(self):
-        for s in ('rel="manifest" href="/manifest.webmanifest"', 'rel="apple-touch-icon"', 'serviceWorker.register("/sw.js")', 'name="theme-color"'):
+        for s in ('rel="manifest" href="/manifest.webmanifest?v=kelly"', 'rel="apple-touch-icon"', 'serviceWorker.register("/sw.js")', 'name="theme-color"'):
             self.assertIn(s, self.PAGE)
         root = os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets")
         manifest = json.load(open(os.path.join(root, "manifest.webmanifest"), encoding="utf-8"))
@@ -576,7 +576,7 @@ class KeptButNotCounted(unittest.TestCase):
         sizes = {i["sizes"] for i in manifest["icons"]}
         self.assertTrue({"192x192", "512x512"} <= sizes)
         for i in manifest["icons"]:
-            self.assertTrue(os.path.exists(os.path.join(root, i["src"].lstrip("/"))), i["src"])
+            self.assertTrue(os.path.exists(os.path.join(root, i["src"].lstrip("/").split("?")[0])), i["src"])
         sw = open(os.path.join(root, "sw.js"), encoding="utf-8").read()
         self.assertNotIn("caches.", sw)                                          # the worker keeps nothing: no stale pages, no copy of your data
 
