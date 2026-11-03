@@ -171,6 +171,13 @@ The **Funding** page totals every prop-firm account you hold, split into forex /
 
 **Settings** holds the preferences (theme, replay the intro, reset Home, reset charts) and the Connections content that used to be its own page. The `connections` command still works.
 
+## Staying running and staying current
+
+- **Crash keeper (Windows).** `RiskDeskApp.ps1` starts `keepalive.ps1` hidden. It runs the server and starts it again three seconds after any crash, noting each one in `server-restarts.log` in the trader folder. `stop-server.ps1` stops the keeper and the server.
+- **Apps update themselves.** The server publishes its version at `/version.json` (no sign-in needed) and the page carries the same version. An installed app, phone or tablet that is running an older page shows a refresh bar and reloads. Settings shows the version and has a check-for-update button.
+- **Hosted copy.** kellyterminal.com pulls from GitHub hourly and restarts, so a new version reaches phones within about an hour.
+- **App icon.** Icons are cache-busted with `?v=k3` in the page and manifest. Android refreshes an installed icon on its own within about a day. iPhone and iPad copy the icon when the app is added, so remove it and add it again (Safari, Share, Add to Home Screen) to see a new icon.
+
 ## Phone alerts
 
 Alerts normally fire only while the page is open. Turn on **Phone alerts** on the Alerts page and the server also watches your price levels, high-impact news and the London and New York opens once a minute and sends them through [ntfy](https://ntfy.sh) (free app for iPhone and Android). The page shows a private topic name (`kelly-` and 16 random characters, kept in `push_topic.txt` in the trader folder): subscribe the ntfy app to it. Turning the switch off deletes the file. Only run this on one machine (the server), or you will get each alert twice.

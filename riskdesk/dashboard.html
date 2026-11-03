@@ -1482,6 +1482,8 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 @media(min-width:901px){.bar nav{flex:1 1 0;min-width:0}.brainbtn,.themebtn,#cmd{flex:none}}
 @media(min-width:901px) and (max-width:1560px){.bar nav button .ni{display:none}.bar nav button{padding:0 9px!important}}
 /* settings page */
+/* tablets: the menu drops to its own row so all ten items show */
+@media(min-width:641px) and (max-width:900px){.bar{height:auto!important;flex-wrap:wrap;row-gap:0;padding-top:8px}.bar nav{order:5;flex:1 1 100%!important;min-width:100%;overflow-x:auto}.bar nav button{flex:1 0 auto!important}}
 .set-nav{display:flex;gap:6px;margin:0 0 16px;flex-wrap:wrap}
 .set-nav button{appearance:none;background:transparent;border:1px solid var(--line);color:var(--muted);font:500 12px var(--mono);padding:6px 12px;border-radius:var(--radius);cursor:pointer}
 .set-nav button:hover{color:var(--text);border-color:var(--hover)}
@@ -2159,6 +2161,7 @@ function showTab(name){
   var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
+  try{var sel=document.querySelector('#nav button[aria-selected="true"]'),nv=$("nav");if(sel&&nv&&nv.scrollWidth>nv.clientWidth+2)nv.scrollTo({left:sel.offsetLeft-(nv.clientWidth-sel.offsetWidth)/2,behavior:"smooth"})}catch(e){}
   var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
   if(isJ(name)){jAcct=name==="journal"?"live":name;jAT="";jShown=30;jFormTab(name);jRender()}
   if(name==="home"||name==="macro"||name==="settings")loadMacro(false);if(name==="trades")propCalc();
