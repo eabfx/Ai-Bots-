@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))     # zo
 sys.path.insert(0, HERE)
 import zones as z    # noqa: E402
 import brain         # noqa: E402
+import chart         # noqa: E402
 import coach         # noqa: E402
 import macro         # noqa: E402
 import notion_api     # noqa: E402
@@ -33,6 +34,7 @@ import autobrief     # noqa: E402
 import backup        # noqa: E402
 import live          # noqa: E402
 import notion_import  # noqa: E402
+import pusher        # noqa: E402
 import signin        # noqa: E402
 import store         # noqa: E402
 import tradezella_import  # noqa: E402
@@ -49,6 +51,7 @@ class Handler(BaseHTTPRequestHandler):
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     live = None                                      # last prices every few seconds while the page is open (live.py), set by make_server
     backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
+    pusher = None                                    # phone alerts while the page is closed (pusher.py), set by make_server
     brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
     auth_settings = None                             # sign in with Google, only when the config has an "auth" section (see signin.py)
@@ -190,6 +193,17 @@ class Handler(BaseHTTPRequestHandler):
                 if not self.notion_link:
                     return self.send_json(200, {"connected": False})
                 return self.send_json(200, self.notion_link.refresh(with_hub=bool(body.get("hub", True))))
+            elif path == "/api/push":
+                act = body.get("action")
+                if act == "enable":
+                    return self.send_json(200, self.pusher.enable())
+                if act == "disable":
+                    return self.send_json(200, self.pusher.disable())
+                if act == "test":
+                    return self.send_json(200, self.pusher.test())
+                if act == "rules":
+                    return self.send_json(200, self.pusher.set_rules(body.get("rules")))
+                raise z.ZoneError('action must be "enable", "disable", "test" or "rules"')
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -232,6 +246,17 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, PAGE, "text/html; charset=utf-8")
         elif url.path == "/api/macro":
             self.macro(parse_qs(url.query))
+        elif url.path == "/api/push/status":
+            self.send_json(200, self.pusher.state())
+        elif url.path == "/api/chart":
+            q = parse_qs(url.query)
+            try:
+                self.send_json(200, chart.snapshot((q.get("symbol") or [""])[0], (q.get("tf") or ["15m"])[0],
+                                                   self.config_path, self.offline, getattr(self, "chart_fetch", None)))
+            except z.ZoneError as e:
+                self.send_json(400, {"error": str(e)})
+            except Exception as e:                       # Yahoo down or slow: say so and keep serving
+                self.send_json(502, {"error": "Could not load candles: %s" % e})
         elif url.path == "/api/notion/status":
             self.send_json(200, self.notion_link.state if self.notion_link else {"connected": False})
         elif url.path == "/api/notion/journal":
@@ -399,6 +424,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler.brief_keeper = autobrief.Keeper(handler.data_dir, config_path, handler.macro_net, lambda *a, **k: handler.coach_post(*a, **k))
     handler.backups = backup.Backups(handler.data_dir, config_path)
     handler.live = None if offline else live.LiveTicks(handler.macro_net)
+    handler.pusher = pusher.Pusher(handler.data_dir, handler.macro_net)
     return DashboardServer(("127.0.0.1", port), handler)
 
 
@@ -467,6 +493,7 @@ def main(argv=None):
             server.RequestHandlerClass.live.start()
         if not args.offline:
             server.RequestHandlerClass.brief_keeper.start()
+            server.RequestHandlerClass.pusher.start()
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
