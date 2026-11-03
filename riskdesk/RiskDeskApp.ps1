@@ -1,4 +1,4 @@
-# Opens RiskDesk.ai like an app: starts the server quietly if it is not running, then shows it in its own window.
+# Opens Kelly Terminal like an app: starts the server quietly if it is not running, then shows it in its own window.
 # -ServerOnly starts just the server (used at sign-in so prices and the hourly AI read keep running).
 param([switch]$ServerOnly)
 $ErrorActionPreference = "SilentlyContinue"
@@ -12,8 +12,12 @@ if (-not (Up)) {
   for ($i = 0; $i -lt 40 -and -not (Up); $i++) { Start-Sleep -Milliseconds 750 }
 }
 if ($ServerOnly) { exit }
-# If RiskDesk was installed from Chrome ("Install RiskDesk.ai"), open that app so the taskbar shows the RiskDesk logo, not Chrome's.
-$chromeApp = Get-ChildItem (Join-Path ([Environment]::GetFolderPath("Programs")) "Chrome Apps") -Filter "RiskDesk*.lnk" | Select-Object -First 1
+# If Kelly Terminal was installed from Chrome ("Install Kelly Terminal"), open that app so the taskbar shows the Kelly Terminal logo, not Chrome's.
+$chromeApp = $null
+foreach ($name in "Kelly*.lnk", "RiskDesk*.lnk") {      # the new name first, then the one it had before
+  $chromeApp = Get-ChildItem (Join-Path ([Environment]::GetFolderPath("Programs")) "Chrome Apps") -Filter $name | Select-Object -First 1
+  if ($chromeApp) { break }
+}
 if ($chromeApp) {
   $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut($chromeApp.FullName)
   if ($lnk.TargetPath -and (Test-Path $lnk.TargetPath)) { Start-Process -FilePath $lnk.TargetPath -ArgumentList $lnk.Arguments; exit }

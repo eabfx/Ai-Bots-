@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RiskDesk.ai, a local trading dashboard: macro desk, journal, risk calculators and an AI assistant, in a browser.
+"""Kelly Terminal, a local trading dashboard: macro desk, journal, risk calculators and an AI assistant, in a browser.
 
     py riskdesk\\dashboard.py
 
@@ -124,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
             except signin.AuthError as e:
                 msg = html.escape(str(e))
                 page = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-                        "<title>RiskDesk sign-in</title><body style='font:16px system-ui;background:#0a0a0a;color:#f2f2f0;padding:40px'>"
+                        "<title>Kelly Terminal sign-in</title><body style='font:16px system-ui;background:#0a0a0a;color:#f2f2f0;padding:40px'>"
                         "<h2>Could not sign you in</h2><p>%s.</p><p><a style='color:#fff' href='/auth/login'>Try again</a></p>" % msg)
                 return self.send(403, page, "text/html; charset=utf-8")
             self.redirect("/", [signin.session_cookie(s, email, now), gone])
@@ -218,7 +218,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.host_ok():
             return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
         url = urlparse(self.path)
-        if url.path in APP_FILES:                       # what the browser needs to install RiskDesk as an app: the icon, not your data
+        if url.path in APP_FILES:                       # what the browser needs to install Kelly Terminal as an app: the icon, not your data
             data, kind = APP_FILES[url.path]
             return self.send_bytes(200, data, kind, "no-store" if url.path in ("/sw.js", "/brain.js", "/brain.css") else "public, max-age=3600")
         if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
@@ -414,10 +414,10 @@ def already_running(port):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="dashboard.py", description="RiskDesk.ai local dashboard (signals only)")
+    p = argparse.ArgumentParser(prog="dashboard.py", description="Kelly Terminal local dashboard (signals only)")
     p.add_argument("--port", type=int, default=PORT)
     p.add_argument("--config", default=os.path.join(TRADER, "config.json"))
-    p.add_argument("--offline", help="not used by RiskDesk, kept so old shortcuts still work")
+    p.add_argument("--offline", help="not used by Kelly Terminal, kept so old shortcuts still work")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     p.add_argument("--allow-host", action="append", default=[], metavar="NAME",
                    help="also answer to this host name, for a private tunnel such as Tailscale (repeatable; or set allowed_hosts in config.json)")
@@ -430,7 +430,7 @@ def main(argv=None):
     except OSError as e:
         url = "http://127.0.0.1:%d" % args.port
         if already_running(args.port):                                  # a second double-click just opens the one that is running
-            print("RiskDesk is already running at %s. Opening it." % url)
+            print("Kelly Terminal is already running at %s. Opening it." % url)
             if not args.no_browser:
                 webbrowser.open(url)
             return 0

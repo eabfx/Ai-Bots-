@@ -1,4 +1,4 @@
-/* Second Brain (brain.js). Uses RiskDesk's colour variables, so it follows the light/dark switch. */
+/* Second Brain (brain.js). Uses Kelly Terminal's colour variables, so it follows the light/dark switch. */
 #sb-root{font-family:var(--sans)}
 #sb-root input,#sb-root button,#sb-root select,#sb-root textarea,.sb-pop,.sb-pop *,.sb-seltb *{font-family:var(--sans)}
 #sb-root .bk-code,#sb-root .bk-t code{font-family:var(--mono)}

@@ -1,6 +1,6 @@
 {
-  "name": "RiskDesk.ai",
-  "short_name": "RiskDesk",
+  "name": "Kelly Terminal",
+  "short_name": "Kelly",
   "description": "Trading journal, macro desk and risk tools. Signals only, never places an order.",
   "start_url": "/",
   "scope": "/",

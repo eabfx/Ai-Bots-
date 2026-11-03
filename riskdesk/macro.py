@@ -30,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "trader-zones"))
 import zones as z    # noqa: E402
 
-UA = "Mozilla/5.0 (compatible; RiskDesk macro desk)"
+UA = "Mozilla/5.0 (compatible; Kelly Terminal macro desk)"
 CALENDAR_URLS = ["https://nfs.faireconomy.media/ff_calendar_thisweek.json",
                  "https://nfs.faireconomy.media/ff_calendar_nextweek.json"]
 CURRENCIES = ("USD", "EUR", "GBP")
@@ -527,7 +527,7 @@ def compact(snap, events=6, heads=6):
 
 # ---------------------------------------------------------------- the AI brief
 
-BRIEF_SYSTEM = """You write the macro brief and the daily bias inside RiskDesk.ai for one trader.
+BRIEF_SYSTEM = """You write the macro brief and the daily bias inside Kelly Terminal for one trader.
 
 The trader trades XAUUSD and MGC (gold), NQ (Nasdaq futures), EURUSD and GBPUSD with ICT supply and demand zones,
 entering on the 5 minute chart. For each of those four markets you give a daily BIAS: a lean for today's sessions that

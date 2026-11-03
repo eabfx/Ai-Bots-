@@ -8,7 +8,7 @@ How: the password is stretched with PBKDF2-HMAC-SHA256 (600,000 rounds, random s
 encrypted with a keystream made from HMAC-SHA256 in counter mode and sealed with an HMAC-SHA256 tag (encrypt, then
 authenticate), so a wrong password or a changed file is refused rather than read as garbage. Unlocking gives the page a
 random token; the key stays in this program's memory only, for 20 minutes after the last use, and goes when you lock it,
-leave Second Brain or close RiskDesk. Standard library only.
+leave Second Brain or close Kelly Terminal. Standard library only.
 """
 
 import base64

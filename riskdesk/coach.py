@@ -1,4 +1,4 @@
-"""The journal coach: reads the trades in the RiskDesk journal and the Indicator Stats and says what they show.
+"""The journal coach: reads the trades in the Kelly Terminal journal and the Indicator Stats and says what they show.
 
 It runs when you press a button on the dashboard's Journal tab, and only then. That sends your journal trades
 (date, instrument, direction, tag, risk, result, notes) and the Indicator Stats to Anthropic's Claude API, using
@@ -35,7 +35,7 @@ GEMINI_KEY_FILE = "gemini_key.txt"
 GEMINI_FALLBACKS = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
 GEMINI_BUDGET = 150          # seconds to keep trying before giving up (the dashboard answers one thing at a time)
 
-SYSTEM = """You are the journal coach inside RiskDesk.ai, a trading dashboard. You review one trader's own journal.
+SYSTEM = """You are the journal coach inside Kelly Terminal, a trading dashboard. You review one trader's own journal.
 
 The trader's method, so you can tell whether they followed it: they trade XAUUSD, GBPUSD, EURUSD, NQ and MGC with
 ICT-style supply and demand zones on the 1h, 30m and 15m charts. They start from market structure and the daily and 4h
@@ -357,7 +357,7 @@ def clean_messages(items, limit=12, each=2000):
     return merged
 
 
-CHAT_SYSTEM = """You are the assistant inside RiskDesk.ai, a trading dashboard, talking with its one user, a trader.
+CHAT_SYSTEM = """You are the assistant inside Kelly Terminal, a trading dashboard, talking with its one user, a trader.
 
 The trader trades XAUUSD, MGC, GBPUSD, EURUSD and NQ (and may trade prop firm accounts). The dashboard shows signals
 and numbers only and never places orders. Times are Dublin time.

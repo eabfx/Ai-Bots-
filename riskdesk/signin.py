@@ -1,4 +1,4 @@
-"""Sign in with Google, for a RiskDesk that runs on a server instead of on your own computer.
+"""Sign in with Google, for a Kelly Terminal that runs on a server instead of on your own computer.
 
 It is off unless config.json has an "auth" section, so the copy on your PC behaves exactly as before:
 
@@ -7,7 +7,7 @@ It is off unless config.json has an "auth" section, so the copy on your PC behav
 The Google client id and secret are never in config.json or git. They come from the GOOGLE_CLIENT_ID and
 GOOGLE_CLIENT_SECRET variables, or from google_oauth.json ({"client_id": "...", "client_secret": "..."}) in the
 trader folder. The cookie signing secret comes from SESSION_SECRET or trader/session_secret.txt, which is made
-on first use. If the "auth" section is there but anything is missing, RiskDesk refuses to start: it never serves
+on first use. If the "auth" section is there but anything is missing, Kelly Terminal refuses to start: it never serves
 the journal without a lock because a setting was forgotten.
 
 How it works: /auth/login sends you to Google; Google sends you back to /auth/callback with a one-time code; the

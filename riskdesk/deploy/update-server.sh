@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gets the newest RiskDesk from GitHub and restarts it. Run by hand, or by the hourly timer that setup-server.sh installs.
+# Gets the newest Kelly Terminal from GitHub and restarts it. Run by hand, or by the hourly timer that setup-server.sh installs.
 # If the new version does not come up healthy, it goes back to the one that was running. Your journal is never touched.
 set -uo pipefail
 APP=/opt/riskdesk

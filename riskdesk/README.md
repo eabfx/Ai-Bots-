@@ -1,10 +1,10 @@
-# RiskDesk.ai
+# Kelly Terminal
 
 A personal trading dashboard: macro desk, journal, backtest log, risk calculators, prop firm tracker, alerts and an AI assistant. Signals only: it never places an order. The Zones finder is a separate project in `../zones-app`.
 
-**Daily backup:** while RiskDesk runs it saves a zip of your whole trader folder (journal, screenshots, notes, settings) to `trader/backups` once a day and keeps the newest 14. It never changes your originals. The status bar shows the time of the last copy. For a second copy somewhere else (a OneDrive or USB folder), add `"backup_copy_to": "D:/Backups"` to `trader/config.json`. Restore by unzipping a backup over the trader folder while RiskDesk is closed.
+**Daily backup:** while Kelly Terminal runs it saves a zip of your whole trader folder (journal, screenshots, notes, settings) to `trader/backups` once a day and keeps the newest 14. It never changes your originals. The status bar shows the time of the last copy. For a second copy somewhere else (a OneDrive or USB folder), add `"backup_copy_to": "D:/Backups"` to `trader/config.json`. Restore by unzipping a backup over the trader folder while Kelly Terminal is closed.
 
-**Open it like an app (Windows):** run `powershell -ExecutionPolicy Bypass -File riskdesk\install-app.ps1` once. You get a RiskDesk icon on the Desktop and in the Start menu that opens it in its own window (no browser tabs), starting the server quietly if needed. The server also starts at sign-in so prices and the hourly AI read keep going. Remove with `-Remove`.
+**Open it like an app (Windows):** run `powershell -ExecutionPolicy Bypass -File riskdesk\install-app.ps1` once. You get a Kelly Terminal icon on the Desktop and in the Start menu that opens it in its own window (no browser tabs), starting the server quietly if needed. The server also starts at sign-in so prices and the hourly AI read keep going. Remove with `-Remove`.
 
 Start it on Windows by double-clicking `RiskDesk.bat` in this folder, or from the repo's top folder:
 
@@ -33,7 +33,7 @@ out: `config.json`, `gemini_key.txt` or `anthropic_key.txt`.
 - **Trades**: a position size calculator (forex, gold, index futures, CFDs) with a contract reference table of value per point and per tick, an exchange rate for accounts in a different currency to the instrument, and optional margin; a risk/reward check; and **Prop firm room**, which takes your prop firm's rules (daily loss, max drawdown fixed or trailing, profit target) and your Journal and shows how much you can still lose today and overall. Trailing drawdown follows closed trades only.
 - **Journal**: your live trades. Saved as a file on this PC (`trader\journal\trades.json`, with each screenshot as an image in `trader\journal\images`), so clearing the browser loses nothing. Back up the `journal` folder now and then (the previous save is kept as `trades.prev.json`). Trades can carry a zone, bias, account, a screenshot (choose a file or paste with Ctrl+V), and a result in R with the risk as a percent of the account; when every trade in a view is in percent, the totals show %. Click a screenshot to see it large.
 - **Backtest**: the same page over your backtest trades only. They never count in Home, the prop firm room, the alerts, the coach or the assistant.
-- **Alerts**: price levels, a warning before high-impact news, 15 minutes before London and New York open, a daily loss limit, a losing streak, and a warning when you log a live trade with the checklist not fully ticked. They show on screen, as a desktop notification if you allow it, and with a beep, and they are checked every minute, only while RiskDesk is open in a browser tab.
+- **Alerts**: price levels, a warning before high-impact news, 15 minutes before London and New York open, a daily loss limit, a losing streak, and a warning when you log a live trade with the checklist not fully ticked. They show on screen, as a desktop notification if you allow it, and with a beep, and they are checked every minute, only while Kelly Terminal is open in a browser tab.
 - **Connections**: what is connected (AI key, prices, calendar and news, journal storage) and the two imports. **Import from Notion** reads an export of your Trade Journey database (Markdown & CSV) that you put in `trader\import`, shows a preview, then adds the trades and copies each screenshot. Rows marked No Trade or Invalid are skipped; Backtest rows go to Backtest and Live Account rows to the Journal; trades already there are skipped. **Import from a broker CSV** is the same idea for a broker history file.
 - **Journal details**: a total P/L, an edge score, win rate, average R, profit factor, plan followed, a cumulative curve, a month calendar, results by weekday, and results grouped by instrument, setup, emotion, plan or grade. Each trade can carry an optional time, grade (A to D), plan followed or deviated, and how you felt. Results can be grouped by session (Asia, London, New York, Late, on the Dublin clock) or by hour. **Import from a broker CSV** reads a trade history file in the browser (nothing is uploaded), guesses the columns, shows a preview you can correct, skips trades already in the journal and adds the rest. Everything is worked out in the browser from your trades.
 - **Assistant**: on Home it has its own panel, on the other pages it is the button at the bottom right. Ask about what is on screen. It sends only your journal totals, the macro numbers and the calendar, never your keys.
@@ -42,7 +42,7 @@ On a narrow screen (a phone, or a small window) the pages move to a bar along th
 
 1. Install Tailscale on the PC and on the phone and sign in to the same account. In the Tailscale admin page turn on MagicDNS and HTTPS certificates.
 2. On the PC, in PowerShell: `tailscale serve --bg 8765`. It prints an address like `https://my-pc.tail1234.ts.net`.
-3. Add that name (without https://) to `trader\config.json`: `"allowed_hosts": ["my-pc.tail1234.ts.net"]`, then restart RiskDesk. Any other name is still refused.
+3. Add that name (without https://) to `trader\config.json`: `"allowed_hosts": ["my-pc.tail1234.ts.net"]`, then restart Kelly Terminal. Any other name is still refused.
 4. Open the address on your phone. Only devices signed in to your Tailscale account can reach it, and your data stays on the PC, which has to be on. Alerts only fire while the page is open in a browser tab.
 
 The Zones app (zones, entries, Indicator Stats, the TradingView indicator) is described in `../zones-app/README.md`.
@@ -59,13 +59,13 @@ missing its screenshot gets it. Exporting only reads your Notion; it changes not
 
 ## Backup price source (Twelve Data)
 
-Prices come from Yahoo Finance. If Yahoo does not answer for gold or one of the currency pairs, RiskDesk can ask
+Prices come from Yahoo Finance. If Yahoo does not answer for gold or one of the currency pairs, Kelly Terminal can ask
 Twelve Data instead, and the Macro page says which prices came from the backup. It is off until you give it a key:
 
 1. Make a free account at twelvedata.com and copy your API key.
 2. Save the key as the only text in `trader\twelvedata_key.txt` (the `trader` folder is never committed to git),
    or set the `TWELVEDATA_API_KEY` variable.
-3. Restart RiskDesk.
+3. Restart Kelly Terminal.
 
 The free plan covers gold and the currency pairs, not the indices (Nasdaq, VIX, S&P, the dollar index, yields and
 oil), so those stay Yahoo only. The backup is asked only when Yahoo has failed, so it uses very few of the free requests.
@@ -74,7 +74,7 @@ It gives the last price and the change since the previous close, with no small c
 ## Running it online with Google sign-in
 
 This is optional. The copy on your PC does not change: sign-in only switches on when `config.json` has an `"auth"`
-section, and RiskDesk refuses to start if that section is there but anything it needs is missing.
+section, and Kelly Terminal refuses to start if that section is there but anything it needs is missing.
 
 What you need: a small Ubuntu server (for example Hetzner Cloud), a free name that points at it (for example
 DuckDNS, which gives `something.duckdns.org`), and a Google OAuth client of type "Web application".
@@ -85,7 +85,7 @@ DuckDNS, which gives `something.duckdns.org`), and a Google OAuth client of type
 3. On the server, as root: `git clone https://github.com/eabfx/Ai-Bots-.git /opt/riskdesk`, then
    `DOMAIN=something.duckdns.org EMAIL=you@gmail.com bash /opt/riskdesk/riskdesk/deploy/setup-server.sh`.
    It asks for the Google client id and secret without showing them. It installs the https front door (Caddy),
-   starts RiskDesk as a service, closes every port except ssh and the web, and backs the journal up nightly.
+   starts Kelly Terminal as a service, closes every port except ssh and the web, and backs the journal up nightly.
 4. On your PC, copy the journal over once: `.\riskdesk\deploy\copy-journal-to-server.ps1 -Server <the server IP>`.
 5. Open `https://something.duckdns.org` and sign in. `/auth/logout` signs you out.
 
@@ -97,10 +97,10 @@ The journal on the server and the one on your PC are separate copies: they do no
 ### Install it as an app, and updates
 
 Open the https address in Chrome, Edge or Safari and use **Install app** (on a phone: Share, then **Add to Home Screen**).
-RiskDesk then opens in its own window with its own icon. It works the same on your PC at http://127.0.0.1:8765.
+Kelly Terminal then opens in its own window with its own icon. It works the same on your PC at http://127.0.0.1:8765.
 The app keeps no copy of your data on the device: your journal stays on the server (or PC) it came from.
 
-The server checks GitHub every hour. When there is a newer version it installs it and restarts RiskDesk, and if the new
+The server checks GitHub every hour. When there is a newer version it installs it and restarts Kelly Terminal, and if the new
 version does not come back healthy it goes back to the one that was running. Reload the page to get the new version.
 
 ## Import from TradeZella
@@ -111,7 +111,7 @@ Connections page, "Import from TradeZella". It reads `backtest.csv` and `demo.cs
 
 Connections page, "Notion live link". It reads your Notion, never writes to it: every call goes through one gate that only allows reading a page, its blocks and a database, and querying a database; anything else raises before it is sent.
 
-Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart RiskDesk. The page called "Thoughts + Emotions" is never read by the automatic refresh, even though the integration can reach it. The one exception is the locked section below, and only when you ask for it.
+Set up (about two minutes): in Notion open notion.so/profile/integrations, New integration, give it only the **Read content** capability, copy its secret into `trader\notion_key.txt` (nothing else in the file), then open the Trade Journal page, the ... menu, Connections, add the integration, and restart Kelly Terminal. The page called "Thoughts + Emotions" is never read by the automatic refresh, even though the integration can reach it. The one exception is the locked section below, and only when you ask for it.
 
 - **Journal rows:** the Trade Journal 2026 database is read every 5 minutes and merged into the journal by Trade No. and date. A row you add or fill in later in Notion becomes or updates the trade; notes and screenshots you added on the dashboard are kept.
 - **Second Brain tab:** your own editable, Notion-style workspace (see below). The live link keeps `trader\notion\hub.json` as a read-only snapshot of the Notion pages, which is only used for the first copy.
@@ -128,7 +128,7 @@ The Second Brain button (bottom left, white and black) opens a Notion-style work
 
 ### Thoughts + Emotions (password locked)
 
-Second Brain has a lock button, **Thoughts + Emotions**. The first time you open it you choose a PIN or password (at least 4 characters, so a 4-digit PIN works; a longer one is much harder to guess). RiskDesk then copies that page from Notion once, read only (nothing in Notion is changed), and keeps it in `trader\brain\vault.json`, encrypted with a key made from your password (PBKDF2-SHA256, 600,000 rounds, and an authenticated stream cipher built from HMAC-SHA256). The password is never stored. Wrong guesses are slowed down: after 5 wrong tries it waits 2 minutes.
+Second Brain has a lock button, **Thoughts + Emotions**. The first time you open it you choose a PIN or password (at least 4 characters, so a 4-digit PIN works; a longer one is much harder to guess). Kelly Terminal then copies that page from Notion once, read only (nothing in Notion is changed), and keeps it in `trader\brain\vault.json`, encrypted with a key made from your password (PBKDF2-SHA256, 600,000 rounds, and an authenticated stream cipher built from HMAC-SHA256). The password is never stored. Wrong guesses are slowed down: after 5 wrong tries it waits 2 minutes.
 
 - It locks again when you leave Second Brain, press Lock, or after 20 minutes of no use. The key only ever lives in memory.
 - **If you forget the password, the pages cannot be recovered.** Keep the password somewhere safe.
@@ -139,7 +139,7 @@ Second Brain has a lock button, **Thoughts + Emotions**. The first time you open
 
 ## Look and keys
 
-RiskDesk uses a terminal look: flat black, square panels with small title bars, dense mono numbers, a top bar and a status bar (Dublin time, sessions, when prices and the AI read were last updated). The Geist and Geist Mono fonts are bundled in `assets/fonts`, so nothing is loaded from the internet.
+Kelly Terminal uses a terminal look: flat black, square panels with small title bars, dense mono numbers, a top bar and a status bar (Dublin time, sessions, when prices and the AI read were last updated). The Geist and Geist Mono fonts are bundled in `assets/fonts`, so nothing is loaded from the internet.
 
 - `1` to `8` jump to Home, Macro, Journal, Backtest, Trades, Alerts, Connections and Second Brain (when you are not typing in a box).
 - `` ` `` or `/` opens the command box: type a tab name, `brief` (write the market read now), `refresh` or `theme`.

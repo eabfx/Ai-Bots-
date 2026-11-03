@@ -1,4 +1,4 @@
-"""Daily safety copy of your RiskDesk data (journal, screenshots, notes, settings) so a crash or a bad restart cannot lose it.
+"""Daily safety copy of your Kelly Terminal data (journal, screenshots, notes, settings) so a crash or a bad restart cannot lose it.
 It only ever adds a zip file to trader/backups and removes its own older zips (it keeps the newest 14). It never touches the
 originals. Add "backup_copy_to": "D:/Backups" (any folder, e.g. a OneDrive folder) to the config to get a second copy there.
 Standard library only."""

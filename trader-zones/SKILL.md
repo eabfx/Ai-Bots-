@@ -64,7 +64,7 @@ the user's own box).
 
 ## Dashboard
 
-The Zones page is its own small app, separate from RiskDesk.ai: `py zones-app\zones_app.py` (or double-click `zones-app\ZonesApp.bat`) opens a page on the user's own computer (http://127.0.0.1:8766, reachable
+The Zones page is its own small app, separate from Kelly Terminal: `py zones-app\zones_app.py` (or double-click `zones-app\ZonesApp.bat`) opens a page on the user's own computer (http://127.0.0.1:8766, reachable
 only from that computer). One tab per market shows the last price, the entries found with entry, stop,
 target and reward to risk, a ladder of the zones by timeframe against price, and a table of the zones. All
 times are Dublin. The "your chart price now" box does what `--spot` does and is hidden for GBPUSD and
@@ -78,7 +78,7 @@ fib was reached, where it was respected, and the target is `target_r` (3 means 1
 "Tool" is the older sweep + FVG in the OTE + 3-minute CHoCH. The page starts on "yours"; the command line on "tool".
 **TradingView indicator** (`zones-app/RiskDesk_Indicator.pine`, Pine v6). Open the Pine Editor in TradingView, paste the file, press Add to chart, on a 5 minute chart. It draws the 1h, 30m and 15m zones (the candle before the move) from the chart's own candles, so there is no futures-to-spot gap, then the leg, the 0.705 and 0.79 fib, the inverted gap, the entry, the stop and the 3R target, with an Indicator Stats table (the same numbers as the dashboard card) and alerts. Signals only: it is an indicator, not a strategy, and places no order. It follows the dashboard's rules but is a port, so small differences are possible (it has no slow-move zones); compare the two when you first use it.
 
-**RiskDesk.ai** is a separate dashboard (`py riskdesk\dashboard.py`, port 8765) with Home, Macro, Journal and Trades pages and no zones; its notes follow. **Macro desk and chat box** (`riskdesk/macro.py`, the Macro tab; on Home the assistant sits in its own panel, elsewhere it is the button at the bottom right). Home also shows currency strength (each currency's daily move against the dollar from Yahoo, the dollar as the opposite of the average). The Macro tab shows sessions, prices (Yahoo chart data for gold, NQ, EURUSD, GBPUSD, DXY, US10Y, VIX, S&P, oil), the week's USD, EUR and GBP High/Medium releases (ForexFactory weekly JSON), Google News headlines and a plain risk read from SPX, NQ, VIX and DXY. Feeds are cached (prices 60 s, calendar 15 min, headlines 10 min) and a dead feed is a note, not an error. The trader's bias buttons live in the browser (`zd.bias.*`). The AI macro brief (`POST /api/macro/brief`) and the chat (`POST /api/chat`) use the same Claude or Gemini key as the coach; the chat is sent only a whitelisted, capped copy of what is on screen plus the journal totals and the cached macro numbers, treats headlines and notes as data never as instructions, and never predicts or says what to take.
+**Kelly Terminal** is a separate dashboard (`py riskdesk\dashboard.py`, port 8765) with Home, Macro, Journal and Trades pages and no zones; its notes follow. **Macro desk and chat box** (`riskdesk/macro.py`, the Macro tab; on Home the assistant sits in its own panel, elsewhere it is the button at the bottom right). Home also shows currency strength (each currency's daily move against the dollar from Yahoo, the dollar as the opposite of the average). The Macro tab shows sessions, prices (Yahoo chart data for gold, NQ, EURUSD, GBPUSD, DXY, US10Y, VIX, S&P, oil), the week's USD, EUR and GBP High/Medium releases (ForexFactory weekly JSON), Google News headlines and a plain risk read from SPX, NQ, VIX and DXY. Feeds are cached (prices 60 s, calendar 15 min, headlines 10 min) and a dead feed is a note, not an error. The trader's bias buttons live in the browser (`zd.bias.*`). The AI macro brief (`POST /api/macro/brief`) and the chat (`POST /api/chat`) use the same Claude or Gemini key as the coach; the chat is sent only a whitelisted, capped copy of what is on screen plus the journal totals and the cached macro numbers, treats headlines and notes as data never as instructions, and never predicts or says what to take.
 
 **Trades tab**: position size (per-point and per-tick values from the instrument table, exchange rate when the instrument and account currencies differ, optional margin), risk/reward, and Prop firm room (settings in the browser under `zd.prop`; the floor is fixed, trailing, or trailing that stops at the start balance; today's P/L and the running balance come from the Journal; closed trades only).
 
@@ -98,12 +98,12 @@ buys or sells. The Zone rule setting switches between "both" (the page's default
 "standard", which is still what the command line uses. "Both" exists because neither rule alone found every box the
 user drew by hand. Refresh re-runs the tool; it can
 also refresh every 5 minutes.
-The dashboard is called RiskDesk.ai. On Windows, double-click `riskdesk\RiskDesk.bat` to start it. The dashboard lives in its own `riskdesk` folder (dashboard.py, dashboard.html, coach.py, the launcher and the TradingView indicator); this skill's zones.py stays here. The page is `riskdesk/dashboard.html`, laid out like the user's RiskDesk site: black and white, a dark or
+The dashboard is called Kelly Terminal. On Windows, double-click `riskdesk\RiskDesk.bat` to start it. The dashboard lives in its own `riskdesk` folder (dashboard.py, dashboard.html, coach.py, the launcher and the TradingView indicator); this skill's zones.py stays here. The page is `riskdesk/dashboard.html`, laid out like the user's Kelly Terminal site: black and white, a dark or
 light theme (button top right), and three sections. **Zones** has a Frames filter (1 hour, 30 min, 15 min), the
 Show zones setting and a Visits column that lists every time price came back to a zone (the session it opened
-in, how deep, and whether it held). **Trades** has RiskDesk's position size and risk/reward calculators (the
-"Size this trade" button on an entry fills them in) and **Journal** keeps trades in the browser in RiskDesk's
-own format, so a RiskDesk backup restores there. Nothing is sent anywhere. `zones --touches` prints the same
+in, how deep, and whether it held). **Trades** has Kelly Terminal's position size and risk/reward calculators (the
+"Size this trade" button on an entry fills them in) and **Journal** keeps trades in the browser in Kelly Terminal's
+own format, so a Kelly Terminal backup restores there. Nothing is sent anywhere. `zones --touches` prints the same
 visit list on the command line. `--port` changes the port,
 `--no-browser` does not open the browser, `--offline DIR` runs from saved charts. It shows signals only
 and never places an order.

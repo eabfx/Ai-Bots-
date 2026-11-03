@@ -1,5 +1,5 @@
-/* Second Brain: an editable, Notion-style workspace inside RiskDesk (pages with blocks, and databases as tables).
-   It edits RiskDesk's own copy (trader/brain/brain.json through /api/brain). It never talks to Notion. */
+/* Second Brain: an editable, Notion-style workspace inside Kelly Terminal (pages with blocks, and databases as tables).
+   It edits Kelly Terminal's own copy (trader/brain/brain.json through /api/brain). It never talks to Notion. */
 (function(){
 "use strict";
 var TXT={red:"#e5484d",green:"#30a46c",blue:"#3e8fd6",yellow:"#d6a800",orange:"#e5833a",purple:"#8e4ec6",pink:"#d6409f",brown:"#a2745a",gray:"#9c9c98"};

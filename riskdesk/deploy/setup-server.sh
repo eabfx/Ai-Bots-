@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sets up RiskDesk on a fresh Ubuntu server (Hetzner or any other) behind https with Google sign-in.
+# Sets up Kelly Terminal on a fresh Ubuntu server (Hetzner or any other) behind https with Google sign-in.
 #
 # Run it as root on the server:
 #     DOMAIN=riskdesk-you.duckdns.org EMAIL=you@gmail.com bash setup-server.sh
@@ -70,7 +70,7 @@ chmod 700 "$TRADER"
 
 cat > /etc/systemd/system/riskdesk.service <<UNIT
 [Unit]
-Description=RiskDesk.ai dashboard
+Description=Kelly Terminal dashboard
 After=network-online.target
 Wants=network-online.target
 
@@ -112,7 +112,7 @@ CRON
 # the newest version from GitHub every hour, with a way back if it does not start
 cat > /etc/systemd/system/riskdesk-update.service <<UNIT
 [Unit]
-Description=Update RiskDesk from GitHub
+Description=Update Kelly Terminal from GitHub
 
 [Service]
 Type=oneshot
@@ -120,7 +120,7 @@ ExecStart=/bin/bash $APP/riskdesk/deploy/update-server.sh
 UNIT
 cat > /etc/systemd/system/riskdesk-update.timer <<UNIT
 [Unit]
-Description=Update RiskDesk every hour
+Description=Update Kelly Terminal every hour
 
 [Timer]
 OnCalendar=hourly
