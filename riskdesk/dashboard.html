@@ -1325,6 +1325,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 @media(min-width:901px) and (max-width:1100px){.bar nav button .ni{display:none}.brainbtn .ni{display:none}#cmd{width:64px}.bar nav button{padding:0 7px!important}}
 /* funding page */
 #tab-funding [hidden]{display:none!important}
+.fstat-ac{display:inline-flex;gap:2px}
 .fd-warn{padding:0 0 8px;border-left:2px solid var(--muted)}.fd-warn-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px 2px}.fd-warn-h b{font-weight:600}.fd-warn-l{padding:2px 14px;font-size:13px;color:var(--muted)}
 .fd-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
 .fd-live{display:inline-flex;align-items:center;gap:8px;font:400 12px var(--mono);color:var(--muted)}
@@ -1746,7 +1747,13 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="btnrow"><button class="btn small" id="fd-save" type="button">Save account</button><button class="btn small ghost" id="fd-cancel" type="button">Cancel</button></div></div>
 <div class="hscroll fd-scroll" id="fd-acc"></div></div>
 <div class="hgrid2">
-<div class="hpanel"><div class="hp-h"><h3>Live status</h3><button class="btn small" id="fd-conn" type="button">Connect accounts</button></div><div id="fd-status"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Live status</h3><div class="fd-tools"><button class="btn small" id="fd-sadd" type="button">Add</button><button class="btn small" id="fd-conn" type="button">Connect accounts</button></div></div>
+<div class="fd-form" id="fd-sform" hidden>
+<div class="frow three"><div><label for="fd-s-firm">Prop firm</label><input type="text" id="fd-s-firm" list="fd-firms" maxlength="40"></div><div><label for="fd-s-size">Account size ($)</label><input type="number" id="fd-s-size" min="1" step="any"></div><div><label for="fd-s-phase">Phase</label><input type="text" id="fd-s-phase" maxlength="20" placeholder="e.g. FUNDED"></div><div><label for="fd-s-state">Status</label><input type="text" id="fd-s-state" maxlength="30" placeholder="e.g. Payout requested"></div>
+<div><label for="fd-s-profit">Profit now ($)</label><input type="number" id="fd-s-profit" step="any"></div><div><label for="fd-s-target">Profit target ($)</label><input type="number" id="fd-s-target" step="any"></div><div><label for="fd-s-dd">Drawdown used ($)</label><input type="number" id="fd-s-dd" step="any"></div><div><label for="fd-s-maxdd">Max drawdown ($)</label><input type="number" id="fd-s-maxdd" step="any"></div></div>
+<div class="err" id="fd-s-err" hidden></div>
+<div class="btnrow"><button class="btn small" id="fd-s-save" type="button">Save</button><button class="btn small ghost" id="fd-s-cancel" type="button">Cancel</button></div></div>
+<div id="fd-status"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>By firm</h3></div><div id="fd-firmlist"></div></div>
 </div>
 <div class="hpanel"><div class="hp-h"><h3>Pay-outs</h3><span class="mute" id="fd-paid" style="font-size:12px"></span></div>
@@ -4002,11 +4009,27 @@ function fdStatus(){
   if(!FD.status.length){var em=el("div","alempty");em.appendChild(el("b",null,"No live numbers yet"));em.appendChild(el("span",null,"Fill the Account Scaling System tables in Notion, or add profit and drawdown to an account here. Use Connect accounts to see how to get them live."));box.appendChild(em);return}
   FD.status.forEach(function(s){
     var d=el("div","fstat"),h=el("div","fstat-h");h.appendChild(el("b",null,(s.firm||"Account")+(s.size?" "+fdShort(s.size):"")));
-    h.appendChild(el("span",null,[s.phase,s.state,s.group].filter(Boolean).join(" · ")));d.appendChild(h);
+    h.appendChild(el("span",null,[s.phase,s.state,s.group].filter(Boolean).join(" · ")));
+    var ac=el("span","fstat-ac"),se=el("button","fact","Edit");se.type="button";se.onclick=function(){fdSOpen(s)};
+    var sx=el("button","fact","Remove");sx.type="button";sx.onclick=function(){fdSRemove(s)};ac.appendChild(se);ac.appendChild(sx);h.appendChild(ac);d.appendChild(h);
     if(s.target)d.appendChild(fdBar("Profit",s.profit||0,s.target,false,fdMoney(s.profit||0)+" / "+fdMoney(s.target)));
     else if(s.profit!==null&&s.profit!==undefined)d.appendChild(fdBar("Profit",0,1,false,fdMoney(s.profit)));
     if(s.maxdd)d.appendChild(fdBar("Drawdown",s.dd||0,s.maxdd,(s.dd||0)/s.maxdd>0.7,fdMoney(s.dd||0)+" / "+fdMoney(s.maxdd)));
     box.appendChild(d)})}
+var FDSEDIT="";
+function fdSOpen(s){
+  FDSEDIT=s?s.id:"";s=s||{};$("fd-sform").hidden=false;$("fd-s-err").hidden=true;
+  $("fd-s-firm").value=s.firm||"";$("fd-s-size").value=s.size||"";$("fd-s-phase").value=s.phase||"";$("fd-s-state").value=s.state||"";
+  ["profit","target","dd","maxdd"].forEach(function(k){$("fd-s-"+k).value=s[k]===null||s[k]===undefined?"":s[k]});$("fd-s-firm").focus()}
+function fdSSave(){
+  var f={firm:$("fd-s-firm").value,size:$("fd-s-size").value,phase:$("fd-s-phase").value,state:$("fd-s-state").value};
+  ["profit","target","dd","maxdd"].forEach(function(k){f[k]=$("fd-s-"+k).value});
+  var body=FDSEDIT?{action:"edit",id:FDSEDIT,fields:f}:{action:"status",status:f};
+  fdCall(body).then(function(s){FD=s;$("fd-sform").hidden=true;FDSEDIT="";fdRender()}).catch(function(e){var er=$("fd-s-err");er.textContent=e.message;er.hidden=false})}
+function fdSRemove(s){
+  /* a card that comes from one of your accounts only loses its numbers: the account and the funding totals stay */
+  var body=/^m-/.test(s.id)?{action:"edit",id:s.id,fields:{phase:"",state:"",profit:null,target:null,dd:null,maxdd:null}}:{action:"remove",id:s.id};
+  fdCall(body).then(function(r){FD=r;fdRender();nsNote("Removed",(s.firm||"Account")+" is no longer in Live status."+(/^s-/.test(s.id)?" Your Notion is untouched.":""))}).catch(function(e){nsNote("Funding",e.message)})}
 function fdFirms(){
   var box=$("fd-firmlist");box.textContent="";
   if(!FD.by_firm.length){box.appendChild(el("div","empty","No firms yet."));box.lastChild.style.padding="12px 14px";return}
@@ -4038,6 +4061,7 @@ function fdInit(){
   $("fd-add").onclick=function(){fdOpen(null)};
   $("fd-cancel").onclick=function(){$("fd-form").hidden=true;FDEDIT=""};
   $("fd-save").onclick=fdSave;
+  $("fd-sadd").onclick=function(){fdSOpen(null)};$("fd-s-cancel").onclick=function(){$("fd-sform").hidden=true;FDSEDIT=""};$("fd-s-save").onclick=fdSSave;
   function connToggle(){var p=$("fd-connpanel");p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:"smooth",block:"nearest"})}
   $("fd-conn").onclick=connToggle;$("fd-conn-top").onclick=connToggle;
   $("fd-edit").onclick=function(){var p=$("fd-numpanel");p.hidden=!p.hidden;if(!p.hidden&&FD){["evals","funded","all","cfd","futures"].forEach(function(k){$("fd-n-"+k).value=FD.custom[k]?FD.shown[k]:""});$("fd-n-all").focus()}};

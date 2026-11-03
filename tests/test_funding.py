@@ -159,6 +159,33 @@ class Keeper(unittest.TestCase):
             with self.assertRaises(funding.FundingError):
                 self.f.act({"action": "totals", "totals": bad})
 
+    def test_status_cards_can_be_added_edited_and_removed(self):
+        base = len(self.f.state()["status"])
+        s = self.f.act({"action": "status", "status": {"firm": "Topstep", "size": 50000, "phase": "EVAL", "profit": 800, "target": 3000, "dd": 200, "maxdd": 2000}})
+        mine = [x for x in s["status"] if x["source"] == "manual"][0]
+        self.assertEqual((len(s["status"]), mine["firm"], mine["profit"]), (base + 1, "Topstep", 800))
+        self.assertEqual(s["all"], 720000)                                  # a status card is not funding, so no totals move
+        s = self.f.act({"action": "edit", "id": mine["id"], "fields": {"profit": 1500}})
+        self.assertEqual([x for x in s["status"] if x["id"] == mine["id"]][0]["profit"], 1500)
+        nid = [x for x in s["status"] if x["source"] == "notion"][0]["id"]
+        s = self.f.act({"action": "edit", "id": nid, "fields": {"profit": 100}})
+        self.assertEqual([x for x in s["status"] if x["id"] == nid][0]["profit"], 100)
+        s = self.f.act({"action": "remove", "id": mine["id"]})
+        s = self.f.act({"action": "remove", "id": nid})
+        self.assertEqual(len(s["status"]), base - 1)
+        again = funding.Funding(self.tmp.name, lambda: self.doc)
+        self.assertEqual(len(again.state()["status"]), base - 1)
+        with self.assertRaises(funding.FundingError):
+            self.f.act({"action": "status", "status": {"size": 5}})
+
+    def test_clearing_the_numbers_of_an_account_keeps_the_account(self):
+        s = self.f.act({"action": "add", "account": {"firm": "Topstep", "market": "futures", "size": 50000, "stage": "funded", "profit": 10, "maxdd": 2000}})
+        mine = [a for a in s["accounts"] if a["source"] == "manual"][0]
+        self.assertTrue(any(x["id"] == mine["id"] for x in s["status"]))
+        s = self.f.act({"action": "edit", "id": mine["id"], "fields": {"phase": "", "state": "", "profit": None, "target": None, "dd": None, "maxdd": None}})
+        self.assertFalse(any(x["id"] == mine["id"] for x in s["status"]))
+        self.assertEqual(s["total"]["futures"]["funded"], 50000)
+
     def test_bad_input_is_refused(self):
         for body in ({"action": "add", "account": {"firm": "", "market": "cfd", "size": 5, "stage": "funded"}},
                      {"action": "add", "account": {"firm": "X", "market": "stocks", "size": 5, "stage": "funded"}},

@@ -23,6 +23,7 @@ STAGES = ("ongoing", "passed", "funded")
 STAGE_NAMES = {"ongoing": "In evaluation", "passed": "Passed, not activated", "funded": "Funded and active"}
 MAX_ACCOUNTS = 200
 MAX_PAYOUTS = 500
+MAX_STATUS = 100
 DEFAULT_GOAL = 1000000
 STATUS_FIELDS = ("phase", "profit", "target", "dd", "maxdd", "state")
 NUMBER_FIELDS = ("size", "profit", "target", "dd", "maxdd")
@@ -279,7 +280,7 @@ class Funding:
         return os.path.join(self.dir, FILE)
 
     def _load(self):
-        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "totals": {}, "seq": 0}
+        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "totals": {}, "status": [], "seq": 0}
         try:
             with open(self._path(), encoding="utf-8-sig") as fh:
                 doc = json.load(fh)
@@ -288,6 +289,7 @@ class Funding:
         if not isinstance(doc, dict):
             return out
         out["accounts"] = [a for a in doc.get("accounts") or [] if isinstance(a, dict) and a.get("id")][:MAX_ACCOUNTS]
+        out["status"] = [a for a in doc.get("status") or [] if isinstance(a, dict) and a.get("id")][:MAX_STATUS]
         out["payouts"] = [p for p in doc.get("payouts") or [] if isinstance(p, dict) and p.get("id")][:MAX_PAYOUTS]
         out["over"] = {str(k)[:60]: v for k, v in (doc.get("over") or {}).items() if isinstance(v, dict)} if isinstance(doc.get("over"), dict) else {}
         out["hidden"] = [str(x)[:60] for x in doc.get("hidden") or []][:1000]
@@ -325,6 +327,7 @@ class Funding:
         accounts = [merged(a) for a in n["accounts"] if a["id"] not in hidden] + [dict(a, source="manual") for a in self.my["accounts"]]
         payouts = [p for p in n["payouts"] if p["id"] not in hidden] + [dict(p, source="manual") for p in self.my["payouts"]]
         status = [merged(s) for s in n["status"] if s["id"] not in hidden]
+        status += [dict(a, group="Added by you", source="manual") for a in self.my["status"]]
         status += [dict(a, group="Added by you") for a in accounts if a["source"] == "manual" and any(a.get(k) is not None for k in ("profit", "dd", "target", "maxdd"))]
         goal = self.my["goal"] or n["goal"] or DEFAULT_GOAL
 
@@ -390,12 +393,21 @@ class Funding:
                 f = clean_fields(body.get("account"), full=True)
                 f["id"] = self._new_id("m")
                 m["accounts"].append(f)
+            elif action == "status":
+                if len(m["status"]) >= MAX_STATUS:
+                    raise FundingError("that is the most status cards that can be added by hand (%d)" % MAX_STATUS)
+                f = clean_fields(body.get("status"))
+                if not f.get("firm"):
+                    raise FundingError("firm is required")
+                f = {k: v for k, v in f.items() if k in STATUS_FIELDS + ("firm", "size", "note") and v is not None}
+                f["id"] = self._new_id("ms")
+                m["status"].append(f)
             elif action == "edit":
                 ident = str(body.get("id") or "")
                 f = clean_fields(body.get("fields"))
                 if not f:
                     raise FundingError("nothing to change")
-                mine = next((a for a in m["accounts"] if a["id"] == ident), None)
+                mine = next((a for a in m["accounts"] + m["status"] if a["id"] == ident), None)
                 if mine is not None:
                     mine.update(f)
                     for k in [k for k, v in mine.items() if v is None]:
@@ -407,10 +419,11 @@ class Funding:
                     o.update(f)
             elif action == "remove":
                 ident = str(body.get("id") or "")
-                before = len(m["accounts"]) + len(m["payouts"])
+                before = len(m["accounts"]) + len(m["payouts"]) + len(m["status"])
                 m["accounts"] = [a for a in m["accounts"] if a["id"] != ident]
                 m["payouts"] = [p for p in m["payouts"] if p["id"] != ident]
-                if len(m["accounts"]) + len(m["payouts"]) == before:
+                m["status"] = [a for a in m["status"] if a["id"] != ident]
+                if len(m["accounts"]) + len(m["payouts"]) + len(m["status"]) == before:
                     if ident not in m["hidden"]:
                         m["hidden"].append(ident[:60])                    # a Notion row: hidden here, untouched in Notion
             elif action == "restore":
@@ -443,6 +456,6 @@ class Funding:
                     raise FundingError("the goal must be a number above zero")
                 m["goal"] = tidy(g) if g else None
             else:
-                raise FundingError('action must be "add", "edit", "remove", "restore", "payout", "totals" or "goal"')
+                raise FundingError('action must be "add", "status", "edit", "remove", "restore", "payout", "totals" or "goal"')
             self._save()
             return self._state()
