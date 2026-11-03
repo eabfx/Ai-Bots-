@@ -220,7 +220,10 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in APP_FILES:                       # what the browser needs to install Kelly Terminal as an app: the icon, not your data
             data, kind = APP_FILES[url.path]
-            return self.send_bytes(200, data, kind, "no-store" if url.path in ("/sw.js", "/brain.js", "/brain.css") else "public, max-age=3600")
+            cache = ("no-store" if url.path in ("/sw.js", "/brain.js", "/brain.css")
+                     else "public, max-age=86400" if url.path.startswith("/fonts/")
+                     else "no-cache")                  # name, icons and manifest: the browser asks again, so a rename shows up at once
+            return self.send_bytes(200, data, kind, cache)
         if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
             return
         if url.path == "/":
