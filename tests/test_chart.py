@@ -160,3 +160,14 @@ class PageFeatures(unittest.TestCase):
     def test_the_chart_draws_zones_levels_and_the_live_price(self):
         for needle in ("function chDraw", "function chartLive", "/api/chart?symbol=", "My zones", "Levels"):
             self.assertIn(needle, self.page)
+
+
+class WindowsConfig(unittest.TestCase):
+    def test_a_config_file_saved_with_a_byte_order_mark_still_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "config.json")
+            with open(path, "w", encoding="utf-8-sig") as fh:
+                json.dump({"allowed_hosts": ["x.example"], "zones": {"days": 3}}, fh)
+            self.assertEqual(chart.z.read_config(path)["days"], 3)
+            d = chart.snapshot("XAUUSD", "15m", path, fetch=lambda p: payload(300, 900))
+            self.assertTrue(d["bars"])

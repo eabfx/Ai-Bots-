@@ -1049,7 +1049,7 @@ def read_config(path):
     cfg = json.loads(json.dumps(DEFAULTS))
     if path and os.path.exists(path):
         try:
-            with open(path, encoding="utf-8") as fh:
+            with open(path, encoding="utf-8-sig") as fh:       # utf-8-sig: Windows tools often save a file with an invisible marker at the start
                 doc = json.load(fh)
         except ValueError as e:
             raise ZoneError("%s is not valid JSON: %s" % (path, e))

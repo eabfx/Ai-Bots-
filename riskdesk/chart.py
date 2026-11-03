@@ -49,7 +49,7 @@ def _bars(sym, tf, offline=None, fetch=None, clock=time.time):
 def _saved(path, sym):
     """One market's list from a Zones app file (my_zones.json or my_levels.json). A missing or broken file is no list."""
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             doc = json.load(fh)
     except (OSError, ValueError):
         return []
