@@ -720,6 +720,18 @@ class TerminalLook(Server):
         self.assertIn("url(/fonts/geist.woff2)", page)
         self.assertNotIn("fonts.googleapis.com", page)
 
+    def test_text_sizes_stay_on_one_scale_with_no_half_pixels_and_titles_share_a_style(self):
+        import re
+        _, _, page = self.get("/")
+        scale = {10, 11, 12, 13, 14, 16, 20, 22, 24, 28, 32, 34}
+        sizes = {float(v) for v in re.findall(r"font-size:\s*([0-9.]+)px", page)}
+        sizes |= {float(v) for v in re.findall(r"font:\s*(?:italic\s+)?(?:\d{3}\s+)?([0-9.]+)px", page)}
+        odd = sorted(s for s in sizes if s <= 34 and s not in scale)
+        self.assertEqual(odd, [], "font sizes off the scale: %s" % odd)
+        self.assertNotRegex(page, r"font-weight:\s*700|font:\s*700 ")
+        self.assertGreaterEqual(page.count('<h2 class="pt"'), 6)       # every page title uses the one title style
+        self.assertIn("h2.pt{font:600 22px", page)
+
     def test_phone_and_tablet_rules_keep_the_tabs_reachable_and_content_clear_of_the_bar(self):
         _, _, page = self.get("/")
         for needle in ("@media(min-width:641px) and (max-width:900px)", "padding-bottom:calc(56px + env(safe-area-inset-bottom))",
