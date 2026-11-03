@@ -104,6 +104,7 @@ class LiveTicks:
         self.td = {"state": "off", "error": "", "used": 0, "day": ""}
         self.td_pause = 0.0
         self.spot_at = self.check_at = self.prev_at = 0.0
+        self.todo = []                  # second-source jobs waiting their turn, one per round
 
     # ---- what the page sees
     def poke(self):
@@ -251,48 +252,55 @@ class LiveTicks:
         return d
 
     def verify(self):
-        """Gold spot, the pair cross-checks and gold's previous close, each on its own timer. Returns how many calls it made."""
+        """One second-source call per round at most (so a burst never trips the per-minute limit): gold spot, gold's previous
+        close and the pair cross-checks each wait their turn on their own timers. Returns how many calls it made (0 or 1)."""
         price_call, quote_call = getattr(self.net, "twelve_price", None), getattr(self.net, "twelve", None)
         now = self.clock()
         if not price_call or now < self.td_pause:
             return 0
-        n = 0
-        if now - self.spot_at >= SPOT_EVERY:
+        if now - self.spot_at >= SPOT_EVERY and "spot" not in self.todo:
             self.spot_at = now
+            self.todo.append("spot")
+        if quote_call and now - self.prev_at >= SPOT_PREV_EVERY and "prev" not in self.todo:
+            self.prev_at = now
+            self.todo.append("prev")
+        if now - self.check_at >= VERIFY_EVERY and not any(j.startswith("pair:") for j in self.todo):
+            self.check_at = now
+            self.todo.extend("pair:" + key for key, _ in CHECK_PAIRS)
+        if not self.todo:
+            return 0
+        job = self.todo.pop(0)
+        if job == "spot":
             d = self._twelve(price_call, "XAU/USD", now)
-            n += 1
             try:
                 px = float(d["price"]) if d else None
             except (KeyError, TypeError, ValueError):
                 px = None
             if px:
                 self.spot = dict(self.spot or {}, price=px, got=now)
-        if self.td["state"] in ("limited", "error") or now < self.td_pause:
-            return n
-        if quote_call and now - self.prev_at >= SPOT_PREV_EVERY:
-            self.prev_at = now
+        elif job == "prev":
             d = self._twelve(quote_call, "XAU/USD", now)
-            n += 1
             try:
                 if d and d.get("previous_close") not in (None, "") and self.spot:
                     self.spot["prev"] = float(d["previous_close"])
+                elif d and d.get("previous_close") not in (None, ""):
+                    self.todo.append("prev")                         # no spot yet to attach it to: try again next round
             except (TypeError, ValueError):
                 pass
-        if now - self.check_at >= VERIFY_EVERY and now >= self.td_pause:
-            self.check_at = now
-            for key, sym in CHECK_PAIRS:
-                d = self._twelve(price_call, sym, now)
-                n += 1
-                try:
-                    other = float(d["price"]) if d else None
-                except (KeyError, TypeError, ValueError):
-                    other = None
-                ours = (self.quotes.get(key) or {}).get("price")
-                if other and ours:
-                    pips = (other - ours) * 10000.0
-                    self.checks[key] = {"other": other, "ours": ours, "diff": round(pips, 1), "unit": "pips", "at": now,
-                                        "ok": abs(pips) <= PIP_TOLERANCE, "source": "Twelve Data"}
-        return n
+        else:
+            key = job[5:]
+            sym = dict(CHECK_PAIRS)[key]
+            d = self._twelve(price_call, sym, now)
+            try:
+                other = float(d["price"]) if d else None
+            except (KeyError, TypeError, ValueError):
+                other = None
+            ours = (self.quotes.get(key) or {}).get("price")
+            if other and ours:
+                pips = (other - ours) * 10000.0
+                self.checks[key] = {"other": other, "ours": ours, "diff": round(pips, 1), "unit": "pips", "at": now,
+                                    "ok": abs(pips) <= PIP_TOLERANCE, "source": "Twelve Data"}
+        return 1
 
     # ---- the background loop
     def start(self):

@@ -992,8 +992,8 @@ class LivePrices(Server):
         prices = {"XAU/USD": "3912.40", "EUR/USD": "1.11798", "GBP/USD": "1.34140"}
         lt = self.make_checked(lambda sym: json.dumps({"price": prices[sym]}))
         lt.round()
-        calls = lt.verify()
-        self.assertEqual(calls, 4)                                                # gold spot, gold previous close, EUR/USD, GBP/USD
+        calls = sum(lt.verify() for _ in range(6))                                # one call per round: spot, previous close, EUR/USD, GBP/USD
+        self.assertEqual(calls, 4)
         st = lt.state()
         self.assertEqual(st["spot"]["price"], 3912.4)
         self.assertAlmostEqual(st["spot"]["change"], 22.4)
