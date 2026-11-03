@@ -776,8 +776,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--hover);box-shadow:0 0
 @media(prefers-reduced-motion:reduce){.seg.ready::before{transition:none}.t-r,.t-r:hover{transform:none}}
 @keyframes tk{from{background:var(--tkc)}to{background:transparent}}
 /* a price that just changed lights up in its direction and fades, like a terminal */
-@keyframes flup{0%{background:color-mix(in srgb,var(--up) 42%,transparent);color:var(--up)}100%{background:transparent}}
-@keyframes fldn{0%{background:color-mix(in srgb,var(--down) 42%,transparent);color:var(--down)}100%{background:transparent}}
+@keyframes flup{0%{background:color-mix(in srgb,var(--up) 42%,transparent);color:var(--up)}100%{background:var(--rest,transparent)}}
+@keyframes fldn{0%{background:color-mix(in srgb,var(--down) 42%,transparent);color:var(--down)}100%{background:var(--rest,transparent)}}
 .flup{animation:flup 1s ease-out}.fldn{animation:fldn 1s ease-out}
 .islive::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--up);margin-right:6px;vertical-align:1px;animation:dotbeat 1.6s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){.flup,.fldn,.islive::before{animation:none}}
@@ -1024,6 +1024,45 @@ label{font:500 12px/1.4 var(--sans);color:var(--muted)}
 .hnum .v,.stat .v,.px{font-variant-numeric:tabular-nums}
 .hnum .s,.stat .s,.jsub{font:400 12px/1.4 var(--sans);color:var(--muted)}
 .hnum .k,.stat .k{font:500 11px/1.2 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+/* ===== quote monitor and capital flow, premium pass: banded rows, heat on the % cell, a trend line with a live dot, bars that grow in and follow the price ===== */
+table.qm{border-collapse:separate;border-spacing:0}
+table.qm th{background:var(--panel2);border-bottom:1px solid var(--line);z-index:1}
+table.qm td{padding:6px 9px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+table.qm tbody tr{transition:background .15s}
+table.qm tbody tr:nth-child(even){background:color-mix(in srgb,var(--text) 2.5%,transparent)}
+table.qm tbody tr:hover{background:var(--panel2)}
+table.qm td.px{font-weight:600;color:var(--text);position:relative}
+table.qm td.up.px,table.qm td.down.px{color:var(--text)}
+table.qm td[data-f=px].flup::after,table.qm td[data-f=px].fldn::after,.tile .tp.flup::after,.tile .tp.fldn::after{font-size:10px;font-weight:400;animation:arw 1.3s ease-out forwards}
+table.qm td[data-f=px]::after{position:absolute;left:8px;top:50%;margin-top:-6px;line-height:12px}
+.tile .tp.flup::after,.tile .tp.fldn::after{margin-left:6px}
+table.qm td[data-f=px].flup::after,.tile .tp.flup::after{content:"\25B2";color:var(--up)}
+table.qm td[data-f=px].fldn::after,.tile .tp.fldn::after{content:"\25BC";color:var(--down)}
+@keyframes arw{0%,65%{opacity:1}100%{opacity:0}}
+table.qm td[data-heat]{transition:background .6s}
+table.qm td.qt{width:84px;padding-top:2px;padding-bottom:2px}
+.mspk{display:block;width:72px;height:20px;margin-left:auto;overflow:visible}
+.mspk circle{filter:drop-shadow(0 0 3px currentColor)}
+table.qm td.qr{width:76px}
+.qbar{height:4px;background:linear-gradient(90deg,color-mix(in srgb,var(--down) 55%,var(--line)),var(--line) 38%,var(--line) 62%,color-mix(in srgb,var(--up) 55%,var(--line)))}
+.qbar i{height:10px;top:-3px;transition:left .7s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 6px var(--text)}
+table.qm.enter tbody tr{animation:qin .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*45ms)}
+@keyframes qin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.flowbox{display:flex;flex-direction:column}
+.flowrow{grid-template-columns:76px 72px minmax(40px,1fr) 62px;gap:12px;padding:7px 0;font:12px var(--mono);border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);position:relative}
+.flowrow:last-child{border-bottom:0}
+.flowrow .fn b{font-weight:600;color:var(--text)}
+.flowrow .fp{text-align:right;color:var(--muted);padding:0 2px}
+.flowrow .pct{text-align:right;font-weight:600;padding:0 2px}
+.flowrow .pct.up{color:var(--up)}.flowrow .pct.down{color:var(--down)}.flowrow .pct.flat{color:var(--muted)}
+.flowbar{height:6px;background:var(--panel2);background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),var(--line) calc(25% - 1px),var(--line) 25%)}
+.flowbar i{transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.flowbar i.up{background:linear-gradient(90deg,color-mix(in srgb,var(--up) 22%,transparent),var(--up));box-shadow:0 0 10px -2px var(--up)}
+.flowbar i.down{background:linear-gradient(270deg,color-mix(in srgb,var(--down) 22%,transparent),var(--down));box-shadow:0 0 10px -2px var(--down)}
+.hmood{align-items:center;gap:10px}
+.hmood b{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border:1px solid currentColor;border-radius:2px}
+.hmood b.up{background:color-mix(in srgb,var(--up) 14%,transparent)}.hmood b.down{background:color-mix(in srgb,var(--down) 14%,transparent)}
+@media(prefers-reduced-motion:reduce){table.qm.enter tbody tr{animation:none}.flowbar i,.qbar i{transition:none}td[data-f=px]::after,.tp::after{animation:none!important}}
 </style>
 </head>
 <body>
@@ -2678,15 +2717,37 @@ function dur(min){
   return d>0?d+"d "+h+"h":h>0?h+"h "+m+"m":m+"m"}
 function pctClass(p){return p===null||p===undefined?"":p>0?"up":p<0?"down":"flat"}
 function pctText(p){return p===null||p===undefined||!isFinite(p)?"-":(p>0?"+":"")+p.toFixed(2)+"%"}
+function sparkPts(vals,w,h,pad){
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),span=hi-lo||1;
+  return vals.map(function(v,i){return[i/(vals.length-1)*w,h-pad-(v-lo)/span*(h-2*pad)]})}
+function sparkColor(cls){return cls==="down"?"var(--down)":cls==="flat"?"var(--flat)":"var(--up)"}
 function sparkline(vals,cls){
   var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
   svg.setAttribute("viewBox","0 0 200 46");svg.setAttribute("preserveAspectRatio","none");svg.setAttribute("aria-hidden","true");
   if(!vals||vals.length<2)return svg;
-  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),span=hi-lo||1,pts=vals.map(function(v,i){
-    return (i/(vals.length-1)*200).toFixed(1)+","+(42-(v-lo)/span*38).toFixed(1)});
-  var p=document.createElementNS(ns,"polyline");p.setAttribute("points",pts.join(" "));p.setAttribute("fill","none");
-  p.setAttribute("stroke",cls==="down"?"var(--down)":cls==="flat"?"var(--flat)":"var(--up)");p.setAttribute("stroke-width","2");p.setAttribute("vector-effect","non-scaling-stroke");
+  svg.setAttribute("data-f","spk");svg.setAttribute("data-w","200");svg.setAttribute("data-h","46");svg.setAttribute("data-pad","4");
+  var p=document.createElementNS(ns,"polyline");p.setAttribute("points",sparkPts(vals,200,46,4).map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" "));p.setAttribute("fill","none");
+  p.setAttribute("stroke",sparkColor(cls));p.setAttribute("stroke-width","2");p.setAttribute("vector-effect","non-scaling-stroke");
   svg.appendChild(p);return svg}
+/* the small trend line in the quote monitor: the last point is a dot that moves with the live price */
+function miniSpark(vals,cls){
+  var ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 72 20");svg.setAttribute("class","mspk");svg.setAttribute("aria-hidden","true");
+  if(!vals||vals.length<2)return svg;
+  svg.setAttribute("data-f","spk");svg.setAttribute("data-mini","1");svg.setAttribute("data-w","72");svg.setAttribute("data-h","20");svg.setAttribute("data-pad","3");
+  var pts=sparkPts(vals,72,20,3),last=pts[pts.length-1],c=sparkColor(cls);
+  var pl=document.createElementNS(ns,"polyline");pl.setAttribute("points",pts.map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" "));
+  pl.setAttribute("fill","none");pl.setAttribute("stroke",c);pl.setAttribute("stroke-width","1.4");pl.setAttribute("stroke-linejoin","round");svg.appendChild(pl);
+  var dot=document.createElementNS(ns,"circle");dot.setAttribute("r","2");dot.setAttribute("cx",last[0].toFixed(1));dot.setAttribute("cy",last[1].toFixed(1));dot.setAttribute("fill",c);svg.appendChild(dot);
+  return svg}
+function sparkRedraw(svg,vals,cls){
+  var pl=svg.querySelector("polyline");if(!pl||vals.length<2)return;
+  var w=+svg.getAttribute("data-w"),h=+svg.getAttribute("data-h"),pad=+svg.getAttribute("data-pad"),pts=sparkPts(vals,w,h,pad),c=sparkColor(cls);
+  pl.setAttribute("points",pts.map(function(a){return a[0].toFixed(1)+","+a[1].toFixed(1)}).join(" "));pl.setAttribute("stroke",c);
+  var dot=svg.querySelector("circle");if(dot){var l=pts[pts.length-1];dot.setAttribute("cx",l[0].toFixed(1));dot.setAttribute("cy",l[1].toFixed(1));dot.setAttribute("fill",c)}}
+/* the month of daily closes with the live price as the last point */
+function qSeries(q){var sp=(q.spark||[]).filter(function(v){return isFinite(v)});if(sp.length)sp[sp.length-1]=q.price;return sp}
+function rangePos(q){var sp=qSeries(q);if(sp.length<10)return null;var lo=Math.min.apply(null,sp),hi=Math.max.apply(null,sp);return hi>lo?(q.price-lo)/(hi-lo)*100:50}
 function quoteBy(d,key){for(var i=0;i<d.quotes.length;i++)if(d.quotes[i].key===key)return d.quotes[i];return null}
 function sessionStrip(d){
   var ss=el("div","msess");
@@ -2694,15 +2755,33 @@ function sessionStrip(d){
     h.appendChild(el("span","st"+(s.open?" open":""),s.open?"OPEN":"CLOSED"));b.appendChild(h);
     b.appendChild(el("span","mute",(s.open?"closes in ":"opens in ")+dur(s.minutes)));ss.appendChild(b)});
   return ss}
+/* Capital flow: every market by how far it moved. The bars grow in once, then follow the live price; a row that overtakes another slides past it. */
+var flowBoxes=[];
 function flowRows(box,d,limit){
   var qs=d.quotes.filter(function(q){return q.pct!==null}).sort(function(a,b){return Math.abs(b.pct)-Math.abs(a.pct)});
   if(limit)qs=qs.slice(0,limit);
-  var big=qs.length?Math.max(1,Math.abs(qs[0].pct)):1;
-  qs.forEach(function(q){var r=el("div","flowrow");r.appendChild(el("span",null,q.name));
-    var bar=el("div","flowbar"),i=el("i",pctClass(q.pct));i.style.width=Math.min(50,Math.abs(q.pct)/big*50)+"%";bar.appendChild(i);r.appendChild(bar);
-    r.appendChild(el("span","pct "+(q.pct>0?"pos":q.pct<0?"neg":""),pctText(q.pct)));
-    r.lastChild.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";box.appendChild(r)});
-  if(!qs.length)box.appendChild(el("div","empty","No prices came back."))}
+  var big=qs.length?Math.max(1,Math.abs(qs[0].pct)):1,bars=[];
+  box.classList.add("flowbox");
+  qs.forEach(function(q){var r=el("div","flowrow");r.setAttribute("data-k",q.key);r.setAttribute("data-m",q.key);
+    var nm=el("span","fn");nm.appendChild(el("b",null,TILE_NAMES[q.key]||q.name));nm.title=q.name;r.appendChild(nm);
+    var px=el("span","fp",fmt(q.price,q.digits));px.setAttribute("data-f","px");r.appendChild(px);
+    var bar=el("div","flowbar"),i=el("i",pctClass(q.pct));i.style.width="0%";bar.appendChild(i);r.appendChild(bar);bars.push([i,Math.min(50,Math.abs(q.pct)/big*50)]);
+    var pc=el("span","pct "+pctClass(q.pct),pctText(q.pct));pc.setAttribute("data-f","pct");r.appendChild(pc);box.appendChild(r)});
+  if(!qs.length)box.appendChild(el("div","empty","No prices came back."));
+  flowBoxes=flowBoxes.filter(function(b){return document.body.contains(b.box)&&b.box!==box});flowBoxes.push({box:box,d:d,limit:limit});
+  requestAnimationFrame(function(){requestAnimationFrame(function(){bars.forEach(function(b,n){b[0].style.transitionDelay=(n*45)+"ms";b[0].style.width=b[1]+"%"})})})}
+function flowUpdate(){
+  flowBoxes.forEach(function(fb){
+    var rows=[].slice.call(fb.box.querySelectorAll(".flowrow"));if(!rows.length)return;
+    var qs=rows.map(function(r){return{r:r,q:quoteBy(fb.d,r.getAttribute("data-m"))}}).filter(function(x){return x.q&&x.q.pct!==null});
+    var big=Math.max(1,Math.max.apply(null,qs.map(function(x){return Math.abs(x.q.pct)})));
+    qs.forEach(function(x){var i=x.r.querySelector(".flowbar i");i.style.transitionDelay="0ms";i.className=pctClass(x.q.pct);i.style.width=Math.min(50,Math.abs(x.q.pct)/big*50)+"%"});
+    var sorted=qs.slice().sort(function(a,b){return Math.abs(b.q.pct)-Math.abs(a.q.pct)}),same=sorted.every(function(x,n){return x.r===qs[n].r});
+    if(same||REDUCED)return;
+    var top={};rows.forEach(function(r){top[r.getAttribute("data-m")]=r.getBoundingClientRect().top});
+    sorted.forEach(function(x){fb.box.appendChild(x.r)});
+    sorted.forEach(function(x){var dy=top[x.r.getAttribute("data-m")]-x.r.getBoundingClientRect().top;if(!dy)return;
+      x.r.style.transition="none";x.r.style.transform="translateY("+dy+"px)";void x.r.offsetWidth;x.r.style.transition="transform .55s cubic-bezier(.2,.8,.2,1)";x.r.style.transform=""})})}
 /* real numbers under each market: yesterday's close, the 5 day and 1 month moves, and where the price sits in the 1 month range */
 function mkFacts(q){
   var box=el("div","hfacts"),sp=(q.spark||[]).filter(function(v){return isFinite(v)});
@@ -2828,7 +2907,7 @@ function deskRender(d){
   return wrap}
 /* the hourly market read: written by Kelly Terminal itself every hour from live data, so it is here when you open the page */
 var briefNext=0,briefErr="";
-window.rdState=function(){return{d:macroData,b:macroBrief,n:briefNext}};
+window.rdState=function(){return{d:macroData,b:macroBrief,n:briefNext,live:liveClock}};
 function briefNote(){
   var n=$("h-mk-note");if(!n)return;
   var t=function(ms){var d=new Date(ms);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)};
@@ -2957,24 +3036,27 @@ function tilesRender(d){
     var tcs=el("span","tc "+pctClass(q.pct),pctText(q.pct));tcs.setAttribute("data-f","pct");t.appendChild(tcs);
     t.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};box.appendChild(t)})}
 var lastTile={};
+var qmShown=false;
 function qmRender(d){
-  var tb=$("h-qm");if(!tb)return;tb.textContent="";
-  var th=el("thead"),hr=el("tr");["Market","Last","Chg","%","5d","1m","Range","AI bias"].forEach(function(h,i){var c=el("th",i>0&&i<6?"r":"",h);hr.appendChild(c)});th.appendChild(hr);tb.appendChild(th);
+  var tb=$("h-qm");if(!tb)return;tb.textContent="";tb.classList.toggle("enter",!qmShown);qmShown=true;
+  var th=el("thead"),hr=el("tr");["Market","Last","Chg","%","5D","1M","Trend","Range","AI bias"].forEach(function(h,i){var c=el("th",i>0&&i<6?"r":"",h);hr.appendChild(c)});th.appendChild(hr);tb.appendChild(th);
   var body=el("tbody"),lab={};MARKETS.forEach(function(m){lab[m[0]]=m[2]});
   var bi=macroBrief&&macroBrief.bias||{};
-  d.quotes.forEach(function(q){
-    var sp=(q.spark||[]).filter(function(v){return isFinite(v)}),tr=el("tr"),cls=pctClass(q.pct);
+  d.quotes.forEach(function(q,row){
+    var sp=qSeries(q),tr=el("tr"),cls=pctClass(q.pct);
     function td(txt,c){var x=el("td",c||"",txt);tr.appendChild(x);return x}
-    tr.setAttribute("data-k",q.key);
-    var n=td(TILE_NAMES[q.key]||q.key);n.title=q.name;n.className="qn";
-    td(fmt(q.price,q.digits),"r").setAttribute("data-f","px");
+    tr.setAttribute("data-k",q.key);tr.style.setProperty("--n",row);
+    var n=td("");n.className="qn";n.title=q.name;n.appendChild(el("b",null,TILE_NAMES[q.key]||q.key));
+    td(fmt(q.price,q.digits),"r px").setAttribute("data-f","px");
     td(q.change===null||q.change===undefined?"-":(q.change>0?"+":"")+fmt(q.change,q.digits),"r "+cls).setAttribute("data-f","chg");
-    td(pctText(q.pct),"r "+cls).setAttribute("data-f","pct");
+    var pc=td(pctText(q.pct),"r "+cls);pc.setAttribute("data-f","pct");pc.setAttribute("data-heat","1");heat(pc,q.pct);
     var f5=sp.length>=6?(q.price/sp[sp.length-6]-1)*100:null,f1=sp.length>=15?(q.price/sp[0]-1)*100:null;
-    td(f5===null?"-":pctText(f5),"r "+(f5===null?"":pctClass(f5)));td(f1===null?"-":pctText(f1),"r "+(f1===null?"":pctClass(f1)));
-    var rg=td("","qr");
-    if(sp.length>=10){var lo=Math.min.apply(null,sp.concat([q.price])),hi=Math.max.apply(null,sp.concat([q.price])),pos=hi>lo?(q.price-lo)/(hi-lo)*100:50,
-      bar=el("div","qbar"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,pos))+"%";bar.appendChild(dot);rg.appendChild(bar);rg.title="Position in the 1 month range"}
+    var c5=td(f5===null?"-":pctText(f5),"r "+(f5===null?"":pctClass(f5)));c5.setAttribute("data-f","d5");
+    var c1=td(f1===null?"-":pctText(f1),"r "+(f1===null?"":pctClass(f1)));c1.setAttribute("data-f","m1");
+    var tc=td("","qt");if(sp.length>=2)tc.appendChild(miniSpark(sp,cls));
+    var rg=td("","qr");rg.setAttribute("data-f","rg");
+    var rp=rangePos(q);
+    if(rp!==null){var bar=el("div","qbar"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,rp))+"%";bar.appendChild(dot);rg.appendChild(bar);rg.title="Position in the 1 month range"}
     var a=bi[lab[q.key]],bc=td("");
     if(a){bc.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat"),a.bias));
       if(a.confidence!==null&&a.confidence!==undefined)bc.appendChild(el("span","qcf",a.confidence+"%"))}
@@ -2987,6 +3069,9 @@ var lastPx={};      /* the last price shown for each market, so a change can fla
    changed is rewritten in place and flashes green (up) or red (down). Nothing is invented: a price that did not move stays still. */
 var liveLast={},liveAtMs=0,liveBusy=false,liveClock="",REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function flash(n,dir){if(!n||REDUCED)return;n.classList.remove("flup","fldn");void n.offsetWidth;n.classList.add(dir>0?"flup":"fldn")}
+function heat(n,pct){
+  var c=pct>0?"var(--up)":pct<0?"var(--down)":"transparent",a=Math.round(Math.min(1,Math.abs(pct||0)/2.5)*24),bg=a?"color-mix(in srgb,"+c+" "+a+"%,transparent)":"";
+  n.style.background=bg;n.style.setProperty("--rest",bg||"transparent")}
 function paintQuote(q,dir){
   var roots=document.querySelectorAll('[data-k="'+q.key+'"]');
   for(var i=0;i<roots.length;i++){var fs=roots[i].querySelectorAll("[data-f]");
@@ -2994,11 +3079,16 @@ function paintQuote(q,dir){
       if(f==="px"){n.textContent=fmt(q.price,q.digits);if(n.style.color)n.style.color=q.pct>0?"var(--up)":q.pct<0?"var(--down)":"";
         if(/\b(up|down|flat)\b/.test(n.className))n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}
       else if(f==="chg"){if(q.change!==null&&q.change!==undefined){n.textContent=(q.change>0?"+":"")+fmt(q.change,q.digits);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+tone;flash(n,dir)}}
-      else if(f==="pct"){n.textContent=pctText(q.pct);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+(tone?" "+tone:"");flash(n,dir)}}}}
+      else if(f==="pct"){n.textContent=pctText(q.pct);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+(tone?" "+tone:"");if(n.hasAttribute("data-heat"))heat(n,q.pct);flash(n,dir)}
+      else if(f==="d5"||f==="m1"){var sv=qSeries(q),a=f==="d5"?(sv.length>=6?sv[sv.length-6]:null):(sv.length>=15?sv[0]:null);
+        if(a){var ch=(q.price/a-1)*100;n.textContent=pctText(ch);n.className=n.className.replace(/\b(up|down|flat)\b/g,"").trim()+" "+pctClass(ch)}}
+      else if(f==="rg"){var rp=rangePos(q),dt=n.querySelector("i");if(rp!==null&&dt)dt.style.left=Math.max(2,Math.min(98,rp))+"%"}
+      else if(f==="spk"){var ss=qSeries(q);if(ss.length>=2)sparkRedraw(n,ss,tone)}}}}
 function liveApply(d,quotes){
   var moved=0;
   d.quotes.forEach(function(q){var t=quotes[q.key];if(!t||!isFinite(t.price)||t.price===q.price)return;
     var dir=t.price>q.price?1:-1;q.price=t.price;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}moved++;paintQuote(q,dir)});
+  if(moved)flowUpdate();
   return moved}
 function liveMerge(d){        /* a fresh snapshot must not roll a price back to something older than the last live tick */
   if(Date.now()-liveAtMs>20000)return;
@@ -3282,7 +3372,7 @@ jLoad();
       if(more){el.appendChild(document.createTextNode(" "+more[0]+" "));var c=document.createElement("b");c.textContent=more[1];el.appendChild(c)}}
     put($("sb-clock"),"Dublin","b",dub);
     var st=window.rdState?window.rdState():{};
-    if(st.d)put($("sb-px"),"Prices","ok","live",["as of",liveClock||st.d.as_of]);else put($("sb-px"),"Prices","bad","waiting");
+    if(st.d)put($("sb-px"),"Prices","ok","live",["as of",st.live||st.d.as_of]);else put($("sb-px"),"Prices","bad","waiting");
     if(st.b&&st.b.at)put($("sb-ai"),"AI read","b",hm(st.b.at*1000),st.n?["next",hm(st.n*1000)]:null);else put($("sb-ai"),"AI read","bad","none yet")}
   var bk={};function loadBk(){fetch("/api/backup").then(function(r){return r.json()}).then(function(d){bk=d||{}}).catch(function(){})}
   function bkShow(){var el=$("sb-bk");if(!el)return;
