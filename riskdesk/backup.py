@@ -82,6 +82,9 @@ class Backups:
                 if extra:
                     os.makedirs(extra, exist_ok=True)
                     shutil.copy2(final, os.path.join(extra, os.path.basename(final)))
+                    older = sorted(n for n in os.listdir(extra) if NAME.match(n))        # the second folder keeps the newest 60
+                    for n in older[:-60]:
+                        os.remove(os.path.join(extra, n))
                 for old in self.listing()[:-self.keep]:
                     os.remove(os.path.join(self.folder(), old["name"]))
                 self.error = ""

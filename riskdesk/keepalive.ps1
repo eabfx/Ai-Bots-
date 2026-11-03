@@ -10,6 +10,8 @@ if (-not $py) { $py = (Get-Command python.exe).Source }
 $logDir = Join-Path $root "trader"
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $log = Join-Path $logDir "server-restarts.log"
+# the watcher sends a phone alert if the server or kellyterminal.com stops answering (see watch.ps1)
+Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ('"' + (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "watch.ps1") + '"') -WorkingDirectory $root -WindowStyle Hidden
 while ($true) {
   $p = Start-Process -FilePath $py -ArgumentList "riskdesk\dashboard.py", "--no-browser" -WorkingDirectory $root -WindowStyle Hidden -PassThru
   $p.WaitForExit()

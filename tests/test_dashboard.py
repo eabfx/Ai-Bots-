@@ -763,6 +763,11 @@ class TerminalLook(Server):
         self.assertIn("WaitForExit", keeper)
         self.assertIn("server-restarts.log", keeper)
         self.assertIn("keepalive.ps1", (here / "stop-server.ps1").read_text())
+        self.assertIn("watch.ps1", keeper)                            # the watcher that sends phone alerts is started with the keeper
+        watch = (here / "watch.ps1").read_text()
+        self.assertIn("push_topic.txt", watch)                        # same private ntfy topic as Phone alerts, silent until that is on
+        self.assertIn("kellyterminal.com/version.json", watch)
+        self.assertIn("watch.ps1", (here / "stop-server.ps1").read_text())
         self.assertIn("Set-KellyWindowId", ps)                        # the window gets its own taskbar identity and icon, not Chrome's
         self.assertIn("KellyTerminal.App", (here / "kellyid.ps1").read_text())
         self.assertIn("Set-ShortcutId", (here / "install-app.ps1").read_text())
@@ -849,6 +854,19 @@ class DailyBackup(unittest.TestCase):
             json.dump({"backup_copy_to": extra}, fh)
         name = self.make().run()
         self.assertTrue(os.path.exists(os.path.join(extra, name)))
+
+    def test_the_second_folder_keeps_only_the_newest_sixty(self):
+        import tempfile
+        extra = tempfile.mkdtemp()
+        for i in range(65):
+            open(os.path.join(extra, "riskdesk-20200101-%04d.zip" % i), "w").close()
+        open(os.path.join(extra, "notes.txt"), "w").close()      # not ours: never touched
+        with open(os.path.join(self.dir, "config.json"), "w") as fh:
+            json.dump({"backup_copy_to": extra}, fh)
+        self.make().run()
+        zips = [n for n in os.listdir(extra) if n.endswith(".zip")]
+        self.assertEqual(len(zips), 60)
+        self.assertIn("notes.txt", os.listdir(extra))
 
     def test_a_failure_is_reported_not_raised(self):
         afile = os.path.join(self.dir, "config.json")           # a file where a folder is needed, so making backups/ fails
