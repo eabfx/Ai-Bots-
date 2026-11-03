@@ -279,7 +279,7 @@ def gemini_chat(system, messages, key, model, post, clock=time.monotonic, max_to
                        "generationConfig": {"maxOutputTokens": max_tokens}}).encode("utf-8")
     headers = {"x-goog-api-key": key, "content-type": "application/json"}
     models = [model] + [m for m in GEMINI_FALLBACKS if m != model]
-    start, last = clock(), "no answer"
+    start, last, partial = clock(), "no answer", ""
     for name in models:
         if clock() - start > GEMINI_BUDGET:
             break
@@ -294,14 +294,22 @@ def gemini_chat(system, messages, key, model, post, clock=time.monotonic, max_to
             last = gemini_error(status, text)
             continue                                            # busy, over the free limit or retired: try the next one
         try:
-            parts = json.loads(text)["candidates"][0]["content"]["parts"]
+            cand = json.loads(text)["candidates"][0]
+            parts = cand["content"]["parts"]
             answer = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
         except (ValueError, KeyError, IndexError, TypeError, AttributeError):
             last = "Google's answer was not in the form expected (it may have been blocked)."
             continue
+        if answer and cand.get("finishReason") == "MAX_TOKENS":
+            # cut off (the model's own thinking can use up the allowance): try the next model, keep the longest piece as a last resort
+            partial = max(partial, answer, key=len)
+            last = "the answer was cut off"
+            continue
         if answer:
             return answer
         last = "Google sent an empty answer."
+    if partial:
+        return partial
     raise CoachError("Google's models are all busy or not answering right now (%s). Wait a minute and try "
                      "again." % last)
 
@@ -434,7 +442,7 @@ def generate(system, messages, pv, post=api_post, max_tokens=1400):
     if not pv["key"]:
         raise need_key()
     if pv["name"] == "gemini":
-        return gemini_chat(system, messages, pv["key"], pv["model"], post, max_tokens=max(max_tokens, 4000))
+        return gemini_chat(system, messages, pv["key"], pv["model"], post, max_tokens=max(max_tokens, 8000))
     return claude_chat(system, messages, pv["key"], pv["model"], post, max_tokens)
 
 

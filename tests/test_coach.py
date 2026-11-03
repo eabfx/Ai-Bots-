@@ -278,6 +278,18 @@ class Gemini(unittest.TestCase):
         self.assertEqual([u.split("/models/")[1].split(":")[0] for u in urls],
                          ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"])
 
+    def test_a_cut_off_answer_tries_the_next_model_and_keeps_the_longest_piece_as_a_last_resort(self):
+        def cut(text):
+            return lambda url, headers, body: (200, json.dumps({"candidates": [{"finishReason": "MAX_TOKENS", "content": {"parts": [{"text": text}]}}]}))
+        urls = []
+
+        def post(url, headers, body):
+            urls.append(url)
+            return cut("Headline: cut")(url, headers, body) if len(urls) == 1 else self.reply("Headline: whole answer.")(url, headers, body)
+        self.assertEqual(coach.gemini_chat("s", [{"role": "user", "content": "q"}], "k", "gemini-3.8-flash", post), "Headline: whole answer.")
+        self.assertEqual(len(urls), 2)
+        self.assertEqual(coach.gemini_chat("s", [{"role": "user", "content": "q"}], "k", "m", cut("Only the start")), "Only the start")
+
     def test_when_every_model_fails_the_message_says_to_wait_and_try_again(self):
         calls = []
         with self.assertRaises(coach.CoachError) as cm:
