@@ -488,6 +488,9 @@ BRIEF_LABELS = ["Headline", "Overview", "Mood", "Tone", "Gold and MGC", "Nasdaq 
                 "Event notes", "One thing to check on your own charts"]
 
 
+MARKET_LABELS = ("Gold and MGC", "Nasdaq (NQ)", "EURUSD", "GBPUSD")
+
+
 def split_brief(text):
     """The brief's labelled parts as {label: text}. Empty when the answer did not follow the format, so the page
     shows it whole instead."""
@@ -501,6 +504,19 @@ def split_brief(text):
         end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
         label = next(l for l in BRIEF_LABELS if l.lower() == m.group(1).lower())
         out.setdefault(label, text[m.end():end].strip())
+    # some answers leave out the four market labels and just run four Bias blocks in the order asked for: read them in that order
+    if not any(l in out for l in MARKET_LABELS):
+        biases_at = list(re.finditer(r"(?im)^[ \t#*]*Bias[ \t*]*:", text))
+        if len(biases_at) == len(MARKET_LABELS):
+            starts = [m.start() for m in marks]
+            for k, bm in enumerate(biases_at):
+                nxt = biases_at[k + 1].start() if k + 1 < len(biases_at) else min([s for s in starts if s > bm.start()] or [len(text)])
+                out[MARKET_LABELS[k]] = text[bm.start():nxt].strip()
+            for i, m in enumerate(marks):                       # the part that swallowed the blocks keeps only what came before them
+                end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
+                if m.end() <= biases_at[0].start() < end:
+                    label = next(l for l in BRIEF_LABELS if l.lower() == m.group(1).lower())
+                    out[label] = text[m.end():biases_at[0].start()].strip()
     return out
 
 
@@ -569,7 +585,8 @@ Ground rules:
 - Mood has exactly two lines:
   Mood: Risk-on or Risk-off or Mixed
   Confidence: a whole number from 0 to 100
-- Each of the four market parts must follow this exact shape, one labelled line each:
+- Each of the four market parts starts with its own label on a line by itself (Gold and MGC, Nasdaq (NQ), EURUSD,
+  GBPUSD, written exactly like that), then follows this exact shape, one labelled line each:
   Bias: Bullish or Bearish or Neutral
   Confidence: a whole number from 0 to 100 (under 45 when signals disagree or data is missing, 45 to 69 when most
   agree, 70 or more only when sentiment and fundamentals clearly agree)

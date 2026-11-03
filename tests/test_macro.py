@@ -408,6 +408,28 @@ class CalendarResilience(unittest.TestCase):
             urllib.request.urlopen, macro.time.sleep = real, sleep
 
 
+class BriefWithoutMarketLabels(unittest.TestCase):
+    """Some answers run the four Bias blocks without the market labels; they are read in the order the AI was asked for."""
+
+    ANSWER = ("Headline: Mixed\n\nOverview: Text.\n\nMood: Mixed\nConfidence: 45\n\nTone: Guarded.\n\n"
+              "Bias: Bearish\nConfidence: 35\nSentiment: a.\nFundamentals: b.\nChanges if: c.\n\n"
+              "Bias: Neutral\nConfidence: 40\nSentiment: a.\nFundamentals: b.\nChanges if: c.\n\n"
+              "Bias: Bullish\nConfidence: 60\nSentiment: a.\nFundamentals: b.\nChanges if: c.\n\n"
+              "Bias: Bearish\nConfidence: 55\nSentiment: a.\nFundamentals: b.\nChanges if: c.\n\n"
+              "Releases to watch: x\nEvent notes:\nEvent: JOLTS | note\n")
+
+    def test_the_four_blocks_go_to_the_four_markets_in_order(self):
+        parts = macro.split_brief(self.ANSWER)
+        got = macro.biases(parts)
+        self.assertEqual([(k, v["bias"], v["confidence"]) for k, v in got.items()],
+                         [("Gold and MGC", "bearish", 35), ("Nasdaq (NQ)", "neutral", 40), ("EURUSD", "bullish", 60), ("GBPUSD", "bearish", 55)])
+        self.assertEqual(parts["Tone"], "Guarded.")                 # the blocks are not left inside the Tone part
+
+    def test_any_other_number_of_blocks_is_left_alone(self):
+        parts = macro.split_brief(self.ANSWER.replace("Bias: Bullish", "Lean: Bullish"))
+        self.assertEqual(macro.biases(parts), {})
+
+
 if __name__ == "__main__":
     unittest.main()
 

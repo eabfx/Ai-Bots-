@@ -3361,6 +3361,7 @@ function qmRender(d){
     var rp=rangePos(q);
     if(rp!==null){var bar=el("div","qbar"),dot=el("i");dot.style.left=Math.max(2,Math.min(98,rp))+"%";bar.appendChild(dot);rg.appendChild(bar);rg.title="Position in the 1 month range"}
     var a=bi[lab[q.key]],bc=td("");
+    if(!a){bc.appendChild(el("span","qcf",lab[q.key]?"no read yet":"-"))}
     if(a){bc.appendChild(el("span","aipill mini "+(a.bias==="bullish"?"up":a.bias==="bearish"?"down":"flat"),a.bias));
       if(a.confidence!==null&&a.confidence!==undefined)bc.appendChild(el("span","qcf",a.confidence+"%"))}
     tr.onclick=function(){var b=document.querySelector('nav button[data-tab="macro"]');if(b)b.click()};
