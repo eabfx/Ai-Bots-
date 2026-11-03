@@ -1091,6 +1091,61 @@ body.feedlive .mcl .lv{display:inline-block}
 .mc .aib{margin-top:10px}
 .hmk.enter .mc,.mkts.enter .mc{animation:qin .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*70ms)}
 @media(prefers-reduced-motion:reduce){.hmk.enter .mc,.mkts.enter .mc,.sr,.mcl .lv{animation:none}.mc,.mc:hover{transform:none}.mcv::after{animation:none!important}}
+/* ===== news feed and calendar: live ages and countdowns, impact bars, topic filter, glow on a fresh headline ===== */
+.nfil{display:flex;gap:4px;flex-wrap:wrap;padding:2px 0 8px;position:sticky;top:0;background:var(--panel);z-index:2}
+.nchip{font:500 11px var(--mono);padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:2px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.nchip:hover{color:var(--text);border-color:var(--hover)}
+.nchip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.nw-i{display:block;position:relative;padding:9px 26px 9px 12px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);color:inherit;text-decoration:none;transition:background .15s}
+.nw-i:last-child{border-bottom:0}
+.nw-i::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;background:var(--line);transition:background .2s,top .2s,bottom .2s}
+.nw-i:hover{background:var(--panel2)}.nw-i:hover::before{background:var(--text);top:0;bottom:0}
+.nw-i.isnew::before{background:var(--up)}
+.nw-i::after{content:"\2197";position:absolute;right:10px;top:9px;font:12px var(--mono);color:var(--muted);opacity:0;transform:translate(-3px,3px);transition:opacity .2s,transform .2s}
+.nw-i:hover::after{opacity:1;transform:none}
+.nw-t{font:500 13px/1.4 var(--sans);color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nw-m{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;font:11px var(--mono);color:var(--muted)}
+.nw-tp{font:500 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text);opacity:.8}
+.nw-n{display:none;font:600 10px var(--mono);letter-spacing:.08em;color:var(--up)}
+.nw-i.isnew .nw-n{display:inline-flex;align-items:center;gap:4px}
+.nw-i.isnew .nw-n::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--up);animation:dotbeat 1.6s ease-in-out infinite}
+.nw-i.fresh{animation:nfresh 2.8s ease-out}
+@keyframes nfresh{0%{background:color-mix(in srgb,var(--up) 24%,transparent);transform:translateX(-12px);opacity:0}8%{opacity:1;transform:none}100%{background:transparent}}
+.news.enter .nw-i,.nws.enter .nw-i,#h-news.enter .nw-i{animation:qin .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*35ms)}
+.cal-d{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 0 4px}
+.cal-r{position:relative;display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;padding:8px 10px 8px 12px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);transition:background .15s,opacity .4s}
+.cal-r::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--cal,var(--flat))}
+.cal-r[data-i=High]{--cal:var(--down)}.cal-r[data-i=Medium]{--cal:var(--warn)}
+.cal-r:hover{background:var(--panel2)}
+.cal-l b{display:block;font:600 13px var(--mono)}
+.ct{font:500 11px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cal-l .nx{display:none;margin-top:3px;font:600 10px var(--mono);letter-spacing:.08em;color:var(--bg);background:var(--cal,var(--text));padding:0 5px;border-radius:2px;width:max-content}
+.cal-r.next .nx{display:block}
+.cal-r.soon .ct,tr[data-cr].soon td.ct{color:var(--warn)}
+.cal-r.next{background:color-mix(in srgb,var(--cal,var(--text)) 7%,transparent)}
+.cal-r.soon::before{animation:calpulse 1.4s ease-in-out infinite}
+@keyframes calpulse{0%,100%{opacity:1}50%{opacity:.25}}
+.cal-r.past,tr[data-cr].past td{opacity:.45}
+.cal-h{display:flex;align-items:center;gap:8px;font:500 13px/1.35 var(--sans)}
+.cal-cur{font:600 10px var(--mono);letter-spacing:.06em;padding:1px 5px;border:1px solid var(--line);border-radius:2px;color:var(--muted);flex:none}
+.cal-fp{display:flex;gap:14px;margin-top:3px;font:11px var(--mono);color:var(--muted)}.cal-fp b{color:var(--text);font-weight:500}
+.impb{display:inline-flex;align-items:flex-end;gap:2px;height:11px;flex:none}
+.impb i{width:3px;background:var(--line);border-radius:1px}
+.impb i:nth-child(1){height:5px}.impb i:nth-child(2){height:8px}.impb i:nth-child(3){height:11px}
+.impb.High i.on{background:var(--down)}.impb.Medium i.on{background:var(--warn)}.impb.Low i.on{background:var(--flat)}
+.impl{display:inline-flex;align-items:center;gap:7px}
+.caltab tr.dayh td{background:var(--panel2);font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:5px 9px}
+.caltab td.tm{font-weight:600}
+.caltab tr[data-cr]{transition:background .15s,opacity .4s}.caltab tr[data-cr]:hover td{background:var(--panel2)}
+.caltab tr[data-cr].next td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
+.caltab tr[data-cr].next td.tm::after{content:" NEXT";font:600 10px var(--mono);color:var(--warn);letter-spacing:.06em}
+#h-cal.enter .cal-r{animation:qin .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--n,0)*45ms)}
+@media(prefers-reduced-motion:reduce){.nw-i.fresh,.cal-r.soon::before,.nw-i.isnew .nw-n::before,.news.enter .nw-i,#h-news.enter .nw-i,#h-cal.enter .cal-r{animation:none}}
+.hgrid3{grid-template-columns:minmax(0,1.9fr) minmax(0,1fr) minmax(0,.95fr)}
+table.qm td{padding:6px 7px}table.qm th{padding:6px 7px}
+table.qm td.qt{width:76px}.mspk{width:64px}
+@media(max-width:1560px){table.qm td.qr,table.qm th:nth-child(8){display:none}}
+@media(max-width:1180px){.hgrid3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -3046,22 +3101,72 @@ function macroRender(d){
   cc.appendChild(el("div","sub","High and medium impact USD, EUR and GBP releases, Dublin time. Be careful around them: price can jump."));
   var evs=d.events.filter(function(e){return e.minutes<=calSpan*60});
   if(!evs.length)cc.appendChild(el("div","empty","Nothing listed in this window."));
-  else{var t=table(["When (Dublin)","In","Cur","Impact","Release","Forecast","Previous"],evs.map(function(e){
-      var imp=el("span","imp "+e.impact,e.impact);
-      return [e.when,e.minutes>=0?"in "+dur(e.minutes):dur(e.minutes)+" ago",e.country,imp,e.title,e.forecast||"-",e.previous||"-"]}),[4]);
+  else{var nowS=Math.round(Date.now()/1000);
+    var t=table(["When (Dublin)","In","Cur","Impact","Release","Forecast","Previous"],evs.map(function(e){
+      var imp=el("span","impl");imp.appendChild(impBars(e.impact));imp.appendChild(el("span",null,e.impact));
+      return [e.when.split(" ").slice(-1)[0],ctText(e.t-nowS),e.country,imp,e.title,e.forecast||"-",e.previous||"-"]}),[4]);
     cc.appendChild(t);
-    var trs=t.querySelectorAll("tr");for(var i=1;i<trs.length;i++)if(evs[i-1].minutes>=0&&evs[i-1].minutes<=60)trs[i].className="soon"}
+    var body=[].slice.call(t.querySelectorAll("tr")).slice(1),lastDay=null;
+    body.forEach(function(tr,i){var e=evs[i];tr.setAttribute("data-cr",e.t);tr.setAttribute("data-i",e.impact);tr.style.setProperty("--n",i);
+      tr.children[1].className="ct";tr.children[1].setAttribute("data-ct","1");tr.children[0].className="tm";
+      var dk=dayKey(e.t);if(dk!==lastDay){lastDay=dk;var h=el("tr","dayh"),c=el("td",null,dayLabel(e.t));c.colSpan=7;h.appendChild(c);tr.parentNode.insertBefore(h,tr)}});
+    t.classList.add("caltab")}
   out.appendChild(cc);
   /* headlines */
   var nc2=el("div","card");nc2.appendChild(el("h2",null,"Headlines"));
   nc2.appendChild(el("div","sub","Searches for gold, the Fed and yields, the dollar and Europe or the UK, and the Nasdaq. Written by outside sources, so check them."));
-  var nw=el("div","news");
-  d.headlines.slice(0,16).forEach(function(h){var it=el("div","it"),line=el("div");
-    if(h.link){var a=el("a",null,h.title);a.href=h.link;a.target="_blank";a.rel="noopener noreferrer";line.appendChild(a)}else line.appendChild(el("span",null,h.title));
-    it.appendChild(line);it.appendChild(el("div","meta",h.topic+(h.source?" - "+h.source:"")+(h.when?" - "+h.when:"")));nw.appendChild(it)});
-  if(!d.headlines.length)nc2.appendChild(el("div","empty","No headlines came back."));
-  nc2.appendChild(nw);out.appendChild(nc2)}
+  var nw=el("div","news nws");newsBlock(nw,d,16,"macro");
+  nc2.appendChild(nw);out.appendChild(nc2);calTick()}
 
+/* ---------- news feed and calendar: live ages, countdowns, topic filter, glow on a fresh headline ---------- */
+var newsTopic="All",newsSeen=null,newsShown={};
+function pad2(n){return n<10?"0"+n:""+n}
+function ageText(t){var s=Math.max(0,Math.round(Date.now()/1000-t));return s<60?"just now":s<3600?Math.floor(s/60)+"m ago":s<86400?Math.floor(s/3600)+"h ago":Math.floor(s/86400)+"d ago"}
+function newsMark(d){          /* which headlines arrived since the last look, once per fresh snapshot */
+  if(d._nm)return;d._nm=true;d._fresh={};
+  var first=newsSeen===null;if(first)newsSeen={};
+  d.headlines.forEach(function(h){var k=h.link||h.title;if(!first&&!newsSeen[k])d._fresh[k]=true;newsSeen[k]=true})}
+function newsBlock(box,d,limit,where){
+  newsMark(d);box.textContent="";
+  var hs=d.headlines.map(function(h,i){return{h:h,i:i}}).sort(function(a,b){return (b.h.t||0)-(a.h.t||0)||a.i-b.i}).map(function(x){return x.h});
+  var topics=[];hs.forEach(function(h){if(topics.indexOf(h.topic)<0)topics.push(h.topic)});
+  if(topics.indexOf(newsTopic)<0)newsTopic="All";
+  if(!hs.length){box.appendChild(el("div","empty","No headlines came back."));return}
+  var fil=el("div","nfil");
+  ["All"].concat(topics).forEach(function(t){var b=el("button","nchip"+(t===newsTopic?" on":""),t);b.type="button";
+    b.onclick=function(){newsTopic=t;newsShown[where]=true;newsBlock(box,d,limit,where)};fil.appendChild(b)});
+  box.appendChild(fil);
+  var first=!newsShown[where];newsShown[where]=true;box.classList.toggle("enter",first);
+  hs.filter(function(h){return newsTopic==="All"||h.topic===newsTopic}).slice(0,limit).forEach(function(h,n){
+    var it=el(h.link?"a":"div","nw-i"+(d._fresh[h.link||h.title]?" fresh":""));it.style.setProperty("--n",n);
+    if(h.link){it.href=h.link;it.target="_blank";it.rel="noopener noreferrer"}
+    it.appendChild(el("div","nw-t",h.title));
+    var m=el("div","nw-m");m.appendChild(el("span","nw-tp",h.topic));if(h.source)m.appendChild(el("span","nw-s",h.source));
+    if(h.t){var ag=el("span","nw-a",ageText(h.t));ag.setAttribute("data-na",h.t);m.appendChild(ag);if(Date.now()/1000-h.t<1800)it.classList.add("isnew")}
+    m.appendChild(el("span","nw-n","NEW"));it.appendChild(m);box.appendChild(it)})}
+function dayKey(t){return new Date(t*1000).toLocaleDateString("en-CA",{timeZone:"Europe/Dublin"})}
+function dayLabel(t){
+  var now=Date.now()/1000,k=dayKey(t);
+  if(k===dayKey(now))return"Today";if(k===dayKey(now+86400))return"Tomorrow";
+  return new Date(t*1000).toLocaleDateString("en-GB",{timeZone:"Europe/Dublin",weekday:"long",day:"numeric",month:"long"})}
+function ctText(sec){
+  if(sec<0){var a=-sec;return a<60?"just now":a<3600?Math.floor(a/60)+"m ago":Math.floor(a/3600)+"h ago"}
+  if(sec<3600)return"in "+Math.floor(sec/60)+"m "+pad2(sec%60)+"s";
+  var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h>=24?"in "+Math.floor(h/24)+"d "+(h%24)+"h":"in "+h+"h "+pad2(m)+"m"}
+function impBars(imp){var w=el("span","impb "+imp),n=imp==="High"?3:imp==="Medium"?2:1;w.title=imp+" impact";
+  [1,2,3].forEach(function(k){w.appendChild(el("i",k<=n?"on":""))});return w}
+function calTick(){
+  if(document.hidden||dormant||(tabNow!=="home"&&tabNow!=="macro"))return;
+  var now=Math.round(Date.now()/1000),rows=document.querySelectorAll("[data-cr]"),next=null,nextSec=1e12,i;
+  for(i=0;i<rows.length;i++){var t=+rows[i].getAttribute("data-cr"),sec=t-now;
+    var c=rows[i].querySelector("[data-ct]");if(c){var tx=ctText(sec);if(c.textContent!==tx)c.textContent=tx}
+    rows[i].classList.toggle("past",sec<0);rows[i].classList.toggle("soon",sec>=0&&sec<3600);
+    if(sec>=0&&sec<nextSec&&!rows[i].classList.contains("nx0")){nextSec=sec;next=rows[i]}}
+  for(i=0;i<rows.length;i++)rows[i].classList.toggle("next",rows[i]===next&&nextSec<24*3600);
+  var ages=document.querySelectorAll("[data-na]");
+  for(i=0;i<ages.length;i++){var tt=+ages[i].getAttribute("data-na"),ax=ageText(tt);if(ages[i].textContent!==ax)ages[i].textContent=ax;
+    var p=ages[i].closest(".nw-i");if(p)p.classList.toggle("isnew",Date.now()/1000-tt<1800)}}
+setInterval(calTick,1000);
 /* ---------------- home ---------------- */
 var HDRS={"Content-Type":"application/json","X-Requested-With":"zones-dashboard"};
 function tickClock(){
@@ -3183,11 +3288,7 @@ function homeRender(d){
   tilesRender(d);qmRender(d);
   var tk=$("h-ticker");tk.textContent="";
   d.quotes.forEach(function(q){var sp=el("span");sp.setAttribute("data-k",q.key);sp.appendChild(el("b",null,q.key));var tpx=el("i",null,fmt(q.price,q.digits));tpx.setAttribute("data-f","px");sp.appendChild(tpx);sp.appendChild(document.createTextNode(" "));var tem=el("em",pctClass(q.pct),pctText(q.pct));tem.setAttribute("data-f","pct");sp.appendChild(tem);tk.appendChild(sp)});
-  var nw=$("h-news");nw.textContent="";
-  d.headlines.slice(0,10).forEach(function(h){var it=el("div","it"),line=el("div");
-    if(h.link){var a=el("a",null,h.title);a.href=h.link;a.target="_blank";a.rel="noopener noreferrer";line.appendChild(a)}else line.appendChild(el("span",null,h.title));
-    it.appendChild(line);it.appendChild(el("div","meta",h.topic+(h.source?" - "+h.source:"")+(h.when?" - "+h.when:"")));nw.appendChild(it)});
-  if(!d.headlines.length)nw.appendChild(el("div","empty","No headlines came back."));
+  newsBlock($("h-news"),d,12,"home");
   var st=$("h-strength");st.textContent="";
   if(d.strength&&d.strength.length){
     st.appendChild(el("div","jsub","Each currency's move against the US dollar since the last close (the dollar is shown as the opposite of the average)."));
@@ -3202,9 +3303,15 @@ function homeRender(d){
   if(!evs.length){cal.appendChild(el("div","empty","Nothing listed in the next 24 hours."));
     var nx=null;d.events.forEach(function(e){if(!nx&&e.minutes>=0)nx=e});
     if(nx)cal.appendChild(el("div","jsub","Next: "+nx.country+" "+nx.title+", "+nx.when+" Dublin, in "+dur(nx.minutes)+"."))}
-  evs.forEach(function(e){var r=el("div","hcal"),l=el("div");l.appendChild(el("b",null,e.when.split(" ").slice(-1)[0]));l.appendChild(el("span","mute",e.minutes>=0?"in "+dur(e.minutes):dur(e.minutes)+" ago"));r.appendChild(l);
-    var m=el("div");m.appendChild(el("span","imp "+e.impact,e.impact));m.appendChild(document.createTextNode(" "+e.country+" "+e.title));
-    m.appendChild(el("div","meta",(e.forecast||e.previous)?"forecast "+(e.forecast||"-")+", previous "+(e.previous||"-"):""));r.appendChild(m);cal.appendChild(r)})}
+  var lastDay=null;
+  evs.forEach(function(e,n){
+    var dk=dayKey(e.t);if(dk!==lastDay){lastDay=dk;cal.appendChild(el("div","cal-d",dayLabel(e.t)))}
+    var r=el("div","cal-r");r.setAttribute("data-cr",e.t);r.setAttribute("data-i",e.impact);r.style.setProperty("--n",n);
+    var l=el("div","cal-l");l.appendChild(el("b",null,e.when.split(" ").slice(-1)[0]));var ct=el("span","ct",ctText(e.t-Math.round(Date.now()/1000)));ct.setAttribute("data-ct","1");l.appendChild(ct);l.appendChild(el("span","nx","NEXT"));r.appendChild(l);
+    var m=el("div","cal-m"),h=el("div","cal-h");h.appendChild(impBars(e.impact));h.appendChild(el("span","cal-cur",e.country));h.appendChild(el("span","cal-ti",e.title));m.appendChild(h);
+    if(e.forecast||e.previous){var fp=el("div","cal-fp"),f1=el("span",null,"Forecast "),p1=el("span",null,"Previous ");f1.appendChild(el("b",null,e.forecast||"-"));p1.appendChild(el("b",null,e.previous||"-"));fp.appendChild(f1);fp.appendChild(p1);m.appendChild(fp)}
+    r.appendChild(m);cal.appendChild(r)});
+  var cw=$("h-cal");cw.classList.toggle("enter",!newsShown.cal);newsShown.cal=true;calTick()}
 $("home-refresh").onclick=function(){loadMacro(true)};
 $("h-cal-go").onclick=function(){showTab("macro")};
 $("h-brief").onclick=function(){
