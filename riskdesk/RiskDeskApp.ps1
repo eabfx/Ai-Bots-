@@ -12,16 +12,8 @@ if (-not (Up)) {
   for ($i = 0; $i -lt 40 -and -not (Up); $i++) { Start-Sleep -Milliseconds 750 }
 }
 if ($ServerOnly) { exit }
-# If Kelly Terminal was installed from Chrome ("Install Kelly Terminal"), open that app so the taskbar shows the Kelly Terminal logo, not Chrome's.
-$chromeApp = $null
-foreach ($name in "Kelly*.lnk", "RiskDesk*.lnk") {      # the new name first, then the one it had before
-  $chromeApp = Get-ChildItem (Join-Path ([Environment]::GetFolderPath("Programs")) "Chrome Apps") -Filter $name | Select-Object -First 1
-  if ($chromeApp) { break }
-}
-if ($chromeApp) {
-  $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut($chromeApp.FullName)
-  if ($lnk.TargetPath -and (Test-Path $lnk.TargetPath)) { Start-Process -FilePath $lnk.TargetPath -ArgumentList $lnk.Arguments; exit }
-}
+# Always opens the copy running on this PC, so what you see is the version that was just updated. (A Chrome-installed app can be
+# pointed at kellyterminal.com instead, and shows whatever the server has.)
 $browser = @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
   "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
@@ -29,4 +21,11 @@ $browser = @(
   "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
   "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($browser) { Start-Process -FilePath $browser -ArgumentList "--app=$url", "--window-size=1500,950" } else { Start-Process $url }
+if ($browser) {
+  Start-Process -FilePath $browser -ArgumentList "--app=$url", "--window-size=1500,950"
+  # own taskbar identity and the Kelly icon, so the button and a pinned icon are not Chrome's
+  . (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "kellyid.ps1")
+  $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+  $launch = '"' + (Join-Path $env:WINDIR "System32\wscript.exe") + '" "' + (Join-Path $here "RiskDeskApp.vbs") + '"'
+  Set-KellyWindowId -Command $launch -Icon ((Join-Path $here "assets\riskdesk.ico") + ",0") | Out-Null
+} else { Start-Process $url }

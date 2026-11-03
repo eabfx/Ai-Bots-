@@ -21,5 +21,6 @@ foreach ($t in $targets) {
   $l.IconLocation = (Join-Path $here "assets\riskdesk.ico")
   $l.Description = "Kelly Terminal"
   $l.Save()
+  if ($t.Args -ne "-ServerOnly") { . (Join-Path $here "kellyid.ps1"); Set-ShortcutId $t.Path }     # same taskbar identity as the window, so a pinned icon is the Kelly logo
 }
 if ($Remove) { "Removed the Kelly Terminal shortcuts." } else { "Done. Open Kelly Terminal from the Desktop icon or the Start menu. The server also starts quietly when you sign in." }
