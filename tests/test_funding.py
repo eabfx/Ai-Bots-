@@ -139,6 +139,26 @@ class Keeper(unittest.TestCase):
         self.assertEqual((s["goal"], s["paid"], s["all"]), (2000000, 800, 50000))
         self.assertTrue(s["goal_custom"])
 
+    def test_evaluations_and_funded_are_separate_and_can_be_overridden(self):
+        s = self.f.state()
+        self.assertEqual((s["shown"]["evals"], s["shown"]["funded"], s["all"]), (720000, 0, 720000))
+        s = self.f.act({"action": "add", "account": {"firm": "Topstep", "market": "futures", "size": 150000, "stage": "funded"}})
+        self.assertEqual((s["shown"]["evals"], s["shown"]["funded"], s["all"]), (720000, 150000, 870000))
+        s = self.f.act({"action": "totals", "totals": {"evals": "500000", "funded": 200000}})
+        self.assertEqual((s["shown"]["evals"], s["shown"]["funded"], s["all"]), (500000, 200000, 700000))
+        self.assertEqual((s["calc"]["evals"], s["calc"]["funded"]), (720000, 150000))
+        self.assertTrue(s["custom"]["evals"] and s["custom"]["funded"] and not s["custom"]["all"])
+        s = self.f.act({"action": "totals", "totals": {"evals": "500000", "funded": 200000, "all": 999}})
+        self.assertEqual(s["all"], 999)
+        s = self.f.act({"action": "totals", "totals": {"evals": "", "funded": "", "all": ""}})
+        self.assertEqual((s["shown"]["evals"], s["shown"]["funded"], s["all"]), (720000, 150000, 870000))
+        self.assertFalse(any(s["custom"].values()))
+        again = funding.Funding(self.tmp.name, lambda: self.doc)
+        self.assertEqual(again.state()["all"], 870000)
+        for bad in ({"all": "abc"}, {"funded": -5}):
+            with self.assertRaises(funding.FundingError):
+                self.f.act({"action": "totals", "totals": bad})
+
     def test_bad_input_is_refused(self):
         for body in ({"action": "add", "account": {"firm": "", "market": "cfd", "size": 5, "stage": "funded"}},
                      {"action": "add", "account": {"firm": "X", "market": "stocks", "size": 5, "stage": "funded"}},

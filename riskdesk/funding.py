@@ -26,6 +26,8 @@ MAX_PAYOUTS = 500
 DEFAULT_GOAL = 1000000
 STATUS_FIELDS = ("phase", "profit", "target", "dd", "maxdd", "state")
 NUMBER_FIELDS = ("size", "profit", "target", "dd", "maxdd")
+TOTAL_KEYS = ("all", "evals", "funded", "cfd", "futures")
+TOTAL_NAMES = {"all": "total funding", "evals": "evaluations", "funded": "funded", "cfd": "forex / CFD", "futures": "futures"}
 TEXT_FIELDS = {"firm": 40, "note": 120, "phase": 20, "state": 30}
 
 
@@ -277,7 +279,7 @@ class Funding:
         return os.path.join(self.dir, FILE)
 
     def _load(self):
-        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "seq": 0}
+        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "totals": {}, "seq": 0}
         try:
             with open(self._path(), encoding="utf-8-sig") as fh:
                 doc = json.load(fh)
@@ -291,6 +293,8 @@ class Funding:
         out["hidden"] = [str(x)[:60] for x in doc.get("hidden") or []][:1000]
         g = num(doc.get("goal"))
         out["goal"] = tidy(g) if g and g > 0 else None
+        if isinstance(doc.get("totals"), dict):
+            out["totals"] = {k: tidy(num(v)) for k, v in doc["totals"].items() if k in TOTAL_KEYS and num(v) is not None and num(v) >= 0}
         out["seq"] = int(doc["seq"]) if isinstance(doc.get("seq"), int) else 0
         return out
 
@@ -332,6 +336,21 @@ class Funding:
                 count[a["market"]][a["stage"]] += 1
         by_stage = {s: sum(total[m][s] for m in MARKETS) for s in STAGES}
         everything = sum(by_stage.values())
+        mine = self.my["totals"]
+        calc = {m: sum(total[m].values()) for m in MARKETS}
+        calc["all"] = everything
+        calc["evals"] = by_stage["ongoing"] + by_stage["passed"]            # in evaluation, or passed and waiting for the paid activation
+        calc["funded"] = by_stage["funded"]
+        shown = {k: mine.get(k, calc[k]) for k in ("cfd", "futures", "evals", "funded")}
+        if "all" in mine:
+            shown["all"] = mine["all"]
+        elif "evals" in mine or "funded" in mine:
+            shown["all"] = shown["evals"] + shown["funded"]
+        elif "cfd" in mine or "futures" in mine:
+            shown["all"] = shown["cfd"] + shown["futures"]
+        else:
+            shown["all"] = everything
+        custom = {k: k in mine for k in TOTAL_KEYS}
         paid = sum(p["amount"] for p in payouts)
 
         warnings = []
@@ -354,7 +373,7 @@ class Funding:
             by_firm.append({"firm": f["firm"], "total": tidy(f["total"]), "count": f["count"], "funded": tidy(f["funded"]),
                             "markets": sorted(x for x in f["markets"] if x), "rules": rules.get(k)})
         return {"accounts": accounts, "payouts": sorted(payouts, key=lambda p: p["date"]), "status": status, "by_firm": by_firm,
-                "total": total, "count": count, "by_stage": by_stage, "all": tidy(everything), "paid": tidy(paid), "goal": tidy(goal),
+                "total": total, "count": count, "by_stage": by_stage, "all": tidy(shown["all"]), "calc": {k: tidy(v) for k, v in calc.items()}, "shown": {k: tidy(v) for k, v in shown.items()}, "custom": custom, "paid": tidy(paid), "goal": tidy(goal),
                 "goal_custom": bool(self.my["goal"]), "warnings": warnings, "rules": n["rules"],
                 "notion": {"rows": len(n["accounts"]), "at": (hub or {}).get("at", ""), "found": bool(n["accounts"] or n["status"])},
                 "hidden": len(hidden), "markets": MARKET_NAMES, "stages": STAGE_NAMES}
@@ -403,12 +422,27 @@ class Funding:
                 p = clean_payout(body.get("payout"))
                 p["id"] = self._new_id("mp")
                 m["payouts"].append(p)
+            elif action == "totals":
+                raw = body.get("totals") if isinstance(body.get("totals"), dict) else {}
+                fresh = {}
+                for k in TOTAL_KEYS:
+                    if k not in raw:
+                        if k in m["totals"]:
+                            fresh[k] = m["totals"][k]
+                        continue
+                    if raw[k] in (None, ""):
+                        continue                                       # cleared: back to the calculated number
+                    v = num(raw[k])
+                    if v is None or v < 0:
+                        raise FundingError("%s must be a number, zero or more" % TOTAL_NAMES[k])
+                    fresh[k] = tidy(v)
+                m["totals"] = fresh
             elif action == "goal":
                 g = num(body.get("goal")) if body.get("goal") not in (None, "") else None
                 if body.get("goal") not in (None, "") and (g is None or g <= 0):
                     raise FundingError("the goal must be a number above zero")
                 m["goal"] = tidy(g) if g else None
             else:
-                raise FundingError('action must be "add", "edit", "remove", "restore", "payout" or "goal"')
+                raise FundingError('action must be "add", "edit", "remove", "restore", "payout", "totals" or "goal"')
             self._save()
             return self._state()

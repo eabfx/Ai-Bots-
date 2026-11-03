@@ -1325,6 +1325,9 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 @media(min-width:901px) and (max-width:1100px){.bar nav button .ni{display:none}.brainbtn .ni{display:none}#cmd{width:64px}.bar nav button{padding:0 7px!important}}
 /* funding page */
 #tab-funding [hidden]{display:none!important}
+.fd-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
+.fd-live{display:inline-flex;align-items:center;gap:8px;font:400 12px var(--mono);color:var(--muted)}
+.fd-live i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}.fd-live.on i{background:var(--up)}
 .fbar{display:flex;height:12px;border:1px solid var(--line);border-radius:2px;background:var(--input);overflow:hidden;margin:10px 0 8px}
 .fbar i,.fkey i{display:block}
 .fbar i{height:100%;width:0;transition:width .5s ease}
@@ -1706,6 +1709,13 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <section class="tool" id="tab-funding" role="tabpanel" hidden>
 <h2 class="pt">Funding</h2>
 <p class="sub">Every prop-firm account you hold, forex and futures, with its size, stage, pay-outs and progress to your goal. It is copied from your Notion tables (read only) and you can add or change accounts here. Notion is never written to.</p>
+<div class="fd-top"><span class="fd-live" id="fd-live"><i></i><span id="fd-live-t">Loading...</span></span><div class="btnrow" style="margin:0"><button class="btn small" id="fd-edit" type="button">Edit numbers</button><button class="btn small" id="fd-conn-top" type="button">Connections</button></div></div>
+<div class="hpanel" id="fd-numpanel" hidden><div class="hp-h"><h3>Your own numbers</h3></div>
+<div class="jsub" style="margin:10px 14px 0">Type the figure you want shown at the top. Evaluations are accounts still in evaluation or passed and waiting for activation. Funded is accounts that are active. Leave a box empty to use the figure worked out from your accounts. Total left empty is evaluations plus funded.</div>
+<div class="frow three" style="margin:10px 14px 0"><div><label for="fd-n-evals">Evaluations ($)</label><input type="number" id="fd-n-evals" min="0" step="any"></div><div><label for="fd-n-funded">Funded ($)</label><input type="number" id="fd-n-funded" min="0" step="any"></div><div><label for="fd-n-all">Total ($)</label><input type="number" id="fd-n-all" min="0" step="any"></div><div><label for="fd-n-cfd">Forex / CFD ($)</label><input type="number" id="fd-n-cfd" min="0" step="any"></div><div><label for="fd-n-futures">Futures ($)</label><input type="number" id="fd-n-futures" min="0" step="any"></div></div>
+<div class="err" id="fd-nerr" hidden style="margin:0 14px"></div>
+<div class="btnrow" style="margin:0 14px 12px"><button class="btn small" id="fd-n-save" type="button">Save numbers</button><button class="btn small ghost" id="fd-n-reset" type="button">Use calculated numbers</button><button class="btn small ghost" id="fd-n-cancel" type="button">Close</button></div></div>
+<div class="hpanel" id="fd-connpanel" hidden><div class="hp-h"><h3>Prop-firm connections</h3><button class="btn small ghost" id="fd-conn-x" type="button">Close</button></div><div id="fd-conns"></div></div>
 <div class="hnums" id="fd-sum"></div>
 <div class="hpanel"><div class="hp-h"><h3>Progress to goal</h3><button class="btn small ghost" id="fd-goal-edit" type="button">Change goal</button></div>
 <div class="fd-goal"><div class="fd-gtxt" id="fd-gtxt"></div><div class="fbar" id="fd-bar" role="img" aria-label="Funding progress"><i class="f1"></i><i class="f2"></i><i class="f3"></i></div>
@@ -1738,7 +1748,6 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="hpanel"><div class="hp-h"><h3>Live status</h3><button class="btn small" id="fd-conn" type="button">Connect accounts</button></div><div id="fd-status"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>By firm</h3></div><div id="fd-firmlist"></div></div>
 </div>
-<div class="hpanel" id="fd-connpanel" hidden><div class="hp-h"><h3>Connect prop-firm accounts</h3><button class="btn small ghost" id="fd-conn-x" type="button">Close</button></div><div id="fd-conns"></div></div>
 <div class="hpanel"><div class="hp-h"><h3>Pay-outs</h3><span class="mute" id="fd-paid" style="font-size:12px"></span></div>
 <div class="frow three" style="margin:10px 12px 0"><div><label for="fd-pdate">Date</label><input type="date" id="fd-pdate"></div><div><label for="fd-pamt">Amount ($)</label><input type="number" id="fd-pamt" min="1" step="any"></div><div><label for="fd-pfirm">Firm</label><input type="text" id="fd-pfirm" maxlength="40" list="fd-firms"></div></div>
 <div class="err" id="fd-perr" hidden></div>
@@ -3926,20 +3935,28 @@ var FD=null,FDF="all",FDEDIT="";
 function fdMoney(n){return n===null||n===undefined||isNaN(n)?"-":"$"+Math.round(n).toLocaleString("en-US")}
 function fdShort(n){n=+n||0;return n>=1e6?"$"+(Math.round(n/1e4)/100)+"M":n>=1e3?"$"+Math.round(n/1e3)+"k":"$"+Math.round(n)}
 function fdCall(body){return fetch("/api/funding",{method:"POST",headers:HDRS,body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Could not save that");return j})})}
-function fdLoad(){fetch("/api/funding").then(function(r){return r.json()}).then(function(s){if(!s||s.accounts===undefined)throw new Error("bad");FD=s;fdRender()}).catch(function(e){console.error("funding",e&&e.stack||e);var b=$("fd-sum");if(b&&!(FD&&b.children.length)){b.textContent="";b.appendChild(el("div","empty","The funding numbers did not load. Try again in a moment."))}})}
+function fdStamp(ok){var t=$("fd-live-t"),d=$("fd-live");if(!t)return;d.className="fd-live"+(ok?" on":"");var n=new Date();t.textContent=ok?"Live, checked "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+":"+("0"+n.getSeconds()).slice(-2)+(FD&&FD.notion&&FD.notion.at?" \u00B7 Notion copy "+FD.notion.at.replace("T"," ").slice(5,16):""):"Offline: showing the last numbers"}
+function fdPoll(){if(tabNow==="funding"&&!document.hidden&&$("fd-numpanel").hidden)fdLoad()}
+setInterval(fdPoll,20000);
+function fdLoad(){fetch("/api/funding").then(function(r){return r.json()}).then(function(s){if(!s||s.accounts===undefined)throw new Error("bad");FD=s;fdRender();fdStamp(true)}).catch(function(e){console.error("funding",e&&e.stack||e);fdStamp(false);var b=$("fd-sum");if(b&&!(FD&&b.children.length)){b.textContent="";b.appendChild(el("div","empty","The funding numbers did not load. Try again in a moment."))}})}
 function fdTotal(m){var t=FD.total[m],n=FD.count[m];return {all:t.ongoing+t.passed+t.funded,n:n.ongoing+n.passed+n.funded}}
 function fdRender(){
   if(!FD)return;
   var sum=$("fd-sum");sum.textContent="";
   function card(k,v,s,c){var d=el("div","hnum");d.style.cursor="default";d.appendChild(el("div","k",k));d.appendChild(el("div","v"+(c?" "+c:""),v));d.appendChild(el("div","s",s));sum.appendChild(d)}
   var c=fdTotal("cfd"),f=fdTotal("futures"),by=FD.by_stage;
-  card("Total funding",fdMoney(FD.all),(c.n+f.n)+" accounts, "+fdMoney(by.funded)+" funded and active");
-  card("Forex / CFD",fdMoney(c.all),c.n+" accounts");
-  card("Futures",fdMoney(f.all),f.n+" accounts");
+  function sub(k,base){return FD.custom[k]?"Your number. Calculated: "+fdMoney(FD.calc[k]):base}
+  var ev=FD.count.cfd.ongoing+FD.count.cfd.passed+FD.count.futures.ongoing+FD.count.futures.passed,fn=FD.count.cfd.funded+FD.count.futures.funded;
+  card("Evaluations"+(FD.custom.evals?" (yours)":""),fdMoney(FD.shown.evals),sub("evals",ev+" accounts: "+fdMoney(by.ongoing)+" in progress, "+fdMoney(by.passed)+" passed"));
+  card("Funded"+(FD.custom.funded?" (yours)":""),fdMoney(FD.shown.funded),sub("funded",fn+" active account"+(fn===1?"":"s")),FD.shown.funded>0?"up":"");
+  card("Total"+(FD.custom.all?" (yours)":""),fdMoney(FD.shown.all),sub("all",(c.n+f.n)+" accounts in all"));
+  card("Forex / CFD"+(FD.custom.cfd?" (yours)":""),fdMoney(FD.shown.cfd),sub("cfd",c.n+" accounts"));
+  card("Futures"+(FD.custom.futures?" (yours)":""),fdMoney(FD.shown.futures),sub("futures",f.n+" accounts"));
   card("Pay-outs received",fdMoney(FD.paid),FD.payouts.length+" pay-out"+(FD.payouts.length===1?"":"s"),FD.paid>0?"up":"");
   var pct=FD.goal?Math.min(100,FD.all/FD.goal*100):0;
   var g=$("fd-gtxt");g.textContent=fdMoney(FD.all)+" of "+fdMoney(FD.goal);g.appendChild(el("span",null,(Math.round(pct*10)/10)+"% of the goal"+(FD.goal_custom?" (your own goal)":"")));
-  var kids=$("fd-bar").children,parts=[by.funded,by.passed,by.ongoing],left=100;
+  var kids=$("fd-bar").children,k0=FD.calc.evals>0?FD.shown.evals/FD.calc.evals:1,parts=[FD.shown.funded,by.passed*k0,by.ongoing*k0],left=100;
+  if(FD.calc.evals<=0&&FD.shown.evals>0)parts=[FD.shown.funded,0,FD.shown.evals];
   for(var i=0;i<3;i++){var w=FD.goal?Math.min(left,parts[i]/FD.goal*100):0;left-=w;kids[i].style.width=w+"%"}
   var wn=$("fd-warn");wn.hidden=!FD.warnings.length;wn.textContent="";
   if(FD.warnings.length){wn.appendChild(el("b",null,"Check your Notion numbers"));FD.warnings.forEach(function(w){wn.appendChild(el("div",null,w))});wn.appendChild(el("div",null,"This page adds up the rows, not the typed totals. Fix the total in Notion, or change or hide a row here."))}
@@ -4009,6 +4026,7 @@ function fdConns(){
   var at=FD.notion.at?"Last copied "+FD.notion.at.replace("T"," ").slice(0,16)+".":"";
   row("Notion (your funding tables and Account Scaling System)",FD.notion.found?"Live, read only":"No funding rows found",FD.notion.found,
     (FD.notion.found?FD.notion.rows+" account rows and "+FD.status.filter(function(s){return s.source==="notion"}).length+" status rows copied. ":"The copy of your Notion page has no funding tables yet. ")+at+" It refreshes by itself about every 20 minutes. Nothing is ever written to Notion.",rb);
+  row("Live update","On",true,"While this page is open on Funding it checks the dashboard every 20 seconds, so a change you make in Notion shows here soon after the next Notion copy, and a number you type here shows straight away.");
   row("Numbers you type here","On",true,"Add an account, change a stage or enter profit and drawdown on the Accounts panel. These are saved on this dashboard only and never overwritten by Notion.");
   var firms=FD.by_firm.map(function(f){return f.firm}).join(", ")||"your prop firms";
   row("Live broker feed","Not connected",false,"Prop firms do not publish an account API for traders, so there is no one-click login. The honest options: MT4 and MT5 accounts can be read with a read-only investor password through MetaApi, and futures accounts through the platform they run on (Tradovate or Rithmic). That needs a key from you, placed in the trader folder on the server, and I never see or type it. Until then, keep the Account Scaling System table in Notion up to date and it shows here. Firms on this page: "+firms+".")}
@@ -4016,7 +4034,13 @@ function fdInit(){
   $("fd-add").onclick=function(){fdOpen(null)};
   $("fd-cancel").onclick=function(){$("fd-form").hidden=true;FDEDIT=""};
   $("fd-save").onclick=fdSave;
-  $("fd-conn").onclick=function(){var p=$("fd-connpanel");p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:"smooth",block:"nearest"})};
+  function connToggle(){var p=$("fd-connpanel");p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:"smooth",block:"nearest"})}
+  $("fd-conn").onclick=connToggle;$("fd-conn-top").onclick=connToggle;
+  $("fd-edit").onclick=function(){var p=$("fd-numpanel");p.hidden=!p.hidden;if(!p.hidden&&FD){["evals","funded","all","cfd","futures"].forEach(function(k){$("fd-n-"+k).value=FD.custom[k]?FD.shown[k]:""});$("fd-n-all").focus()}};
+  $("fd-n-cancel").onclick=function(){$("fd-numpanel").hidden=true};
+  function numsSet(t){fdCall({action:"totals",totals:t}).then(function(s){FD=s;$("fd-nerr").hidden=true;$("fd-numpanel").hidden=true;fdRender();fdStamp(true)}).catch(function(e){var er=$("fd-nerr");er.textContent=e.message;er.hidden=false})}
+  $("fd-n-save").onclick=function(){numsSet({evals:$("fd-n-evals").value,funded:$("fd-n-funded").value,all:$("fd-n-all").value,cfd:$("fd-n-cfd").value,futures:$("fd-n-futures").value})};
+  $("fd-n-reset").onclick=function(){numsSet({evals:"",funded:"",all:"",cfd:"",futures:""})};
   $("fd-conn-x").onclick=function(){$("fd-connpanel").hidden=true};
   $("fd-filter").onclick=function(e){var b=e.target.closest("button[data-f]");if(!b)return;FDF=b.getAttribute("data-f");[].slice.call($("fd-filter").children).forEach(function(x){x.className=x===b?"on":""});fdAccounts()};
   $("fd-goal-edit").onclick=function(){var open=$("fd-goalform").hidden;$("fd-goalform").hidden=!open;$("fd-goalbtns").hidden=!open;if(open){$("fd-goalin").value=FD&&FD.goal_custom?FD.goal:"";$("fd-goalin").focus()}};
