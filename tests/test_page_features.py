@@ -7,6 +7,7 @@ from _load import load
 
 dash = load("riskdesk", "dashboard")     # loaded first: it puts the zones folder on the import path
 import zones as z
+macro = load("riskdesk", "macro")
 
 
 class PageFeatures(unittest.TestCase):
@@ -58,6 +59,13 @@ class PageFeatures(unittest.TestCase):
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)
+
+    def test_home_strip_order_and_the_two_new_markets(self):
+        self.assertIn('var TILE_ORDER=["GBPUSD","EURUSD","USDJPY","NQ","SPX","XAUUSD","XAGUSD"', self.page)
+        keys = [item[0] for item in macro.WATCH]
+        self.assertIn("USDJPY", keys)
+        self.assertIn("XAGUSD", keys)
+        self.assertIn("VIX", keys)                                      # still read: the mood and capital flow use it, it is just off the top strip
 
 
 class WindowsConfig(unittest.TestCase):

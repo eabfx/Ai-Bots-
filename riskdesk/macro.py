@@ -41,7 +41,8 @@ TTL = {"quotes": 60, "calendar": 900, "headlines": 600, "strength": 60}
 WATCH = [("XAUUSD", "Gold futures (GC)", "GC=F", 2), ("NQ", "Nasdaq 100 futures (NQ)", "NQ=F", 2),
          ("EURUSD", "EUR/USD", "EURUSD=X", 5), ("GBPUSD", "GBP/USD", "GBPUSD=X", 5),
          ("DXY", "US Dollar Index", "DX-Y.NYB", 3), ("US10Y", "US 10 year yield (%)", "^TNX", 3),
-         ("VIX", "VIX", "^VIX", 2), ("SPX", "S&P 500", "^GSPC", 2), ("OIL", "Crude oil (CL)", "CL=F", 2)]
+         ("VIX", "VIX", "^VIX", 2), ("SPX", "S&P 500", "^GSPC", 2), ("OIL", "Crude oil (CL)", "CL=F", 2),
+         ("USDJPY", "USD/JPY", "JPY=X", 3), ("XAGUSD", "Silver futures (SI)", "SI=F", 3)]
 # Currency strength: each currency's move against the US dollar since the last close. (currency, Yahoo symbol,
 # +1 when the pair is quoted currency/USD, -1 when it is USD/currency, decimals)
 STRENGTH = [("EUR", "EURUSD=X", 1, 5), ("GBP", "GBPUSD=X", 1, 5), ("AUD", "AUDUSD=X", 1, 5), ("NZD", "NZDUSD=X", 1, 5),

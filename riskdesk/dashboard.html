@@ -3375,7 +3375,7 @@ jRender();
 
 /* ---------------- macro desk ---------------- */
 var macroData=null,macroAt=0,macroBusy=false,macroBrief=null,calSpan=24;
-var EXTRA_MARKETS=[["DXY","US Dollar Index","Dollar (DXY)"],["US10Y","US 10 year yield","US 10Y yield"],["VIX","VIX","VIX"],["SPX","S&P 500","S&P 500"],["OIL","Crude oil (CL)","Crude oil (CL)"]];
+var EXTRA_MARKETS=[["DXY","US Dollar Index","Dollar (DXY)"],["US10Y","US 10 year yield","US 10Y yield"],["VIX","VIX","VIX"],["SPX","S&P 500","S&P 500"],["OIL","Crude oil (CL)","Crude oil (CL)"],["USDJPY","USD/JPY","USDJPY"],["XAGUSD","Silver futures (SI)","Silver (SI)"]];
 var MARKETS=[["XAUUSD","Gold (XAUUSD, MGC)","Gold and MGC"],["NQ","Nasdaq 100 (NQ)","Nasdaq (NQ)"],["EURUSD","EUR/USD","EURUSD"],["GBPUSD","GBP/USD","GBPUSD"]];
 var MARKETS_ALL=MARKETS.concat(EXTRA_MARKETS);
 function dur(min){
@@ -3776,10 +3776,12 @@ function homeNums(){
   if(pfTouched){propCalc();card("Prop room",money(pfRoom),"most you can lose now",pfRoom>0?"":"down","trades")}
   else card("Prop room","Set up","enter your firm's rules","","trades")}
 /* ticker tiles and the quote monitor (the dense table), both from the same live prices */
-var TILE_NAMES={XAUUSD:"Gold",NQ:"Nasdaq",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",DXY:"Dollar",US10Y:"US 10Y",VIX:"VIX",SPX:"S&P 500",OIL:"Crude"};
+var TILE_NAMES={XAUUSD:"Gold",NQ:"Nasdaq",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",DXY:"Dollar",US10Y:"US 10Y",VIX:"VIX",SPX:"S&P 500",OIL:"Crude",USDJPY:"USD/JPY",XAGUSD:"Silver"};
+/* the strip along the top of Home, in the order you want it; markets not listed (VIX, US 10Y) stay in the quote monitor and on the Macro desk */
+var TILE_ORDER=["GBPUSD","EURUSD","USDJPY","NQ","SPX","XAUUSD","XAGUSD","DXY","OIL"];
 function tilesRender(d){
   var box=$("h-tiles");if(!box)return;box.textContent="";
-  d.quotes.forEach(function(q){
+  TILE_ORDER.map(function(k){return quoteBy(d,k)}).filter(Boolean).forEach(function(q){
     var t=el("button","tile");t.type="button";t.title=q.name+" - open the macro desk";t.setAttribute("data-k",q.key);
     t.appendChild(el("span","tn",TILE_NAMES[q.key]||q.key));
     var px=el("span","tp",fmt(q.price,q.digits)),lp=lastTile[q.key];px.setAttribute("data-f","px");
@@ -4017,7 +4019,7 @@ function ruleCheck(){
   if(AL.streak>0){var ch=jChron(live),n=0;for(var i=ch.length-1;i>=0&&ch[i].pl<0;i--)n++;
     if(n>=AL.streak&&alOnce("streak|"+n))alFire(n+" losing trades in a row","Your last "+n+" live trades all lost. Check the plan before the next one.")}}
 function alRender(){
-  var sel=$("al-sym");if(!sel.children.length)MARKETS.concat([["DXY"],["US10Y"],["VIX"],["SPX"],["OIL"]]).forEach(function(m){var o=el("option",null,m[0]);o.value=m[0];sel.appendChild(o)});
+  var sel=$("al-sym");if(!sel.children.length)MARKETS.concat([["DXY"],["US10Y"],["VIX"],["SPX"],["OIL"],["USDJPY"],["XAGUSD"]]).forEach(function(m){var o=el("option",null,m[0]);o.value=m[0];sel.appendChild(o)});
   $("al-news").checked=AL.news;$("al-newsmins").value=String(AL.newsMins);$("al-sess").checked=AL.sess;$("al-check").checked=AL.check;
   $("al-dayloss").value=AL.dayLoss||"";$("al-streak").value=AL.streak||"";$("al-sound").checked=AL.sound;
   var p=window.Notification?Notification.permission:"unsupported";
