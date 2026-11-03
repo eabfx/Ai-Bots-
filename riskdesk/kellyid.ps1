@@ -18,7 +18,6 @@ public static class KellyId {
   public interface IPropertyStore { int GetCount(out uint c); int GetAt(uint i, out PROPERTYKEY k); int GetValue(ref PROPERTYKEY k, out PROPVARIANT v); int SetValue(ref PROPERTYKEY k, ref PROPVARIANT v); int Commit(); }
   [ComImport, Guid("00021401-0000-0000-C000-000000000046")] public class ShellLink { }
   [DllImport("shell32.dll")] static extern int SHGetPropertyStoreForWindow(IntPtr hwnd, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IPropertyStore ps);
-  [DllImport("propsys.dll", CharSet=CharSet.Unicode)] static extern int InitPropVariantFromString(string s, out PROPVARIANT v);
   [DllImport("ole32.dll")] static extern int PropVariantClear(ref PROPVARIANT v);
   delegate bool EnumProc(IntPtr h, IntPtr l);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
@@ -27,7 +26,7 @@ public static class KellyId {
   static readonly Guid APP = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3");
   static void Put(IPropertyStore ps, uint pid, string value) {
     PROPERTYKEY k = new PROPERTYKEY(); k.fmtid = APP; k.pid = pid;
-    PROPVARIANT v; InitPropVariantFromString(value, out v); ps.SetValue(ref k, ref v); PropVariantClear(ref v);
+    PROPVARIANT v = new PROPVARIANT(); v.vt = 31; v.p = Marshal.StringToCoTaskMemUni(value); ps.SetValue(ref k, ref v); PropVariantClear(ref v);
   }
   public static int TagWindows(string titleStart, string id, string command, string name, string icon) {
     var found = new List<IntPtr>();
