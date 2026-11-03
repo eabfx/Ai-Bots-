@@ -7,14 +7,10 @@ from PIL import Image
 def mark(uid="m", tile="round", glyph=1.0, glow=True):
     """SVG of the mark, viewBox 0 0 512. tile: round | full | none."""
     # glyph geometry: K (flat tops and a flat baseline) and the underscore, centred on the tile
-    g = ("<g transform='translate(256 256) scale(%s) translate(-256 -256) translate(-13 20)'>"
-         "<clipPath id='%s-c'><rect x='0' y='120' width='512' height='232'/></clipPath>"
-         "<g class='kk' fill='url(#%s-k)'>"
-         "<rect x='138' y='120' width='34' height='232'/>"
-         "<g clip-path='url(#%s-c)'>"
-         "<path d='M156 266 L350 90' stroke='url(#%s-k)' stroke-width='31' fill='none'/>"
-         "<path d='M156 258 L350 434' stroke='url(#%s-k)' stroke-width='31' fill='none'/></g></g>"
-         "<rect class='cur' x='318' y='324' width='88' height='28' fill='#22c55e'/></g>") % (glyph, uid, uid, uid, uid, uid)
+    g = ("<g transform='translate(256 256) scale(%s) translate(-256 -256) translate(-24 20)'>"
+         "<g class='kk' fill='none' stroke='url(#%s-k)' stroke-width='32' stroke-linecap='round' stroke-linejoin='round'>"
+         "<path d='M154 136 V336'/><path d='M318 136 L158 250 L318 336'/></g>"
+         "<rect class='cur' x='352' y='324' width='78' height='28' rx='14' fill='#22c55e'/></g>") % (glyph, uid)
     if tile == "round":
         bg = "<rect class='tl' x='32' y='32' width='448' height='448' rx='104' fill='url(#%s-b)'/>" % uid
         rim = "<rect x='33.5' y='33.5' width='445' height='445' rx='102.5' fill='none' stroke='url(#%s-r)' stroke-width='3'/>" % uid
