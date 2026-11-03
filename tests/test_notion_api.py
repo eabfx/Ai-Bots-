@@ -179,7 +179,7 @@ class Wiring(unittest.TestCase):
                        "/api/notion/refresh", 'id="nl-card"', "Read content", "Thoughts + Emotions"):
             self.assertIn(needle, PAGE)
         self.assertNotIn("#9a92ff", PAGE)                            # the button is plain white and black now
-        self.assertIn('"home","macro","journal","backtest","forward","brain"', PAGE)
+        self.assertIn('"home","markets","macro","journal","backtest","forward","brain"', PAGE)
 
     def test_the_sync_buttons_pull_from_notion_and_say_where_each_trade_went(self):
         self.assertEqual(PAGE.count("data-nsync"), 4)                # Journal and the Connections routine share one handler; Home has no button, Notion syncs by itself

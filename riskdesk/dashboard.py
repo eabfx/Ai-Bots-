@@ -33,6 +33,7 @@ import autobrief     # noqa: E402
 import backup        # noqa: E402
 import funding       # noqa: E402
 import live          # noqa: E402
+import markets       # noqa: E402
 import notion_import  # noqa: E402
 import pusher        # noqa: E402
 import signin        # noqa: E402
@@ -52,6 +53,7 @@ class Handler(BaseHTTPRequestHandler):
     live = None                                      # last prices every few seconds while the page is open (live.py), set by make_server
     backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
     funding = None                                   # every prop-firm account and pay-out (funding.py), set by make_server
+    mkt_fetch = None                                 # the Markets page asks Yahoo through this; tests put a fake here
     pusher = None                                    # phone alerts while the page is closed (pusher.py), set by make_server
     brief_keeper = None                              # writes the market read every hour (autobrief.py), set by make_server
     notion_link = None                               # the live read-only link to your Notion (notion_api.py), set by make_server
@@ -207,6 +209,8 @@ class Handler(BaseHTTPRequestHandler):
                 raise z.ZoneError('action must be "enable", "disable", "test" or "rules"')
             elif path == "/api/funding":
                 return self.send_json(200, self.funding.act(body))
+            elif path == "/api/mkt/layout":
+                return self.send_json(200, markets.save_layout(self.data_dir, body))
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -228,7 +232,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"answer": coach.generate(system, msgs, pv, self.coach_post, 1200)})
             else:
                 return self.send_json(404, {"error": "not found"})
-        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, funding.FundingError, vault.VaultError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
+        except (z.ZoneError, coach.CoachError, store.StoreError, brain.BrainError, funding.FundingError, markets.MarketsError, vault.VaultError, notion_import.ImportError_, tradezella_import.TradeZellaError) as e:
             self.send_json(400, {"error": str(e)})
         except Exception as e:
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
@@ -251,6 +255,20 @@ class Handler(BaseHTTPRequestHandler):
             self.macro(parse_qs(url.query))
         elif url.path == "/api/funding":
             self.send_json(200, self.funding.state())
+        elif url.path == "/api/mkt/layout":
+            self.send_json(200, dict(markets.load_layout(self.data_dir), suggest=markets.SUGGEST, grids=list(markets.GRIDS), tfs=list(markets.TIMEFRAMES)))
+        elif url.path == "/api/mkt/charts":
+            q = parse_qs(url.query)
+            pairs = []
+            for item in (q.get("c") or [""])[0].split(","):
+                if ":" in item:
+                    pairs.append(tuple(item.rsplit(":", 1)))
+            if not pairs:
+                return self.send_json(400, {"error": "ask for charts like c=GC=F:5m,NQ=F:5m"})
+            try:
+                self.send_json(200, markets.many(pairs, self.mkt_fetch))
+            except Exception as e:
+                self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
         elif url.path == "/api/push/status":
             self.send_json(200, self.pusher.state())
         elif url.path == "/api/notion/status":

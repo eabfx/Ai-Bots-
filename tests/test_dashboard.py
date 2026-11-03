@@ -95,12 +95,12 @@ class Basics(Server):
 
     def test_backtest_alerts_and_connections_are_their_own_pages(self):
         _, _, body = self.get("/")
-        for tab in ("backtest", "alerts", "connect"):
+        for tab in ("backtest", "alerts", "settings", "markets"):
             self.assertIn('data-tab="%s"' % tab, body)
-        for words in ('id="tab-alerts"', 'id="tab-connect"', 'id="al-list"', "function alertCheck", "function ruleCheck", "function alFire",
+        for words in ('id="tab-alerts"', 'id="tab-settings"', 'id="al-list"', "function alertCheck", "function ruleCheck", "function alFire",
                       "function connRender", "Notification.permission"):
             self.assertIn(words, body)
-        connect = body[body.index('id="tab-connect"'):body.index('id="tab-alerts"')]
+        connect = body[body.index('id="tab-settings"'):body.index('id="tab-alerts"')]
         self.assertIn('id="nt-card"', connect)                                        # imports live on Connections, not on the Journal page
         self.assertIn('id="imp-card"', connect)
         journal = body[body.index('id="tab-journal"'):]
@@ -1041,7 +1041,7 @@ class LivePrices(Server):
 
     def test_forward_test_is_its_own_page_over_the_same_layout_with_its_own_trades(self):
         _, _, page = self.get("/")
-        for needle in ('data-tab="forward">Forward Test<', 'var TABS=["home","macro","journal","backtest","forward"',
+        for needle in ('data-tab="forward">Forward Test<', 'var TABS=["home","markets","macro","journal","backtest","forward"',
                        "function isJ(t)", "return !t.skip&&typeOf(t)===jAcct", "Forward Test", "new in Forward Test"):
             self.assertIn(needle, page)
         self.assertIn('function typeOf(t){return t.acct!=="backtest"?"live":/forward/i.test(t.acctType||"")?"forward":"backtest"}', page)
