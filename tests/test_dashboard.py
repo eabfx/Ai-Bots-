@@ -93,6 +93,17 @@ class Basics(Server):
         self.assertNotIn("innerHTML", body[start:end])
         self.assertNotIn("innerHTML", body[body.index("function ntShow"):body.index("function ntCall")])
 
+    def test_an_installed_app_can_tell_when_the_server_has_a_newer_version(self):
+        code, _, body = self.get("/version.json")
+        self.assertEqual(code, 200)
+        version = json.loads(body)["version"]
+        self.assertRegex(version, r"^[0-9a-f]{8}$")
+        _, _, page = self.get("/")
+        self.assertIn('<meta name="kelly-version" content="%s">' % version, page)       # the page carries the version it was served with
+        self.assertNotIn("__KELLY_VERSION__", page)
+        for needle in ("function verCheck", "location.reload()", 'id="set-upd"', "A new version of Kelly_Terminal is ready."):
+            self.assertIn(needle, page)
+
     def test_backtest_alerts_and_connections_are_their_own_pages(self):
         _, _, body = self.get("/")
         for tab in ("backtest", "alerts", "settings", "markets"):
@@ -577,7 +588,7 @@ class KeptButNotCounted(unittest.TestCase):
         self.assertIn("if(at)t.acctType=at;else delete t.acctType;jSave();jRender()", self.PAGE)
 
     def test_the_page_can_be_installed_as_an_app(self):
-        for s in ('rel="manifest" href="/manifest.webmanifest?v=kelly"', 'rel="apple-touch-icon"', 'serviceWorker.register("/sw.js")', 'name="theme-color"'):
+        for s in ('rel="manifest" href="/manifest.webmanifest?v=k3"', 'rel="apple-touch-icon"', 'serviceWorker.register("/sw.js")', 'name="theme-color"'):
             self.assertIn(s, self.PAGE)
         root = os.path.join(os.path.dirname(__file__), "..", "riskdesk", "assets")
         manifest = json.load(open(os.path.join(root, "manifest.webmanifest"), encoding="utf-8"))
@@ -746,6 +757,12 @@ class TerminalLook(Server):
         ps = (here / "RiskDeskApp.ps1").read_text()
         self.assertIn("http://127.0.0.1:8765/", ps)
         self.assertIn("--app=", ps)
+        self.assertIn("keepalive.ps1", ps)                            # the server is started through the keeper, so a crash does not leave the window dead
+        keeper = (here / "keepalive.ps1").read_text()
+        self.assertIn("dashboard.py", keeper)
+        self.assertIn("WaitForExit", keeper)
+        self.assertIn("server-restarts.log", keeper)
+        self.assertIn("keepalive.ps1", (here / "stop-server.ps1").read_text())
         self.assertIn("Set-KellyWindowId", ps)                        # the window gets its own taskbar identity and icon, not Chrome's
         self.assertIn("KellyTerminal.App", (here / "kellyid.ps1").read_text())
         self.assertIn("Set-ShortcutId", (here / "install-app.ps1").read_text())

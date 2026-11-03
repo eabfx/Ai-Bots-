@@ -6,9 +6,9 @@ $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $url = "http://127.0.0.1:8765/"
 function Up { try { (Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200 } catch { $false } }
 if (-not (Up)) {
-  $py = (Get-Command py.exe).Source
-  if (-not $py) { $py = (Get-Command python.exe).Source }
-  Start-Process -FilePath $py -ArgumentList "riskdesk\dashboard.py", "--no-browser" -WorkingDirectory $root -WindowStyle Hidden
+  # started through keepalive.ps1, which starts the server again by itself if it ever crashes
+  $keeper = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "keepalive.ps1"
+  Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ('"' + $keeper + '"') -WorkingDirectory $root -WindowStyle Hidden
   for ($i = 0; $i -lt 40 -and -not (Up); $i++) { Start-Sleep -Milliseconds 750 }
 }
 if ($ServerOnly) { exit }

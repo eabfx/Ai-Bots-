@@ -247,6 +247,8 @@ class Handler(BaseHTTPRequestHandler):
                      else "public, max-age=86400" if url.path.startswith("/fonts/")
                      else "no-cache")                  # name, icons and manifest: the browser asks again, so a rename shows up at once
             return self.send_bytes(200, data, kind, cache)
+        if url.path == "/version.json":                 # which version is running: no data in it, so the sign-in does not apply
+            return self.send_json(200, {"version": VERSION})
         if self.auth_route(url) or self.blocked(url.path.startswith("/api/")):
             return
         if url.path == "/":
@@ -443,8 +445,25 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     return DashboardServer(("127.0.0.1", port), handler)
 
 
+def _version():
+    """Which copy of the code this is: the git commit when there is one, otherwise a fingerprint of the page. The page shows it
+    in Settings and uses it to notice that the server has been updated, so an app left open on a phone refreshes itself."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        import subprocess
+        out = subprocess.run(["git", "-C", here, "rev-parse", "--short=8", "HEAD"], capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except (OSError, ValueError, Exception):
+        pass
+    import hashlib
+    with open(os.path.join(here, "dashboard.html"), "rb") as fh:
+        return hashlib.sha1(fh.read()).hexdigest()[:8]
+
+
+VERSION = _version()
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html"), encoding="utf-8") as _fh:
-    PAGE = _fh.read()
+    PAGE = _fh.read().replace("__KELLY_VERSION__", VERSION)
 
 
 def _app_files():

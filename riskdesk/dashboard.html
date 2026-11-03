@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0a">
-<link rel="manifest" href="/manifest.webmanifest?v=kelly">
-<link rel="icon" type="image/svg+xml" href="/logo.svg?v=kelly">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=kelly">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=kelly">
+<meta name="kelly-version" content="__KELLY_VERSION__">
+<link rel="manifest" href="/manifest.webmanifest?v=k3">
+<link rel="icon" type="image/svg+xml" href="/logo.svg?v=k3">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=k3">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=k3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Kelly_Terminal">
 <title>Kelly_Terminal</title>
@@ -1475,6 +1476,8 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 .chat .m .gap{height:8px}.chat .m b{font-weight:600}
 .cfine{font:400 11px/1.5 var(--sans)!important;color:var(--muted)}
 .chat.docked{height:480px}.chat.docked #chat-close{display:none}.chat.docked .hd{flex-wrap:nowrap}
+.verbar{position:fixed;left:12px;right:12px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:300;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;padding:10px 14px;background:var(--panel);border:1px solid var(--hover);border-radius:var(--radius);font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+@media(min-width:901px){.verbar{left:auto;right:20px;bottom:56px;max-width:420px}}
 /* ten menu items: the menu gives way, the buttons on its right never get squeezed */
 @media(min-width:901px){.bar nav{flex:1 1 0;min-width:0}.brainbtn,.themebtn,#cmd{flex:none}}
 @media(min-width:901px) and (max-width:1560px){.bar nav button .ni{display:none}.bar nav button{padding:0 9px!important}}
@@ -1780,6 +1783,8 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <p class="sub">Saved in this browser.</p>
 <div class="set-rows">
 <div class="set-row"><div class="t"><b>Theme</b><div>Dark is the default. Light is easier in a bright room.</div></div><div class="mk-grp" id="set-theme" role="group" aria-label="Theme"><button type="button" data-th="dark">Dark</button><button type="button" data-th="light">Light</button></div></div>
+<div class="set-row"><div class="t"><b>App version</b><div id="set-ver">Checking...</div></div><button class="btn small ghost" id="set-upd" type="button">Check for updates</button></div>
+<div class="set-row"><div class="t"><b>Home screen icon</b><div>Android refreshes the icon by itself within a day. On iPhone and iPad the icon is copied when you add the app, so remove it and add it again: open the site in Safari, Share, Add to Home Screen.</div></div></div>
 <div class="set-row"><div class="t"><b>Opening animation</b><div>The logo intro that plays when the app opens.</div></div><button class="btn small ghost" id="set-intro" type="button">Replay</button></div>
 <div class="set-row"><div class="t"><b>Home layout</b><div>Put the Home panels back in their original order and show any you hid.</div></div><button class="btn small ghost" id="set-home" type="button">Reset Home</button></div>
 <div class="set-row"><div class="t"><b>Market charts</b><div>Go back to the starter set: gold, Nasdaq, EUR/USD, GBP/USD, dollar index and oil.</div></div><button class="btn small ghost" id="set-mk" type="button">Reset charts</button></div>
@@ -4433,6 +4438,25 @@ setInterval(function(){if(tabNow==="markets"&&!document.hidden)mkFetch()},20000)
   if(window.ResizeObserver)new ResizeObserver(again).observe($("mk-grid"));else window.addEventListener("resize",again);
   document.addEventListener("click",function(e){if(e.target&&e.target.id==="theme")setTimeout(again,60)})})();
 
+/* keeping an installed app current: the page remembers which version it loaded, asks the server which one is running, and reloads when they differ */
+var APPV=(document.querySelector('meta[name="kelly-version"]')||{}).content||"",verNew="",verAt=0,wasHidden=false;
+function verCheck(manual){
+  return fetch("/version.json",{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){
+    verAt=Date.now();verNew=j&&j.version||"";verShow();
+    if(verNew&&APPV&&verNew!==APPV){
+      var typing=document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+      if(manual||(wasHidden&&!typing)){location.reload();return true}
+      verBanner()}
+    return false}).catch(function(){return false})}
+function verShow(){var e=$("set-ver");if(!e)return;e.textContent="This app: "+(APPV&&APPV.indexOf("__")<0?APPV:"unknown")+(verNew?". Server: "+verNew+(verNew===APPV?", up to date.":", a newer version is ready."):".")}
+function verBanner(){
+  if($("ver-bar"))return;var b=el("div","verbar");b.id="ver-bar";b.setAttribute("role","status");
+  b.appendChild(el("span",null,"A new version of Kelly_Terminal is ready."));var go=el("button","btn small","Update now");go.type="button";go.onclick=function(){location.reload()};b.appendChild(go);
+  var x=el("button","btn small ghost","Later");x.type="button";x.onclick=function(){b.parentNode.removeChild(b)};b.appendChild(x);document.body.appendChild(b)}
+document.addEventListener("visibilitychange",function(){if(document.hidden){wasHidden=true}else{verCheck(false);wasHidden=false}});
+window.addEventListener("pageshow",function(e){if(e.persisted)location.reload()});
+setInterval(function(){if(!document.hidden)verCheck(false)},180000);setTimeout(function(){verCheck(false)},4000);
+$("set-upd").onclick=function(){var b=$("set-upd");b.disabled=true;b.textContent="Checking...";verCheck(true).then(function(r){b.disabled=false;b.textContent="Check for updates";if(!r){var e=$("set-ver");if(e)e.textContent=e.textContent+" Nothing newer found."}})};
 /* settings page */
 (function(){
   var js=document.querySelectorAll("#tab-settings [data-jump]");for(var i=0;i<js.length;i++)(function(b){b.onclick=function(){var e=$(b.getAttribute("data-jump"));if(e)e.scrollIntoView({behavior:"smooth",block:"start"})}})(js[i]);
