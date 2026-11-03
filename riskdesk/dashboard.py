@@ -280,6 +280,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(200, found[0], found[1], "private, max-age=31536000, immutable")     # the name is a fingerprint of the picture
             else:
                 self.send_json(404, {"error": "not found"})
+        elif url.path == "/api/connections":
+            # what is set up, for the Connections page: yes or no only, never a key
+            self.send_json(200, {"hosted": bool(self.auth_settings), "backup_prices": bool(macro.twelve_key(self.data_dir))})
         elif url.path == "/api/coach/status":
             pv = coach.provider(self.config_path)
             self.send_json(200, {"ready": bool(pv["key"]), "service": pv["name"], "model": pv["model"]})

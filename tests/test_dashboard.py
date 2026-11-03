@@ -167,6 +167,15 @@ class CoachRoutes(Server):
         self.assertTrue(json.loads(js)["ready"])
         self.assertNotIn("sk-secret", js)
 
+    def test_connections_says_yes_or_no_for_the_backup_price_key_and_never_shows_it(self):
+        _, _, js = self.get("/api/connections")
+        self.assertEqual(json.loads(js), {"hosted": False, "backup_prices": False})
+        with open(os.path.join(self.tmp.name, "twelvedata_key.txt"), "w") as fh:
+            fh.write("td-secret")
+        _, _, js = self.get("/api/connections")
+        self.assertTrue(json.loads(js)["backup_prices"])
+        self.assertNotIn("td-secret", js)
+
     def test_a_gemini_key_alone_is_enough_and_goes_to_google(self):
         with open(os.path.join(self.tmp.name, "gemini_key.txt"), "w") as fh:
             fh.write("g-secret")

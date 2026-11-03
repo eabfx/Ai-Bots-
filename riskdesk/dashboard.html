@@ -3103,11 +3103,19 @@ function connRender(){
   function card(k,v,s,c){var d=el("div","hnum");d.style.cursor="default";d.appendChild(el("div","k",k));var x=el("div","v",v);x.style.fontSize="17px";if(c)x.className+=" "+c;d.appendChild(x);d.appendChild(el("div","s",s));box.appendChild(d);return x}
   var ai=card("AI assistant","Checking...","");
   fetch("/api/coach/status").then(function(r){return r.json()}).then(function(s){ai.textContent=s.ready?"Connected":"No key";ai.className="v "+(s.ready?"up":"down");ai.nextSibling.textContent=s.ready?s.service+", "+s.model:"Save a Gemini or Claude key in the trader folder"}).catch(function(){ai.textContent="Unreachable"});
-  card("Prices","Yahoo (free)",macroData?"Last updated "+macroData.as_of+" Dublin":"Loading...","flat");
+  var px=card("Prices","Yahoo (free)",macroData?"Last updated "+macroData.as_of+" Dublin":"Loading...","flat");
+  var nt=card("Notion","Checking...","","flat");
+  var gs=card("Google sign-in","Checking...","","flat");
+  var where=location.hostname==="127.0.0.1"||location.hostname==="localhost"?"on this PC":"on your server";
   card("Calendar and news","ForexFactory + Google News",macroData?macroData.events.length+" releases, "+macroData.headlines.length+" headlines":"Loading...","flat");
-  card("Journal storage",jReady?"On this PC":"Browser only",jReady?trades.length+" trades in trader\\journal":"The dashboard did not answer",jReady?"up":"down");
-  card("Notion","File import","Export the database, drop the zip in trader\\import, preview and import below","flat");
-  card("Google sign-in and sync","Not set up","Needs the dashboard hosted online first; the app stays local for now","flat")}
+  card("Journal storage",jReady?"Saved "+where:"Browser only",jReady?trades.length+" trades in the journal folder "+where:"The dashboard did not answer",jReady?"up":"down");
+  fetch("/api/connections").then(function(r){return r.json()}).then(function(s){
+    if(s.backup_prices){px.textContent="Yahoo + Twelve Data";px.className="v up";px.nextSibling.textContent="Twelve Data answers for gold and the currency pairs if Yahoo fails"}
+    gs.textContent=s.hosted?"On":"Off";gs.className="v "+(s.hosted?"up":"flat");
+    gs.nextSibling.textContent=s.hosted?"Only your Google address can open this page":"Local copy: no sign-in needed on this PC"}).catch(function(){gs.textContent="Unknown"});
+  fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){
+    if(s.connected){nt.textContent="Live, read only";nt.className="v up";nt.nextSibling.textContent=s.error?s.error:(s.journal_rows||0)+" journal rows, "+(s.hub_pages||0)+" pages copied. Nothing is ever written to Notion"}
+    else{nt.textContent="Not linked";nt.nextSibling.textContent="Add a Notion key to link it (steps under Notion live link below)"}}).catch(function(){nt.textContent="Unknown"})}
 
 /* ---------------- chat box ---------------- */
 var chatMsgs=[],chatBusy=false;
