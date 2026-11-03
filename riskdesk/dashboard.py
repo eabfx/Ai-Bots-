@@ -406,7 +406,7 @@ def _app_files():
     kinds = {"manifest.webmanifest": "application/manifest+json", "sw.js": "application/javascript; charset=utf-8",
              "brain.js": "application/javascript; charset=utf-8", "brain.css": "text/css; charset=utf-8",
              "icon-192.png": "image/png", "icon-512.png": "image/png", "icon-maskable-512.png": "image/png",
-             "apple-touch-icon.png": "image/png", "fonts/geist.woff2": "font/woff2", "fonts/geist-mono.woff2": "font/woff2"}
+             "apple-touch-icon.png": "image/png", "logo.svg": "image/svg+xml", "fonts/geist.woff2": "font/woff2", "fonts/geist-mono.woff2": "font/woff2"}
     out = {}
     for name, kind in kinds.items():
         with open(os.path.join(here, name), "rb") as fh:
