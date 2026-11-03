@@ -1290,6 +1290,7 @@ table.dq td.dqk{color:var(--muted);font-size:11px}
 <button role="tab" aria-selected="false" data-tab="macro">Macro</button>
 <button role="tab" aria-selected="false" data-tab="journal">Journal</button>
 <button role="tab" aria-selected="false" data-tab="backtest">Backtest</button>
+<button role="tab" aria-selected="false" data-tab="forward">Forward Test</button>
 <button role="tab" aria-selected="false" data-tab="trades">Trades</button>
 <button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
 <button role="tab" aria-selected="false" data-tab="connect">Connections</button>
@@ -1339,7 +1340,7 @@ table.dq td.dqk{color:var(--muted);font-size:11px}
   var $$=function(q,r){return[].slice.call((r||document).querySelectorAll(q))};
   /* icons in the menu (wide screens show them) */
   var IC={home:"M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",macro:"M3 17l5-6 4 3 5-8 4 4M3 21h18",journal:"M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4zM5 17a3 3 0 013-3h11",
-    backtest:"M4 12a8 8 0 108-8M4 4v5h5M12 8v4l3 2",trades:"M7 7h12l-3-3M17 17H5l3 3",alerts:"M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0",
+    backtest:"M4 12a8 8 0 108-8M4 4v5h5M12 8v4l3 2",forward:"M4 12h13M13 6l6 6-6 6M4 5v14",trades:"M7 7h12l-3-3M17 17H5l3 3",alerts:"M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0",
     connect:"M9 7V3M15 7V3M7 7h10v4a5 5 0 01-10 0V7zM12 16v5",brain:"M9 4a3 3 0 00-3 3v1a3 3 0 00-2 3 3 3 0 002 3 3 3 0 003 4h1V4H9zM15 4a3 3 0 013 3v1a3 3 0 012 3 3 3 0 01-2 3 3 3 0 01-3 4h-1V4h1z"};
   function icon(name){var n="http://www.w3.org/2000/svg",s=document.createElementNS(n,"svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("class","ni");s.setAttribute("aria-hidden","true");
     var p=document.createElementNS(n,"path");p.setAttribute("d",IC[name]||IC.home);s.appendChild(p);return s}
@@ -1819,18 +1820,19 @@ function setTheme(t){
 $("theme").onclick=function(){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark")};
 setTheme(store("zd.theme")==="light"?"light":"dark");
 
-var TABS=["home","macro","journal","backtest","brain","trades","alerts","connect"];
+var TABS=["home","macro","journal","backtest","forward","brain","trades","alerts","connect"];
+function isJ(t){return t==="journal"||t==="backtest"||t==="forward"}      /* Journal, Backtest and Forward Test are one page over three separate sets of trades */
 function showTab(name){
   if(TABS.indexOf(name)<0)name="home";
   tabNow=name;
   if(name!=="brain"&&window.SecondBrain)window.SecondBrain.leave();                /* leaving Second Brain locks the password section */
-  var section=name==="backtest"?"journal":name;                         /* Journal and Backtest are the same page over two separate sets of trades */
-  TABS.forEach(function(t){var s=t==="backtest"?"journal":t,p=$("tab-"+s);if(s===section){p.hidden=false;p.classList.add("active")}else{p.hidden=true;p.classList.remove("active")}});
+  var section=isJ(name)?"journal":name;
+  TABS.forEach(function(t){var s=isJ(t)?"journal":t,p=$("tab-"+s);if(s===section){p.hidden=false;p.classList.add("active")}else{p.hidden=true;p.classList.remove("active")}});
   var bs=document.querySelectorAll("#nav button,.brainbtn");
   for(var i=0;i<bs.length;i++)bs[i].setAttribute("aria-selected",String(bs[i].getAttribute("data-tab")===name));
   store("zd.tab",name);window.scrollTo(0,0);
   var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
-  if(name==="journal"||name==="backtest"){jAcct=name==="backtest"?"backtest":"live";jAT="";jShown=30;jFormTab(name);jRender()}
+  if(isJ(name)){jAcct=name==="journal"?"live":name;jAT="";jShown=30;jFormTab(name);jRender()}
   if(name==="home"||name==="macro"||name==="connect")loadMacro(false);if(name==="trades")propCalc();
   if(name==="alerts")alRender();if(name==="connect"){connRender();nlStatus()}if(name==="brain")sbShow();
   dockChat(name==="home");
@@ -2038,14 +2040,14 @@ function pl(n,w,p){return n+" "+(n===1?w:(p||w+"s"))}
 function signed(x){return(x>=0?"+":"-")+money(Math.abs(x))+(UNITPCT?"%":"")}
 function clamp(x){return Math.max(0,Math.min(100,x))}
 function cls(x){return x>0?"up":x<0?"down":""}
-var jAcct="live",UNITPCT=false;           /* which set the Journal page is showing: live trades on Journal, backtests on Backtest */
+var jAcct="live",UNITPCT=false;     /* "live", "backtest" or "forward" */           /* which set the Journal page is showing: live trades on Journal, backtests on Backtest */
 function liveOnly(){return trades.filter(function(t){return t.acct!=="backtest"&&!t.skip})}          /* a trade with no account set counts as live */
-function jBase(){return jAcct==="backtest"?trades.filter(function(t){return t.acct==="backtest"&&!t.skip}):liveOnly()}
+function jBase(){return trades.filter(function(t){return !t.skip&&typeOf(t)===jAcct})}
 var jAT="";                                                                    /* the account chosen in the accounts panel, "" = all of them */
 function atName(t){return t.acctType||(t.acct==="backtest"?"Backtest":"Live")}
 function jPool(){return jAT?jBase().filter(function(t){return atName(t)===jAT}):jBase()}
 var SKIPNAME={none:"No trade",invalid:"Invalid",test:"Test, no result"};
-function jSkipped(){return trades.filter(function(t){return t.skip&&(jAcct==="backtest"?t.acct==="backtest":t.acct!=="backtest")})}
+function jSkipped(){return trades.filter(function(t){return t.skip&&typeOf(t)===jAcct})}
 function setUnit(list){UNITPCT=list.length>0&&list.every(function(t){return t.unit==="pct"})}
 function jm(x){return money(x)+(UNITPCT?"%":"")}
 function sinceDays(n,pool){var c=dparse(today())-(n-1)*DAY;return(pool||liveOnly()).filter(function(t){var d=dparse(t.date);return d!==null&&d>=c})}
@@ -2234,10 +2236,11 @@ function hCount(node,to){
   function step(ts){if(t0===null)t0=ts;var k=Math.min(1,(ts-t0)/900),e=1-Math.pow(1-k,3);
     node.textContent=signed(from+(to-from)*e);if(k<1)hAnim=requestAnimationFrame(step);else{hAnim=null;node.textContent=signed(to)}}
   hAnim=requestAnimationFrame(step)}
+function secWord(){return jAcct==="forward"?"forward test":"backtest"}
 function jHero(){
-  var pool=jPool(),bt=jAcct==="backtest",R=hRange();setUnit(pool);
-  var hr=new Date().getHours();$("h-hello").textContent=(hr<12?"Good morning":hr<18?"Good afternoon":"Good evening")+(bt?" - backtest":"");
-  var all=pool.length;$("h-meta").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+" - "+pl(all,"trade")+(bt?" in this backtest":" logged");
+  var pool=jPool(),bt=jAcct!=="live",R=hRange();setUnit(pool);
+  var hr=new Date().getHours();$("h-hello").textContent=(hr<12?"Good morning":hr<18?"Good afternoon":"Good evening")+(bt?" - "+secWord():"");
+  var all=pool.length;$("h-meta").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+" - "+pl(all,"trade")+(bt?" in this "+secWord():" logged");
   Array.prototype.forEach.call($("h-per").children,function(b){b.className=b.getAttribute("data-p")===hPer?"on":""});
   $("h-nav").style.display=R.all?"none":"";$("h-label").textContent=R.label;$("h-next").disabled=hOff===0;
   var list=R.all?pool:hBetween(pool,R.from,R.to),st=jStats(list),net=st.net;
@@ -2370,17 +2373,17 @@ function tRender(list){
     h.appendChild(r);sec.appendChild(h);ts.forEach(function(t){tRow(t,sec)});box.appendChild(sec)})}
 function jRender(){
   var list=jView(),st=jStats(list);jHero();jAccts();setUnit(list);fillLists();if(!$("j-no").value&&!jEditing)$("j-no").value=nextNo();
-  var bt=jAcct==="backtest";$("j-title").textContent=bt?"Backtest":"Journal";
-  $("j-sub").textContent=bt?"Your backtest trades, kept apart from your live journal. They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
+  var bt=jAcct!=="live";$("j-title").textContent=jAcct==="forward"?"Forward Test":bt?"Backtest":"Journal";
+  $("j-sub").textContent=bt?"Your "+(jAcct==="forward"?"forward-test":"backtest")+" trades, kept apart from your live journal"+(jAcct==="forward"?" and from your backtests":jAcct==="backtest"?" and from your forward tests":"")+". They never count in Home, the prop firm room, the alerts or the coach. Saved in the journal folder on this PC.":"Your live trades and numbers. Saved in a file on this PC (the journal folder inside your trader folder), so nothing is lost if you clear the browser, and nothing is uploaded unless you press Ask the coach below. Back up the whole journal folder now and then.";
   $("coach").hidden=bt;
   tzPanel();
   Array.prototype.forEach.call($("j-range").children,function(b){b.className=b.getAttribute("data-r")===jRange?"on":""});
   Array.prototype.forEach.call($("j-by").children,function(b){b.className=b.getAttribute("data-by")===jBy?"on":""});
-  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(bt?", backtest":"");
+  $("j-rangename").textContent={all:"all time","90":"last 90 days","30":"last 30 days","7":"last 7 days"}[jRange]+(bt?", "+secWord():"");
   var tot=$("j-total");tot.textContent=st.n?signed(st.net):"-";tot.className="jtotal "+(st.n?cls(st.net):"");
   var wk=jStats(sinceDays(7,jPool()));
   $("j-totsub").textContent=st.n?pl(st.w,"win")+" / "+pl(st.l,"loss","losses")+(st.n-st.w-st.l?" / "+(st.n-st.w-st.l)+" even":"")+" over "+pl(st.n,"trade")+
-    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":".")+(list.some(function(t){return t.unit==="pct"})&&!UNITPCT?" This view mixes trades in money and in %, so the totals are not meaningful.":""):trades.length?(jPool().length?"No trades in this period.":bt?"No backtest trades yet. Log one below, or import them on the Connections page.":"No live trades yet. Log one below, or import them on the Connections page."):"Log your first trade below and the numbers fill in.";
+    (trades.length&&jRange!=="7"?". Last 7 days: "+(wk.n?signed(wk.net):"no trades")+".":".")+(list.some(function(t){return t.unit==="pct"})&&!UNITPCT?" This view mixes trades in money and in %, so the totals are not meaningful.":""):trades.length?(jPool().length?"No trades in this period.":bt?"No "+secWord()+" trades yet. Log one below, or sync them from Notion.":"No live trades yet. Log one below, or import them on the Connections page."):"Log your first trade below and the numbers fill in.";
   var cards=[["Win rate",st.winrate===null?"-":fmt(st.winrate,1)+"%",st.n?st.w+"W / "+st.l+"L":"",null],
     ["Average R",st.avgR===null?"-":fmt(st.avgR,2)+"R",st.netR===null?"":"net "+fmt(st.netR,1)+"R over "+pl(st.rs.length,"trade"),st.avgR===null?null:cls(st.avgR)],
     ["Profit factor",st.pf===null?"-":st.pf===Infinity?"no losses":fmt(st.pf,2),st.avgWinR===null?"":"avg winner "+fmt(st.avgWinR,2)+"R",null],
@@ -2536,7 +2539,7 @@ function pickImage(file){
   .catch(function(e){pendingImg="";imgState("Could not save the screenshot: "+e.message,true)})}
 $("j-img").onchange=function(ev){pickImage(ev.target.files[0]);ev.target.value=""};
 document.addEventListener("paste",function(ev){
-  if((tabNow!=="journal"&&tabNow!=="backtest")||!ev.clipboardData)return;
+  if(!isJ(tabNow)||!ev.clipboardData)return;
   var items=ev.clipboardData.files;if(items&&items.length&&/^image\//.test(items[0].type)){
     if(!$("lb").hidden)return;ev.preventDefault();pickImage(items[0])}});
 /* the add / edit form: the same properties, in the same order, as the Notion trade journal */
@@ -2564,7 +2567,7 @@ function fillLists(){
   function uniq(k){var c={};trades.forEach(function(t){if(t[k])c[t[k]]=(c[t[k]]||0)+1});return Object.keys(c).sort(function(a,b){return c[b]-c[a]})}
   put("j-instlist",uniq("inst"));put("j-stratlist",uniq("strategy"));put("j-taglist",uniq("tag"));put("j-zonelist",uniq("zone"));
   put("j-seslist",["Asia Session","London Session","NY Session"].concat(uniq("session")))}
-function jFormTab(name){if(jEditing)jCancelEdit();setType(name==="backtest"?(jget(TTKEY)==="forward"?"forward":"backtest"):"live");$("j-ok").hidden=true}
+function jFormTab(name){if(jEditing)jCancelEdit();setType(name==="forward"?"forward":name==="backtest"?"backtest":"live");$("j-ok").hidden=true}
 function readTradeForm(){
   var kind=$("j-kind").value,pl,risk=0,unit="",rv="",rp="",profit="",money=parseFloat($("j-pl").value.trim()),r=parseFloat($("j-r").value),p=num("j-rp");
   if(jOut==="be"){if(!isFinite(r))r=0;if(!isFinite(money))money=0}
@@ -2582,7 +2585,7 @@ function readTradeForm(){
   return t?{trade:t}:{error:"That trade could not be read. Check the date and the numbers."}}
 function jOk(msg,page){
   var b=$("j-ok");b.textContent=msg;b.hidden=false;
-  if(page&&((page==="backtest")!==(tabNow==="backtest"))){var go=el("button","btn small ghost","Open "+(page==="backtest"?"Backtest":"Journal")+" \u203a");go.type="button";go.onclick=function(){showTab(page)};b.appendChild(go)}}
+  if(page&&page!==tabNow){var go=el("button","btn small ghost","Open "+(page==="backtest"?"Backtest":page==="forward"?"Forward Test":"Journal")+" \u203a");go.type="button";go.onclick=function(){showTab(page)};b.appendChild(go)}}
 function jResetForm(){
   ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-zone","j-bias","j-part","j-ses"].forEach(function(i){$(i).value=""});
   $("j-kind").value="";setOut("");pendingImg="";ssPreview("");imgState("Or paste an image (Ctrl+V) while this form is open.");$("j-no").value=nextNo();ssTitle()}
@@ -2609,7 +2612,7 @@ $("j-ssclear").onclick=function(){pendingImg="";jDropImg=!!jEditing;ssPreview(""
 $("j-add").onclick=function(){
   jError("");$("j-ok").hidden=true;
   var res=readTradeForm();if(res.error){jError(res.error);return}
-  var t=res.trade,page=t.acct==="backtest"?"backtest":"journal",label=TYPENAME[typeOf(t)];
+  var t=res.trade,page={live:"journal",forward:"forward",backtest:"backtest"}[typeOf(t)],label=TYPENAME[typeOf(t)];
   if(jDropImg&&!pendingImg)delete t.img;
   if(t.acct==="live"&&t.acctType)jset(LAKEY,t.acctType);
   if(jEditing){var ix=trades.indexOf(jEditing);if(ix>=0)trades[ix]=t;else trades.unshift(t);
@@ -2654,7 +2657,7 @@ $("sh-cp").onclick=function(){shBlob(function(b){
   try{if(!b||!navigator.clipboard||!window.ClipboardItem)throw 0;navigator.clipboard.write([new ClipboardItem({"image/png":b})]).then(function(){$("sh-msg").textContent="Copied. Paste it into a message or post."},function(){$("sh-msg").textContent="This browser would not copy the image. Use Download PNG."})}
   catch(e){$("sh-msg").textContent="This browser cannot copy images. Use Download PNG."}})};
 $("h-share").onclick=function(){var R=hRange(),pool=jPool(),list=R.all?pool:hBetween(pool,R.from,R.to);
-  if(!shOpen(list,R.label,jAT||(jAcct==="backtest"?"Backtest":"Live journal")))$("ac-note").textContent="No trades in this period to share yet."};
+  if(!shOpen(list,R.label,jAT||({backtest:"Backtest",forward:"Forward test"}[jAcct]||"Live journal")))$("ac-note").textContent="No trades in this period to share yet."};
 document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&!$("sh").hidden)shClose()});
 /* monthly wrapped: a story of one month, worked out from the journal with fixed rules (no AI, nothing guessed) */
 var W={i:0,slides:[],raf:null};
@@ -2672,7 +2675,7 @@ function wSlides(){
   if(!list.length)return null;
   var prev=hBetween(pool,Date.UTC(Y,M-1,1),Date.UTC(Y,M,0)),ps=jStats(prev),st=jStats(list),name=MONTHS[M],pname=MONTHS[(M+11)%12],net=st.net,ch=jChron(list),S=[];
   setUnit(list);
-  var who=jAT||(jAcct==="backtest"?"Backtest journal":"Live journal");
+  var who=jAT||({backtest:"Backtest journal",forward:"Forward test journal"}[jAcct]||"Live journal");
   function e(box,t){box.appendChild(el("div","w-e",t))}
   function p(box,t){var d=el("div","w-s");d.textContent=t;box.appendChild(d);return d}
   S.push({tone:net>0?"up":net<0?"down":"",build:function(b){e(b,"Monthly wrapped - "+who);b.appendChild(el("div","w-h",name+" "+Y+" in review"));p(b,pl(st.n,"trade")+" on "+pl(hDays(list).n,"trading day")+". Tap to go through it.")}});
@@ -2755,7 +2758,7 @@ function openLb(t,list){
   head.appendChild(el("span","big "+cls(t.pl),signed(t.pl)));head.appendChild(el("b",null,t.inst+" "+(t.dir==="long"?"Long":"Short")));
   if(ix>=0&&lbList.length>1)head.appendChild(el("small",null,(ix+1)+" of "+lbList.length+" - use the arrow keys"));
   info.appendChild(head);
-  var bits=[t.date+(t.time?" "+t.time:""),t.acct==="backtest"?"Backtest":"Live",
+  var bits=[t.date+(t.time?" "+t.time:""),TYPENAME[typeOf(t)]||"Live",
     r===null?"":fmt(r,2)+"R",t.zone||"",t.tag||"",t.bias?"bias "+t.bias:"",t.session||"",t.strategy||""].filter(Boolean);
   info.appendChild(el("b",null,bits.join("  |  ")));
   if(t.notes)info.appendChild(el("div",null,t.notes));
@@ -2879,7 +2882,7 @@ function nsSync(force){
       if(!o.notes&&n.notes){o.notes=n.notes;ch=true}
       if(!o.img&&n.img){o.img=n.img;ch=true}
       if(ch)upd++});
-    var res={rows:fresh.length,live:add.filter(function(t){return t.acct!=="backtest"}).length,bt:add.filter(function(t){return t.acct==="backtest"}).length,upd:upd,at:j.at};
+    var res={rows:fresh.length,live:add.filter(function(t){return typeOf(t)==="live"}).length,fw:add.filter(function(t){return typeOf(t)==="forward"}).length,bt:add.filter(function(t){return typeOf(t)==="backtest"}).length,upd:upd,at:j.at};
     if(!add.length&&!upd)return res;
     if(trades.length+add.length>20000)return res;
     trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
@@ -2898,10 +2901,10 @@ function nsPull(silent){
     if(s.connected===false){if(!silent)nsNote("Notion is not linked","Add the Notion key first (Connections).");return}
     if(s.error){if(!silent)nsNote("Notion did not answer",s.error);return}
     return nsSync(true).then(function(r){
-      if(!r)return;var n=r.live+r.bt;
-      var live=liveOnly().length,bt=trades.filter(function(t){return t.acct==="backtest"&&!t.skip}).length;
-      if(n||r.upd){nsNote("Synced from Notion",(r.live?r.live+" new in Journal":"")+(r.live&&r.bt?", ":"")+(r.bt?r.bt+" new in Backtest":"")+(r.upd?(n?", ":"")+r.upd+" updated":"")+". Journal now has "+live+" trades, Backtest "+bt+".")}
-      else if(!silent)nsNote("Already up to date","Notion has "+r.rows+" rows and every one is here. Journal "+live+" trades, Backtest "+bt+". Checked "+s.at+".")})})
+      if(!r)return;var n=r.live+r.fw+r.bt;
+      var cnt=function(k){return trades.filter(function(t){return !t.skip&&typeOf(t)===k}).length},tally="Journal "+cnt("live")+", Forward Test "+cnt("forward")+", Backtest "+cnt("backtest")+".";
+      if(n||r.upd){nsNote("Synced from Notion",nsWhere(r)+(r.upd?(n?", ":"")+r.upd+" updated":"")+". "+tally)}
+      else if(!silent)nsNote("Already up to date","Notion has "+r.rows+" rows and every one is here. "+tally+" Checked "+s.at+".")})})
   .catch(function(){if(!silent)nsNote("Could not reach Notion","The dashboard did not answer. Try again in a moment.")})
   .then(function(){nsBusy=false;var b2=document.querySelectorAll("[data-nsync],#nl-sync");for(var k=0;k<b2.length;k++)b2[k].classList.remove("busy");nlStatus()})}
 Array.prototype.forEach.call(document.querySelectorAll("[data-nsync]"),function(b){b.onclick=function(){nsPull(false)}});
@@ -2909,7 +2912,8 @@ fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){
 /* coming back to the dashboard after using Notion: pull quietly, and say so only if something new arrived */
 function nsBack(){if(document.hidden||dormant||Date.now()-nsLast<90000||!document.body.classList.contains("hasnotion"))return;nsPull(true)}
 document.addEventListener("visibilitychange",nsBack);window.addEventListener("focus",nsBack);
-function nsAuto(){nsSync().then(function(r){if(r&&(r.live||r.bt))nsNote("New from Notion",(r.live?r.live+" new in Journal":"")+(r.live&&r.bt?", ":"")+(r.bt?r.bt+" new in Backtest":"")+".")})}
+function nsWhere(r){return [r.live?r.live+" new in Journal":"",r.fw?r.fw+" new in Forward Test":"",r.bt?r.bt+" new in Backtest":""].filter(Boolean).join(", ")}
+function nsAuto(){nsSync().then(function(r){if(r&&(r.live||r.fw||r.bt))nsNote("New from Notion",nsWhere(r)+".")})}
 setInterval(function(){if(!document.hidden)nsAuto()},60000);setTimeout(nsAuto,4000);
 function coachStatus(){
   var box=$("coach-setup");
@@ -3773,8 +3777,8 @@ jLoad();
   var $=function(i){return document.getElementById(i)};
   function go(tab){var b=document.querySelector('nav button[data-tab="'+tab+'"],.brainbtn[data-tab="'+tab+'"]');if(b)b.click()}
   var CMDS=[["home","Home","1",function(){go("home")}],["macro","Macro desk","2",function(){go("macro")}],["journal","Journal","3",function(){go("journal")}],
-    ["backtest","Backtest","4",function(){go("backtest")}],["trades","Trades","5",function(){go("trades")}],["alerts","Alerts","6",function(){go("alerts")}],
-    ["connections","Connections","7",function(){go("connect")}],["brain","Second Brain","8",function(){go("brain")}],
+    ["backtest","Backtest","4",function(){go("backtest")}],["forward","Forward Test","5",function(){go("forward")}],["trades","Trades","6",function(){go("trades")}],["alerts","Alerts","7",function(){go("alerts")}],
+    ["connections","Connections","8",function(){go("connect")}],["brain","Second Brain","9",function(){go("brain")}],
     ["brief","Write the market read now","",function(){go("macro");var b=$("h-brief");if(b)b.click()}],
     ["refresh","Refresh prices","",function(){var b=$("home-refresh");if(b)b.click()}],
     ["theme","Switch light / dark","",function(){var b=$("theme");if(b)b.click()}],
@@ -3803,7 +3807,7 @@ jLoad();
   document.addEventListener("keydown",function(e){
     if(e.metaKey||e.ctrlKey||e.altKey||typing(e.target))return;
     if(e.key==="`"||e.key==="/"){e.preventDefault();cmd.focus();return}
-    var n=+e.key;if(n>=1&&n<=8&&e.key.length===1){var c=CMDS[n-1];if(c){c[3]();e.preventDefault()}}});
+    var n=+e.key;if(n>=1&&n<=9&&e.key.length===1){var c=CMDS[n-1];if(c){c[3]();e.preventDefault()}}});
   /* status bar */
   function two(n){return(n<10?"0":"")+n}
   function hm(ms){var d=new Date(ms);return two(d.getHours())+":"+two(d.getMinutes())}

@@ -533,7 +533,7 @@ class KeptButNotCounted(unittest.TestCase):
 
     def test_pools_leave_out_skipped_entries_and_they_have_their_own_list(self):
         self.assertIn('t.acct!=="backtest"&&!t.skip', self.PAGE)
-        self.assertIn('t.acct==="backtest"&&!t.skip', self.PAGE)
+        self.assertIn('return !t.skip&&typeOf(t)===jAcct', self.PAGE)
         self.assertIn("function jSkipped()", self.PAGE)
         self.assertIn('id="j-skipcard"', self.PAGE)
         self.assertIn('t.skip==="none"||t.skip==="invalid"||t.skip==="test"', self.PAGE)       # survives load and save
@@ -762,7 +762,7 @@ class TerminalLook(Server):
 
     def test_the_page_has_the_command_box_the_status_bar_and_number_keys(self):
         _, _, page = self.get("/")
-        for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=8", "rdState"):
+        for needle in ('id="cmd"', 'id="statusbar"', 'id="cmdhelp"', "terminal pack", 'e.key==="`"', "n>=1&&n<=9", "rdState"):
             self.assertIn(needle, page)
 
     def test_the_decorative_effects_are_switched_off_but_the_intro_stays(self):
@@ -1036,6 +1036,13 @@ class LivePrices(Server):
         _, _, page = self.get("/")
         for needle in ('id="dq-table"', "function dqRender", "function freshPaint", 'fetch("/api/quality")'):
             self.assertIn(needle, page)
+
+    def test_forward_test_is_its_own_page_over_the_same_layout_with_its_own_trades(self):
+        _, _, page = self.get("/")
+        for needle in ('data-tab="forward">Forward Test<', 'var TABS=["home","macro","journal","backtest","forward"',
+                       "function isJ(t)", "return !t.skip&&typeOf(t)===jAcct", "Forward Test", "new in Forward Test"):
+            self.assertIn(needle, page)
+        self.assertIn('function typeOf(t){return t.acct!=="backtest"?"live":/forward/i.test(t.acctType||"")?"forward":"backtest"}', page)
 
     def test_the_page_moves_numbers_in_place_and_flashes_the_ones_that_changed(self):
         _, _, page = self.get("/")
