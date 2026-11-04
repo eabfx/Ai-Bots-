@@ -211,13 +211,28 @@ def pearson(a, b):
     return sum((x - ma) * (y - mb) for x, y in zip(a, b)) / (va * vb) ** 0.5
 
 
-def _returns(bars, daily=False):
-    """{time: return from the previous bar} for one market. Daily bars start at different hours in different markets, so they are matched by day."""
+def _prev_weekday(day):
+    """The weekday before a day number (days since 1970-01-01, a Thursday): Monday goes back to Friday."""
+    w = (day + 3) % 7          # 0 = Monday
+    return day - 3 if w == 0 else day - 2 if w == 6 else day - 1
+
+
+def _returns(bars, daily=False, late=False):
+    """{time: return from the previous bar} for one market. Daily bars start at different hours in different markets, so they are matched by day.
+    late: Yahoo stamps a currency's daily bar with the day AFTER the session it closes (the 00:00 London bar holds the previous
+    day's close, checked against hourly data), so those bars are moved back one trading day to line up with indices and futures."""
     out, prev = {}, None
     for b in bars:
         c = b[4]
+        if c is None:
+            continue                      # weekend and holiday bars come back empty; keep the last real close
         if prev:
-            out[(b[0] + 3600) // 86400 if daily else b[0]] = c / prev - 1
+            key = b[0]
+            if daily:
+                key = (b[0] + 3600) // 86400
+                if late:
+                    key = _prev_weekday(key)
+            out[key] = c / prev - 1
         prev = c
     return out
 
@@ -237,7 +252,7 @@ def correlations(fetch=None, clock=time.time):
     def grab(job):
         sym, tf = job
         try:
-            return (sym, tf), _returns(one(sym, tf, fetch, clock, 30)["bars"], tf == "1d")
+            return (sym, tf), _returns(one(sym, tf, fetch, clock, 30)["bars"], tf == "1d", sym.endswith("=X"))
         except (MarketsError, z.ZoneError):
             return (sym, tf), None
     with ThreadPoolExecutor(max_workers=6) as ex:

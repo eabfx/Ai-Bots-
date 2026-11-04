@@ -226,6 +226,34 @@ class Correlations(unittest.TestCase):
         self.assertEqual(by["Nasdaq and S&P 500"]["state"], "normal")
         self.assertEqual(markets.correlations(fake), out)                           # reused for a minute
 
+    def test_currency_daily_bars_line_up_with_index_bars_a_trading_day_apart(self):
+        """Real Yahoo pattern: the dollar index bar for a day is stamped 04:00/05:00Z that day, but the EUR/USD bar holding that
+        same day's close is stamped 00:00 London the NEXT trading day (23:00Z in summer). Matched by stamp alone they miss."""
+        import math
+        mon = 20_759                                     # a Monday, as days since 1970
+        days = [d for d in range(mon, mon + 7 * 40) if (d + 3) % 7 < 5]       # weekdays only
+        move = {d: math.sin(d * 1.7) * 0.004 for d in days}
+        dxy, eur, px_d, px_e = [], [], 100.0, 1.1
+        for i, d in enumerate(days):
+            px_d *= 1 - move[d]                          # the dollar falls when the euro rises
+            px_e *= 1 + move[d]
+            dxy.append([d * 86400 + (4 if i % 2 else 5) * 3600, px_d, px_d, px_d, px_d, 0])
+            nxt = days[i + 1] if i + 1 < len(days) else d + 1
+            summer = i % 2                               # 23:00Z the evening before in summer, 00:00Z in winter
+            eur.append([nxt * 86400 - 3600 if summer else nxt * 86400, px_e, px_e, px_e, px_e, 0])
+        naive = markets._paired(markets._returns(eur, True), markets._returns(dxy, True))
+        fixed = markets._paired(markets._returns(eur, True, True), markets._returns(dxy, True))
+        self.assertLess(abs(markets.pearson(*naive)), 0.5)             # the old way: nowhere near the true link
+        self.assertLess(markets.pearson(*fixed), -0.99)                # lined up: the true strong opposite
+        self.assertGreater(len(fixed[0]), 150)
+
+    def test_previous_weekday(self):
+        mon = 20_759
+        self.assertEqual((mon + 3) % 7, 0)
+        self.assertEqual(markets._prev_weekday(mon), mon - 3)         # Monday looks back to Friday
+        self.assertEqual(markets._prev_weekday(mon + 1), mon)
+        self.assertEqual(markets._prev_weekday(mon + 6), mon + 4)     # a Sunday stamp looks back to Friday
+
     def test_no_data_is_unknown_not_invented(self):
         def broken(path):
             raise markets.z.ZoneError("no answer")
