@@ -3639,6 +3639,7 @@ $("j-restore").onchange=function(ev){
   };
   rd.readAsText(f);
 };
+var WL={f:"all",setup:"",n:24};   /* must exist before the first jRender() below, which draws the screenshot wall */
 jRender();
 
 /* ---------------- start ---------------- */
@@ -5042,7 +5043,6 @@ function jNews(list){
   if(A.length>=5&&B.length>=5)msg=sa.net/sa.n<sb.net/sb.n?"You earn less per trade on news days ("+signed(sa.net/sa.n)+" against "+signed(sb.net/sb.n)+"). Consider smaller size or standing aside around releases.":"You do at least as well on news days ("+signed(sa.net/sa.n)+" per trade against "+signed(sb.net/sb.n)+").";
   if(msg)box.appendChild(el("div","jfact",msg));
   box.appendChild(el("div","jsub","Only trades on days the dashboard has recorded are counted. Small samples mislead, so read this as a prompt to look, not as a rule."))}
-var WL={f:"all",setup:"",n:24};
 function jWall(list){
   var box=$("j-wall");if(!box)return;box.textContent="";box.appendChild(el("h3","jh","Screenshot wall"));
   var pics=jChron(list).filter(function(t){return t.img}).reverse();

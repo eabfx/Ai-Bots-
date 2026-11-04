@@ -128,6 +128,11 @@ class PageFeatures(unittest.TestCase):
                        'window.print()', '@media print', 'function popOut(slug)', '"#pop="', 'body.popout', 'id="mk-pop"', '["start","Start my day"', '["report","Monthly report"'):
             self.assertIn(needle, self.page)
 
+    def test_the_screenshot_wall_state_exists_before_the_first_journal_draw(self):
+        # jRender() runs once while the page loads; anything it uses must already be set up, or the whole script stops
+        self.assertLess(self.page.index('var WL={f:"all"'), self.page.index("\njRender();\n\n/* ---------------- start"))
+        self.assertIn('id="kt-fatal"', self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)
