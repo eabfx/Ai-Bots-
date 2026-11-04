@@ -130,6 +130,24 @@ class Keeper(unittest.TestCase):
         self.assertEqual(s["total"]["cfd"]["ongoing"], 220000)
         self.assertEqual(before, json.dumps(self.doc, sort_keys=True))
 
+    def test_settings_copied_from_one_copy_make_another_copy_match(self):
+        a_id = [a for a in self.f.state()["accounts"] if a["market"] == "cfd" and a["stage"] == "ongoing"][0]["id"]
+        self.f.act({"action": "remove", "id": a_id})
+        self.f.act({"action": "totals", "totals": {"all": 350000, "cfd": 300000}})
+        mine = self.f.state()
+        other_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(other_dir.cleanup)
+        other = funding.Funding(other_dir.name, lambda: self.doc)           # a second copy reading the same Notion rows
+        self.assertNotEqual(other.state()["shown"], mine["shown"])
+        after = other.act({"action": "import", "settings": json.loads(json.dumps(mine["settings"]))})
+        self.assertEqual(after["shown"], mine["shown"])
+        self.assertEqual((after["hidden"], after["custom"]), (mine["hidden"], mine["custom"]))
+        self.assertEqual(funding.Funding(other_dir.name, lambda: self.doc).state()["shown"], mine["shown"])   # and it was saved
+        with self.assertRaises(funding.FundingError):
+            other.act({"action": "import", "settings": {"nonsense": 1}})
+        with self.assertRaises(funding.FundingError):
+            other.act({"action": "import", "settings": "text"})
+
     def test_changes_survive_a_restart_and_a_new_notion_copy(self):
         self.f.act({"action": "add", "account": {"firm": "Topstep", "market": "futures", "size": 50000, "stage": "ongoing"}})
         self.f.act({"action": "goal", "goal": 2000000})

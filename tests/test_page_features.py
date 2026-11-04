@@ -133,6 +133,10 @@ class PageFeatures(unittest.TestCase):
         self.assertLess(self.page.index('var WL={f:"all"'), self.page.index("\njRender();\n\n/* ---------------- start"))
         self.assertIn('id="kt-fatal"', self.page)
 
+    def test_funding_settings_can_be_copied_to_another_copy(self):
+        for needle in ('id="fd-copy"', 'id="fd-paste"', 'action:"import"', 'Paste Funding settings', 'FD.settings'):
+            self.assertIn(needle, self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

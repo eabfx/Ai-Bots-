@@ -280,12 +280,17 @@ class Funding:
         return os.path.join(self.dir, FILE)
 
     def _load(self):
-        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "totals": {}, "status": [], "seq": 0}
         try:
             with open(self._path(), encoding="utf-8-sig") as fh:
                 doc = json.load(fh)
         except (OSError, ValueError):
-            return out
+            doc = None
+        return self._clean_doc(doc)
+
+    @staticmethod
+    def _clean_doc(doc):
+        """Your own Funding settings in one safe shape, whether they came from the file or were pasted in from another copy."""
+        out = {"accounts": [], "payouts": [], "over": {}, "hidden": [], "goal": None, "totals": {}, "status": [], "seq": 0}
         if not isinstance(doc, dict):
             return out
         out["accounts"] = [a for a in doc.get("accounts") or [] if isinstance(a, dict) and a.get("id")][:MAX_ACCOUNTS]
@@ -379,7 +384,7 @@ class Funding:
                 "total": total, "count": count, "by_stage": by_stage, "all": tidy(shown["all"]), "calc": {k: tidy(v) for k, v in calc.items()}, "shown": {k: tidy(v) for k, v in shown.items()}, "custom": custom, "paid": tidy(paid), "goal": tidy(goal),
                 "goal_custom": bool(self.my["goal"]), "warnings": warnings, "rules": n["rules"],
                 "notion": {"rows": len(n["accounts"]), "at": (hub or {}).get("at", ""), "found": bool(n["accounts"] or n["status"])},
-                "hidden": len(hidden), "markets": MARKET_NAMES, "stages": STAGE_NAMES}
+                "hidden": len(hidden), "markets": MARKET_NAMES, "stages": STAGE_NAMES, "settings": json.loads(json.dumps(self.my))}
 
     # ---- changes from the page
     def act(self, body):
@@ -450,12 +455,17 @@ class Funding:
                         raise FundingError("%s must be a number, zero or more" % TOTAL_NAMES[k])
                     fresh[k] = tidy(v)
                 m["totals"] = fresh
+            elif action == "import":
+                raw = body.get("settings")
+                if not isinstance(raw, dict) or not any(k in raw for k in ("hidden", "totals", "over", "accounts", "payouts", "status", "goal")):
+                    raise FundingError("that is not a set of Funding settings copied from this page")
+                self.my = m = self._clean_doc(raw)
             elif action == "goal":
                 g = num(body.get("goal")) if body.get("goal") not in (None, "") else None
                 if body.get("goal") not in (None, "") and (g is None or g <= 0):
                     raise FundingError("the goal must be a number above zero")
                 m["goal"] = tidy(g) if g else None
             else:
-                raise FundingError('action must be "add", "status", "edit", "remove", "restore", "payout", "totals" or "goal"')
+                raise FundingError('action must be "add", "status", "edit", "remove", "restore", "payout", "totals", "goal" or "import"')
             self._save()
             return self._state()

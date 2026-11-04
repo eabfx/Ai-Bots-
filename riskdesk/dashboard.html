@@ -2029,7 +2029,7 @@ window.addEventListener("error",function(e){try{var m=(e.message||"error")+(e.li
 <section class="tool" id="tab-funding" role="tabpanel" hidden>
 <h2 class="pt">Funding</h2>
 <p class="sub">Every prop-firm account you hold, forex and futures, with its size, stage, pay-outs and progress to your goal. It is copied from your Notion tables (read only) and you can add or change accounts here. Notion is never written to.</p>
-<div class="fd-top"><span class="fd-live" id="fd-live"><i></i><span id="fd-live-t">Loading...</span></span><div class="btnrow" style="margin:0"><button class="btn small" id="fd-edit" type="button">Edit numbers</button><button class="btn small" id="fd-conn-top" type="button">Connections</button></div></div>
+<div class="fd-top"><span class="fd-live" id="fd-live"><i></i><span id="fd-live-t">Loading...</span></span><div class="btnrow" style="margin:0"><button class="btn small" id="fd-edit" type="button">Edit numbers</button><button class="btn small" id="fd-conn-top" type="button">Connections</button><button class="btn small ghost" id="fd-copy" type="button" title="Copy what you have changed on this page, to paste into another copy of the dashboard">Copy my settings</button><button class="btn small ghost" id="fd-paste" type="button" title="Paste settings copied from another copy of the dashboard">Paste settings</button></div></div>
 <div class="hpanel" id="fd-numpanel" hidden><div class="hp-h"><h3>Your own numbers</h3></div>
 <div class="jsub" style="margin:10px 14px 0">Type the figure you want shown at the top. Evaluations are accounts still in evaluation or passed and waiting for activation. Funded is accounts that are active. Leave a box empty to use the figure worked out from your accounts. Total left empty is evaluations plus funded.</div>
 <div class="frow three" style="margin:10px 14px 0"><div><label for="fd-n-evals">Evaluations ($)</label><input type="number" id="fd-n-evals" min="0" step="any"></div><div><label for="fd-n-funded">Funded ($)</label><input type="number" id="fd-n-funded" min="0" step="any"></div><div><label for="fd-n-all">Total ($)</label><input type="number" id="fd-n-all" min="0" step="any"></div><div><label for="fd-n-cfd">Forex / CFD ($)</label><input type="number" id="fd-n-cfd" min="0" step="any"></div><div><label for="fd-n-futures">Futures ($)</label><input type="number" id="fd-n-futures" min="0" step="any"></div></div>
@@ -4497,6 +4497,22 @@ function fdInit(){
   $("fd-save").onclick=fdSave;
   $("fd-sadd").onclick=function(){fdSOpen(null)};$("fd-s-cancel").onclick=function(){$("fd-sform").hidden=true;FDSEDIT=""};$("fd-s-save").onclick=fdSSave;
   function connToggle(){var p=$("fd-connpanel");p.hidden=!p.hidden;if(!p.hidden)p.scrollIntoView({behavior:"smooth",block:"nearest"})}
+  $("fd-copy").onclick=function(){
+    if(!FD||!FD.settings){nsNote("Not ready","The Funding numbers have not loaded yet.");return}
+    var txt=JSON.stringify(FD.settings),done=false;
+    ktOpen("Copy my Funding settings",function(bd){
+      ktRow(bd,"These are the hidden rows, typed-in totals, goal and accounts you added on this page. Paste them into the same page on your other copy with Paste settings. Nothing in Notion is touched.","mu");
+      var ta=el("textarea");ta.id="fd-copytxt";ta.readOnly=true;ta.value=txt;bd.appendChild(ta);setTimeout(function(){ta.focus();ta.select()},50);
+      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(function(){var r=ktRow(bd,"Copied. Now open the other copy and press Paste settings.","good");r.id="fd-copied"}).catch(function(){})}catch(e){}
+    },[["Close",ktClose,true]])};
+  $("fd-paste").onclick=function(){
+    ktOpen("Paste Funding settings",function(bd){
+      ktRow(bd,"Paste the settings copied from your other copy. They replace the hidden rows, typed-in totals, goal and added accounts on this page. Notion is not touched.","mu");
+      var ta=el("textarea");ta.id="fd-pastetxt";ta.placeholder="Paste here";bd.appendChild(ta);var er=el("div","ktm-row bad");er.id="fd-pasteerr";er.hidden=true;bd.appendChild(er);setTimeout(function(){ta.focus()},50)
+    },[["Use these settings",function(){
+      var er=$("fd-pasteerr"),doc;er.hidden=true;
+      try{doc=JSON.parse($("fd-pastetxt").value)}catch(e){er.textContent="That is not copied settings. Use Copy my settings on the other copy and paste all of it.";er.hidden=false;return}
+      fdCall({action:"import",settings:doc}).then(function(s){FD=s;fdRender();ktClose();nsNote("Funding settings applied","This page now matches the copy they came from.")}).catch(function(e){er.textContent=e.message;er.hidden=false})}],["Close",ktClose,true]])};
   $("fd-conn").onclick=connToggle;$("fd-conn-top").onclick=connToggle;
   $("fd-edit").onclick=function(){var p=$("fd-numpanel");p.hidden=!p.hidden;if(!p.hidden&&FD){["evals","funded","all","cfd","futures"].forEach(function(k){$("fd-n-"+k).value=FD.custom[k]?FD.shown[k]:""});$("fd-n-all").focus()}};
   $("fd-n-cancel").onclick=function(){$("fd-numpanel").hidden=true};
