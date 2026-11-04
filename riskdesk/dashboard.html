@@ -4112,7 +4112,7 @@ function liveApply(d,quotes){
   if(moved){flowUpdate();alPriceCheck(d);if(tabNow==="alerts")alLive()}
   return moved}
 function liveMerge(d){        /* a fresh snapshot must not roll a price back to something older than the last live tick */
-  if(Date.now()-liveAtMs>20000)return;
+  if(!liveLast||!(Date.now()-liveAtMs<=20000))return;
   d.quotes.forEach(function(q){var p=liveLast[q.key];if(p!==undefined){q.price=p;if(q.prev){q.change=q.price-q.prev;q.pct=q.change/q.prev*100}}})}
 function liveTick(){
   if(liveBusy||document.hidden||dormant||!macroData||(tabNow!=="home"&&tabNow!=="macro"&&tabNow!=="alerts"))return;
