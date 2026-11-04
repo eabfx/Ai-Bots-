@@ -93,6 +93,11 @@ class PageFeatures(unittest.TestCase):
                        'animation-play-state:paused', '.hticker .tk-set+.tk-set{display:none}'):
             self.assertIn(needle, self.page)
 
+    def test_a_broken_market_link_can_raise_an_alert(self):
+        for needle in ('id="al-corr"', 'corr:true,dayLoss:0', '["al-corr","corr","b"]', 'function crAlertCheck()', 'alOnce("corr|"+p.label)',
+                       'setInterval(crAlertCheck,300000)', '"news","sess","check","corr","sound"'):
+            self.assertIn(needle, self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

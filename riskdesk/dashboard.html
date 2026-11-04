@@ -2019,6 +2019,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="frow two" style="margin:6px 12px 10px"><div><label for="al-newsmins">How early</label><select id="al-newsmins"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></div></div>
 <label class="ckrow"><input type="checkbox" id="al-sess"><span>Tell me 15 minutes before London and New York open</span></label>
 <label class="ckrow"><input type="checkbox" id="al-check"><span>Warn if I log a live trade with the checklist not fully ticked</span></label>
+<label class="ckrow"><input type="checkbox" id="al-corr"><span>Tell me when two linked markets break their usual link (for example gold and the dollar)</span></label>
 <div class="frow two" style="margin-top:10px"><div><label for="al-dayloss">Daily loss limit (journal units, 0 = off)</label><input type="number" id="al-dayloss" min="0" step="any"></div>
 <div><label for="al-streak">Losing streak to warn at (0 = off)</label><input type="number" id="al-streak" min="0" step="1"></div></div>
 <label class="ckrow"><input type="checkbox" id="al-sound"><span>Beep when an alert fires</span></label>
@@ -4171,9 +4172,9 @@ $("cust-reset").onclick=function(){LAY={hidden:[],order:{},compact:false};laySav
 layBuild();layApply();
 
 /* ---------------- alerts (checked in this page every minute, live trades only) ---------------- */
-var AL={price:[],news:true,newsMins:15,sess:true,check:true,dayLoss:0,streak:3,sound:true},alLog=[];
+var AL={price:[],news:true,newsMins:15,sess:true,check:true,corr:true,dayLoss:0,streak:3,sound:true},alLog=[];
 try{var a0=JSON.parse(store("zd.alerts")||"null");
-  if(a0&&typeof a0==="object"){["news","sess","check","sound"].forEach(function(k){if(typeof a0[k]==="boolean")AL[k]=a0[k]});
+  if(a0&&typeof a0==="object"){["news","sess","check","corr","sound"].forEach(function(k){if(typeof a0[k]==="boolean")AL[k]=a0[k]});
     ["newsMins","dayLoss","streak"].forEach(function(k){if(typeof a0[k]==="number"&&isFinite(a0[k])&&a0[k]>=0)AL[k]=a0[k]});
     if(Array.isArray(a0.price))AL.price=a0.price.filter(function(a){return a&&typeof a.sym==="string"&&(a.dir==="above"||a.dir==="below")&&typeof a.level==="number"&&isFinite(a.level)}).slice(0,30).map(function(a){return{sym:a.sym.slice(0,12),dir:a.dir,level:a.level,done:typeof a.done==="string"?a.done:""}})}}catch(e){}
 try{var l0=JSON.parse(store("zd.alerts.log")||"[]");if(Array.isArray(l0))alLog=l0.filter(function(x){return x&&typeof x.t==="string"&&typeof x.m==="string"}).slice(0,30)}catch(e){}
@@ -4208,7 +4209,7 @@ function ruleCheck(){
     if(n>=AL.streak&&alOnce("streak|"+n))alFire(n+" losing trades in a row","Your last "+n+" live trades all lost. Check the plan before the next one.")}}
 function alRender(){
   var sel=$("al-sym");if(!sel.children.length)MARKETS.concat([["DXY"],["US10Y"],["VIX"],["SPX"],["OIL"],["USDJPY"],["XAGUSD"]]).forEach(function(m){var o=el("option",null,m[0]);o.value=m[0];sel.appendChild(o)});
-  $("al-news").checked=AL.news;$("al-newsmins").value=String(AL.newsMins);$("al-sess").checked=AL.sess;$("al-check").checked=AL.check;
+  $("al-news").checked=AL.news;$("al-newsmins").value=String(AL.newsMins);$("al-sess").checked=AL.sess;$("al-check").checked=AL.check;$("al-corr").checked=AL.corr;
   $("al-dayloss").value=AL.dayLoss||"";$("al-streak").value=AL.streak||"";$("al-sound").checked=AL.sound;
   var p=window.Notification?Notification.permission:"unsupported";
   $("al-permstate").textContent=p==="granted"?"Desktop notifications are on.":p==="denied"?"Desktop notifications are blocked in this browser. On-screen alerts still work.":p==="unsupported"?"This browser has no desktop notifications. On-screen alerts still work.":"Desktop notifications are off until you allow them.";
@@ -4251,7 +4252,7 @@ $("al-add").onclick=function(){
   var sym=$("al-sym").value,dir=$("al-dir").value,q=macroData?quoteBy(macroData,sym):null;
   if(q&&(dir==="above"?q.price>=lv:q.price<=lv)){bad(sym+" is already "+(dir==="above"?"above ":"below ")+lv+" (now "+fmt(q.price,q.digits)+"). Pick a level it has not reached yet.");return}
   AL.price.push({sym:sym,dir:dir,level:lv,done:""});alSave();$("al-level").value="";alRender()};
-[["al-news","news","b"],["al-sess","sess","b"],["al-check","check","b"],["al-sound","sound","b"],["al-newsmins","newsMins","n"],["al-dayloss","dayLoss","n"],["al-streak","streak","n"]].forEach(function(c){
+[["al-news","news","b"],["al-sess","sess","b"],["al-check","check","b"],["al-corr","corr","b"],["al-sound","sound","b"],["al-newsmins","newsMins","n"],["al-dayloss","dayLoss","n"],["al-streak","streak","n"]].forEach(function(c){
   $(c[0]).onchange=function(){var v=c[2]==="b"?$(c[0]).checked:parseFloat($(c[0]).value);AL[c[1]]=c[2]==="b"?v:(isFinite(v)&&v>=0?v:0);alSave();if(c[1]==="dayLoss"||c[1]==="streak")ruleCheck()}});
 $("al-perm").onclick=function(){if(!window.Notification){alRender();return}try{Notification.requestPermission().then(alRender)}catch(e){Notification.requestPermission(alRender)}};
 $("al-test").onclick=function(){alFire("Test alert","If you can see this, alerts are working.")};
@@ -4687,6 +4688,18 @@ function crRender(j){
   var sc=el("div","cr-scale");["-1 moves opposite","0 unrelated","+1 moves together"].forEach(function(t){sc.appendChild(el("span",null,t))});box.appendChild(sc);
   $("mk-corr-sub").textContent=!ok?"Not enough price history to compare the markets right now.":br?br+(br>1?" links are":" link is")+" breaking. The dot is the latest few hours, the line is the usual over the last months.":"Every link is behaving as usual. The dot is the latest few hours, the line is the usual over the last months."}
 setInterval(function(){if(tabNow==="markets"&&!document.hidden)crLoad()},60000);
+
+/* an alert when a pair of markets that normally move together (or against each other) stops doing so: checked every 5 minutes, once a day per pair */
+function crAlertCheck(){
+  if(!AL.corr||document.hidden||dormant)return;
+  fetch("/api/mkt/corr").then(function(r){return r.ok?r.json():null}).then(function(j){
+    if(!j||!j.pairs)return;
+    j.pairs.forEach(function(p){
+      if(p.state!=="break"||p.short==null||p.usual==null)return;
+      if(!alOnce("corr|"+p.label))return;
+      alFire(p.label+": the link is breaking","They usually move "+(p.usual<0?"against each other":"together")+" ("+crFmt(p.usual)+"). Over the last few hours it is "+crFmt(p.short)+".")})})
+  .catch(function(){})}
+setTimeout(crAlertCheck,25000);setInterval(crAlertCheck,300000);
 
 /* health and backups (Settings) */
 var HL={data:null,list:null,at:0,busy:false};
