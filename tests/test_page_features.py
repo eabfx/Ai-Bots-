@@ -116,6 +116,11 @@ class PageFeatures(unittest.TestCase):
                        '["candles","Charts as candles"', 'var lk=m[3]||"note"'):
             self.assertIn(needle, self.page)
 
+    def test_open_risk_cooldown_and_the_bad_run_simulator_are_in_the_page(self):
+        for needle in ('id="h-open"', 'function oxBets(items)', 'are the same bet:', 'id="h-cool"', 'function cdStart(mins)', 'cdStart();\n  if(AL.check&&',
+                       'id="al-cool"', 'coolMins:10', 'id="j-sim"', 'function jSim(list)', 'jSim(list);jGroups(list);', 'It does not predict anything.'):
+            self.assertIn(needle, self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

@@ -550,6 +550,18 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hlv b{font:600 12px var(--mono)}.hlv .lvt{display:flex;gap:8px;align-items:baseline;min-width:0}.hlv .lvt span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hlv .ds{font:600 12px var(--mono);font-variant-numeric:tabular-nums}.hlv .ds.near{color:var(--warn)}
 @media(max-width:760px){.lv-form{grid-template-columns:1fr 1fr}.lv-row{grid-template-columns:1fr 1fr auto}.lv-row .nt,.lv-row .ds{grid-column:span 2}}
+/* open risk, cooldown, simulator */
+.nbar.cool{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--panel));cursor:default}.nbar.cool i{background:var(--warn);animation:nbpulse 1.4s ease-in-out infinite}.nbar.cool .nb-t{color:var(--warn)}
+.nbar .cool-end{margin-left:6px}
+.ox-form{display:grid;grid-template-columns:minmax(110px,1.2fr) 96px 90px auto;gap:8px;align-items:end;padding:0 14px 10px}
+.ox-form label{display:block;font:500 11px var(--sans);color:var(--muted);margin-bottom:3px}
+.ox-tot{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:6px 14px 4px}.ox-tot b{font:600 22px var(--mono);font-variant-numeric:tabular-nums}.ox-tot span{color:var(--muted);font-size:12px}
+.ox-bar{height:4px;background:var(--line);border-radius:2px;margin:4px 14px 8px;overflow:hidden}.ox-bar i{display:block;height:100%;background:var(--up);transition:width .25s,background .25s}.ox-bar i.warn{background:var(--warn)}.ox-bar i.bad{background:var(--down)}
+.ox-row{display:grid;grid-template-columns:minmax(80px,1fr) 70px 70px auto;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:13px}
+.ox-row b{font:600 13px var(--mono)}.ox-row .d.long{color:var(--up)}.ox-row .d.short{color:var(--down)}.ox-row .rk{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.ox-warn{margin:6px 14px 4px;padding:8px 10px;border:1px solid var(--warn);border-radius:8px;background:color-mix(in srgb,var(--warn) 9%,transparent);font-size:13px;line-height:1.45}
+.ox-foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 14px 12px;color:var(--muted);font-size:12px}.ox-foot input{width:64px}
+@media(max-width:560px){.ox-form{grid-template-columns:1fr 1fr}}
 /* the prices slide past in a loop: two identical sets side by side, the track moves left by exactly one set, then starts again unseen */
 .hticker .tk-track{display:flex;width:max-content;padding:12px 0;animation:tkslide var(--tkdur,50s) linear infinite;will-change:transform}
 .hticker:hover .tk-track,.hticker:focus-within .tk-track{animation-play-state:paused}
@@ -1727,6 +1739,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="custbar" id="cust-bar" hidden><span>Move panels with the arrows, hide the ones you do not use. Saved in this browser.</span><span class="custgap"></span><label class="ckrow" style="margin:0"><input type="checkbox" id="cust-compact"><span>Compact</span></label><button class="btn small ghost" id="cust-reset" type="button">Reset layout</button><button class="btn small" id="cust-done" type="button">Done</button></div>
 <div id="h-sessions" hidden></div>
 <button type="button" class="nbar" id="h-newsbar" hidden title="Open the calendar"></button>
+<div class="nbar cool" id="h-cool" role="status" hidden><i></i><span><b>Cooldown.</b> <span class="nb-x">Step away from the screen. Run the checklist before the next trade.</span></span><span class="nb-t" id="h-cool-t"></span><button class="btn small ghost cool-end" id="h-cool-end" type="button">End early</button></div>
 <div class="tiles" id="h-tiles" aria-label="Prices"></div>
 <div class="hnums" id="h-nums"></div>
 <div class="hpanel hweek" id="h-week" hidden></div>
@@ -1752,6 +1765,11 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div id="ck-list"></div><div class="ckstate" id="ck-state"></div>
 <div id="ck-editor" hidden><textarea id="ck-rules" maxlength="1200" rows="7" aria-label="Checklist rules, one per line"></textarea>
 <div class="btnrow"><button class="btn small" id="ck-save" type="button">Save rules</button><button class="btn small ghost" id="ck-reset" type="button">Reset to default</button></div></div></div>
+</div>
+<div class="hgrid2">
+<div class="hpanel" id="h-open"><div class="hp-h"><h3>Open trades and risk</h3><button class="btn small ghost" id="ox-cool" type="button" title="Start the cooldown timer now">Start cooldown</button></div>
+<form class="ox-form" id="ox-form" autocomplete="off"><div><label for="ox-k">Market</label><select id="ox-k"></select></div><div><label for="ox-d">Direction</label><select id="ox-d"><option value="long">Long</option><option value="short">Short</option></select></div><div><label for="ox-r">Risk %</label><input id="ox-r" type="number" min="0" step="any" placeholder="0.5"></div><button class="btn small" type="submit">Add</button></form>
+<div id="ox-body"></div></div>
 </div>
 <div class="hticker" id="h-ticker" aria-label="Prices" hidden></div>
 </section>
@@ -2050,6 +2068,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <label class="ckrow"><input type="checkbox" id="al-corr"><span>Tell me when two linked markets break their usual link (for example gold and the dollar)</span></label>
 <div class="frow two" style="margin-top:10px"><div><label for="al-dayloss">Daily loss limit (journal units, 0 = off)</label><input type="number" id="al-dayloss" min="0" step="any"></div>
 <div><label for="al-streak">Losing streak to warn at (0 = off)</label><input type="number" id="al-streak" min="0" step="1"></div></div>
+<div class="frow two" style="margin-top:10px"><div><label for="al-cool">Cooldown after a live loss (minutes, 0 = off)</label><input type="number" id="al-cool" min="0" step="1"></div></div>
 <label class="ckrow"><input type="checkbox" id="al-sound"><span>Beep when an alert fires</span></label>
 <div class="btnrow"><button class="btn small ghost" id="al-perm" type="button">Allow desktop notifications</button><button class="btn small ghost" id="al-test" type="button">Send a test alert</button></div>
 <div class="jsub" id="al-permstate"></div></div>
@@ -2107,6 +2126,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="card" id="j-extras"></div>
 
 <div class="card" id="j-heat"></div>
+<div class="card" id="j-sim"></div>
 
 <div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
 <div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="mistake">Mistake</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
@@ -3009,7 +3029,7 @@ function jRender(){
   var box=$("j-stats");box.textContent="";
   cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
     if(s[2])c.appendChild(el("div","jsub",s[2]));box.appendChild(c)});
-  jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jExtras(list);jHeat(list);jGroups(list);
+  jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jExtras(list);jHeat(list);jSim(list);jGroups(list);
   tRender(list);
   var sk=jSkipped().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}),sb=$("j-skiprows");sb.textContent="";
   $("j-skipcard").hidden=!sk.length;$("j-skiptitle").textContent="Kept but not counted ("+sk.length+")";
@@ -3236,6 +3256,7 @@ $("j-add").onclick=function(){
   if(jEditing){var ix=trades.indexOf(jEditing);if(ix>=0)trades[ix]=t;else trades.unshift(t);
     jLeaveEdit();jSave();jRender();jResetForm();setType(jType);jOk("Saved. "+label+" trade updated.",page);return}
   trades.unshift(t);jSave();jRender();
+  if(t.acct==="live"&&!t.skip&&t.pl<0&&t.date===today())cdStart();
   if(AL.check&&t.acct!=="backtest"&&!t.skip){var ckr=ckRules(),ckd=ckDone(),ckn=ckr.filter(function(r,i){return ckd.indexOf(i)>=0}).length;if(ckn<ckr.length)alFire("Checklist not complete","You logged a trade with "+ckn+" of "+ckr.length+" checklist items ticked.")}
   jResetForm();jOk("Added to "+label+(t.no!==undefined?" as trade "+t.no:"")+". Add the next one, the date, pair and strategy are kept.",page)};
 /* share card: a picture of one period's result, drawn on a canvas so it can be saved or pasted anywhere */
@@ -4200,10 +4221,10 @@ $("cust-reset").onclick=function(){LAY={hidden:[],order:{},compact:false};laySav
 layBuild();layApply();
 
 /* ---------------- alerts (checked in this page every minute, live trades only) ---------------- */
-var AL={price:[],news:true,newsMins:15,sess:true,check:true,corr:true,dayLoss:0,streak:3,sound:true},alLog=[];
+var AL={price:[],news:true,newsMins:15,sess:true,check:true,corr:true,dayLoss:0,streak:3,coolMins:10,sound:true},alLog=[];
 try{var a0=JSON.parse(store("zd.alerts")||"null");
   if(a0&&typeof a0==="object"){["news","sess","check","corr","sound"].forEach(function(k){if(typeof a0[k]==="boolean")AL[k]=a0[k]});
-    ["newsMins","dayLoss","streak"].forEach(function(k){if(typeof a0[k]==="number"&&isFinite(a0[k])&&a0[k]>=0)AL[k]=a0[k]});
+    ["newsMins","dayLoss","streak","coolMins"].forEach(function(k){if(typeof a0[k]==="number"&&isFinite(a0[k])&&a0[k]>=0)AL[k]=a0[k]});
     if(Array.isArray(a0.price))AL.price=a0.price.filter(function(a){return a&&typeof a.sym==="string"&&(a.dir==="above"||a.dir==="below")&&typeof a.level==="number"&&isFinite(a.level)}).slice(0,30).map(function(a){return{sym:a.sym.slice(0,12),dir:a.dir,level:a.level,done:typeof a.done==="string"?a.done:""}})}}catch(e){}
 try{var l0=JSON.parse(store("zd.alerts.log")||"[]");if(Array.isArray(l0))alLog=l0.filter(function(x){return x&&typeof x.t==="string"&&typeof x.m==="string"}).slice(0,30)}catch(e){}
 function alSave(){store("zd.alerts",JSON.stringify(AL));if(typeof pushSync==="function")pushSync()}
@@ -4238,7 +4259,7 @@ function ruleCheck(){
 function alRender(){
   var sel=$("al-sym");if(!sel.children.length)MARKETS.concat([["DXY"],["US10Y"],["VIX"],["SPX"],["OIL"],["USDJPY"],["XAGUSD"]]).forEach(function(m){var o=el("option",null,m[0]);o.value=m[0];sel.appendChild(o)});
   $("al-news").checked=AL.news;$("al-newsmins").value=String(AL.newsMins);$("al-sess").checked=AL.sess;$("al-check").checked=AL.check;$("al-corr").checked=AL.corr;
-  $("al-dayloss").value=AL.dayLoss||"";$("al-streak").value=AL.streak||"";$("al-sound").checked=AL.sound;
+  $("al-dayloss").value=AL.dayLoss||"";$("al-streak").value=AL.streak||"";$("al-cool").value=AL.coolMins||"";$("al-sound").checked=AL.sound;
   var p=window.Notification?Notification.permission:"unsupported";
   $("al-permstate").textContent=p==="granted"?"Desktop notifications are on.":p==="denied"?"Desktop notifications are blocked in this browser. On-screen alerts still work.":p==="unsupported"?"This browser has no desktop notifications. On-screen alerts still work.":"Desktop notifications are off until you allow them.";
   var list=$("al-list");list.textContent="";
@@ -4280,7 +4301,7 @@ $("al-add").onclick=function(){
   var sym=$("al-sym").value,dir=$("al-dir").value,q=macroData?quoteBy(macroData,sym):null;
   if(q&&(dir==="above"?q.price>=lv:q.price<=lv)){bad(sym+" is already "+(dir==="above"?"above ":"below ")+lv+" (now "+fmt(q.price,q.digits)+"). Pick a level it has not reached yet.");return}
   AL.price.push({sym:sym,dir:dir,level:lv,done:""});alSave();$("al-level").value="";alRender()};
-[["al-news","news","b"],["al-sess","sess","b"],["al-check","check","b"],["al-corr","corr","b"],["al-sound","sound","b"],["al-newsmins","newsMins","n"],["al-dayloss","dayLoss","n"],["al-streak","streak","n"]].forEach(function(c){
+[["al-news","news","b"],["al-sess","sess","b"],["al-check","check","b"],["al-corr","corr","b"],["al-sound","sound","b"],["al-newsmins","newsMins","n"],["al-dayloss","dayLoss","n"],["al-streak","streak","n"],["al-cool","coolMins","n"]].forEach(function(c){
   $(c[0]).onchange=function(){var v=c[2]==="b"?$(c[0]).checked:parseFloat($(c[0]).value);AL[c[1]]=c[2]==="b"?v:(isFinite(v)&&v>=0?v:0);alSave();if(c[1]==="dayLoss"||c[1]==="streak")ruleCheck()}});
 $("al-perm").onclick=function(){if(!window.Notification){alRender();return}try{Notification.requestPermission().then(alRender)}catch(e){Notification.requestPermission(alRender)}};
 $("al-test").onclick=function(){alFire("Test alert","If you can see this, alerts are working.")};
@@ -4815,6 +4836,74 @@ window.KT={
   toast:function(t,m){alFire(t,m)},
   jump:function(id){var e=$(id);if(e)e.scrollIntoView({behavior:"smooth",block:"start"})}
 };
+
+/* ---------------- open trades and the risk they add up to, the cooldown timer, and the bad-run simulator ---------------- */
+var OX_KEYS=["XAUUSD","XAGUSD","NQ","SPX","EURUSD","GBPUSD","USDJPY","DXY","OIL","VIX"],
+  OX_NAME={XAUUSD:"Gold",XAGUSD:"Silver",NQ:"Nasdaq",SPX:"S&P 500",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",USDJPY:"USD/JPY",DXY:"Dollar index",OIL:"Oil",VIX:"VIX"},
+  OX_FACT={XAUUSD:{u:-1},XAGUSD:{u:-1},EURUSD:{u:-1},GBPUSD:{u:-1},DXY:{u:1},USDJPY:{u:1},NQ:{r:1},SPX:{r:1},OIL:{r:1},VIX:{r:-1}};
+function oxDoc(){var d=wsGet("openrisk",null);if(!d||typeof d!=="object"||!Array.isArray(d.items))d={limit:2,items:[]};
+  d.items=d.items.filter(function(x){return x&&OX_FACT[x.k]&&(x.d==="long"||x.d==="short")&&isFinite(x.r)&&x.r>=0});d.limit=isFinite(d.limit)&&d.limit>0?+d.limit:2;return d}
+function oxSave(d){wsSet("openrisk",d);oxRender()}
+/* trades that lean the same way on the dollar or on risk are one bet, not several */
+function oxBets(items){
+  var g={},names={"u+":"long the US dollar","u-":"short the US dollar","r+":"risk-on (stocks and oil up)","r-":"risk-off (stocks and oil down)"};
+  items.forEach(function(it){var f=OX_FACT[it.k],sg=it.d==="short"?-1:1;["u","r"].forEach(function(a){if(f[a]){var key=a+(f[a]*sg>0?"+":"-");(g[key]=g[key]||[]).push(it)}})});
+  return Object.keys(g).filter(function(k){return g[k].length>=2}).map(function(k){return{name:names[k],items:g[k],total:g[k].reduce(function(a,x){return a+x.r},0)}})}
+function oxRender(){
+  var body=$("ox-body");if(!body)return;var sel=$("ox-k");
+  if(!sel.children.length)OX_KEYS.forEach(function(k){var o=el("option",null,OX_NAME[k]);o.value=k;sel.appendChild(o)});
+  var d=oxDoc(),tot=d.items.reduce(function(a,x){return a+x.r},0);body.textContent="";
+  var t=el("div","ox-tot"),big=el("b",tot>d.limit?"down":"",(Math.round(tot*100)/100)+"%");t.appendChild(big);t.appendChild(el("span",null,d.items.length?"open risk, limit "+d.limit+"%":"nothing open"));body.appendChild(t);
+  var bar=el("div","ox-bar"),fill=el("i",tot>d.limit?"bad":tot>d.limit*0.75?"warn":"");fill.style.width=Math.min(100,tot/d.limit*100)+"%";bar.appendChild(fill);body.appendChild(bar);
+  if(tot>d.limit)body.appendChild(el("div","ox-warn","Open risk is "+(Math.round(tot*100)/100)+"%, over your "+d.limit+"% limit. Close or shrink something before adding more."));
+  oxBets(d.items).forEach(function(b){body.appendChild(el("div","ox-warn",b.items.length+" trades are the same bet: "+b.name+" ("+b.items.map(function(x){return OX_NAME[x.k]+" "+x.d}).join(", ")+"). Together that is "+(Math.round(b.total*100)/100)+"% on one idea."))});
+  d.items.forEach(function(x,i){var r=el("div","ox-row");r.appendChild(el("b",null,OX_NAME[x.k]));r.appendChild(el("span","d "+x.d,x.d==="long"?"Long":"Short"));r.appendChild(el("span","rk",x.r+"%"));
+    var c=el("button","btn small ghost","Closed");c.type="button";c.title="Remove this trade from the list";c.onclick=function(){var dd=oxDoc();dd.items.splice(i,1);oxSave(dd)};r.appendChild(c);body.appendChild(r)});
+  var f=el("div","ox-foot");f.appendChild(document.createTextNode("Risk limit"));var li=el("input");li.type="number";li.min="0.1";li.step="any";li.value=d.limit;li.setAttribute("aria-label","Open risk limit in percent");
+  li.onchange=function(){var v=parseFloat(li.value),dd=oxDoc();if(isFinite(v)&&v>0){dd.limit=v;oxSave(dd)}};f.appendChild(li);f.appendChild(document.createTextNode("% of the account. You enter the trades by hand; nothing is read from a broker."));body.appendChild(f)}
+$("ox-form").onsubmit=function(e){e.preventDefault();var r=parseFloat($("ox-r").value);if(!isFinite(r)||r<=0)return;
+  var d=oxDoc();if(d.items.length>=20)return;d.items.push({id:Date.now().toString(36),k:$("ox-k").value,d:$("ox-d").value,r:Math.round(r*100)/100});$("ox-r").value="";oxSave(d)};
+/* cooldown after a loss */
+function cdDoc(){var d=wsGet("cooldown",null);return d&&isFinite(d.until)?d:null}
+function cdStart(mins){var m=mins||AL.coolMins;if(!(m>0))return;wsSet("cooldown",{until:Date.now()+m*60000,mins:m,fired:false});cdTick()}
+function cdTick(){
+  var b=$("h-cool");if(!b)return;var d=cdDoc();
+  if(!d||d.until<=Date.now()){b.hidden=true;
+    if(d&&!d.fired){d.fired=true;wsSet("cooldown",d);if(Date.now()-d.until<120000)alFire("Cooldown over","Run the checklist before your next trade.")}return}
+  var left=Math.ceil((d.until-Date.now())/1000);b.hidden=false;$("h-cool-t").textContent=Math.floor(left/60)+":"+("0"+left%60).slice(-2)}
+$("ox-cool").onclick=function(){cdStart(AL.coolMins>0?AL.coolMins:10)};
+$("h-cool-end").onclick=function(){var d=cdDoc();if(d){d.until=Date.now()-1;d.fired=true;wsSet("cooldown",d)}cdTick()};
+setInterval(cdTick,1000);
+wsHooks.push(function(){oxRender();cdTick()});oxRender();cdTick();
+/* the simulator: shuffle your own results into many possible next-100-trade runs and see how bad a normal run gets */
+function jSim(list){
+  var box=$("j-sim");box.textContent="";box.appendChild(el("h3","jh","What a normal bad run looks like"));
+  var ch=jChron(list.filter(function(t){return!t.skip})),pls=ch.map(function(t){return t.pl});
+  if(pls.length<20){box.appendChild(el("div","empty","Needs at least 20 trades in this period. You have "+pls.length+"."));return}
+  setUnit(list);
+  var N=100,RUNS=3000,seed=(pls.length*7919+Math.round(pls.reduce(function(a,b){return a+b},0)*100))%4294967296;
+  function rnd(){seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296}
+  var dds=[],sts=[];
+  for(var r=0;r<RUNS;r++){var eq=0,pk=0,dd=0,st=0,best=0;
+    for(var i=0;i<N;i++){var x=pls[Math.floor(rnd()*pls.length)];eq+=x;if(eq>pk)pk=eq;if(pk-eq>dd)dd=pk-eq;if(x<0){st++;if(st>best)best=st}else st=0}
+    dds.push(dd);sts.push(best)}
+  dds.sort(function(a,b){return a-b});sts.sort(function(a,b){return a-b});
+  function q(a,p){return a[Math.min(a.length-1,Math.floor(p*a.length))]}
+  var eq2=0,pk2=0,odd=0,ost=0,ob=0;pls.forEach(function(x){eq2+=x;if(eq2>pk2)pk2=eq2;if(pk2-eq2>odd)odd=pk2-eq2;if(x<0){ost++;if(ost>ob)ob=ost}else ost=0});
+  var cur=pk2-eq2;
+  var grid=el("div","hnums");
+  function card(k,v,sub){var c=el("div","hnum");c.style.cursor="default";c.appendChild(el("div","k",k));c.appendChild(el("div","v",v));c.appendChild(el("div","s",sub));grid.appendChild(c)}
+  card("Typical worst drawdown",jm(q(dds,0.5)),"over the next "+N+" trades, the middle of "+RUNS+" runs");
+  card("Rare bad run",jm(q(dds,0.95)),"only 1 run in 20 is worse than this");
+  card("Longest losing streak",q(sts,0.5)+" to "+q(sts,0.95),"typical to rare, in a row");
+  card("Your worst so far",jm(odd),"drawdown, and "+ob+" losers in a row at most");
+  box.appendChild(grid);
+  var worse=dds.filter(function(v){return v>=odd}).length/RUNS,msg;
+  if(cur<=q(dds,0.5))msg="Your current drawdown ("+jm(cur)+") is smaller than a typical bad run. Nothing unusual.";
+  else if(cur<=q(dds,0.95))msg="Your current drawdown ("+jm(cur)+") is within what a normal run produces. It is uncomfortable, not a sign the edge has gone.";
+  else msg="Your current drawdown ("+jm(cur)+") is worse than 19 in 20 random runs from your own results. Check whether something changed: size, setups, or discipline.";
+  box.appendChild(el("div","jfact",msg));
+  box.appendChild(el("div","jsub","Built by reshuffling your own "+pls.length+" results "+RUNS+" times. It assumes each trade is independent of the last, so treat it as a guide to normal variation. It does not predict anything."+(worse>0?" "+(worse>=0.99?"Nearly every":"About "+Math.round(worse*100)+"% of")+" run"+(worse>=0.99?"":"s")+" goes at least as deep as your worst so far.":"")))}
 
 /* health and backups (Settings) */
 var HL={data:null,list:null,at:0,busy:false};
