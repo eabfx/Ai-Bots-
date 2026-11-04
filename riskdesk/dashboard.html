@@ -534,6 +534,22 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hmood .k{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hmood b{font:600 28px var(--disp);letter-spacing:-.02em}
 .hticker{display:block;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;background:var(--panel);-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+
+/* key levels */
+.lv-form{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) minmax(110px,.8fr) minmax(140px,2fr) auto;gap:8px;align-items:end;margin:6px 0 10px}
+.lv-form label{display:block;font:500 11px var(--sans);color:var(--muted);margin-bottom:3px}
+.lv-row{display:grid;grid-template-columns:minmax(90px,.9fr) minmax(90px,.9fr) 92px minmax(120px,1.6fr) minmax(110px,1fr) auto;gap:10px;align-items:center;padding:9px 2px;border-top:1px solid var(--line);font-size:13px}
+.lv-row .sym{font:600 13px var(--mono)}.lv-row .px{font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+.lv-row .nt{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-row .ds{font:500 12px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}.lv-row .ds.near{color:var(--warn)}
+.lv-chip{display:inline-block;font:600 11px var(--sans);padding:2px 8px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+.lv-chip.support{color:var(--up);border-color:color-mix(in srgb,var(--up) 45%,var(--line))}.lv-chip.resistance{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,var(--line))}.lv-chip.target{color:#6aa7ff;border-color:color-mix(in srgb,#6aa7ff 45%,var(--line))}
+.lv-act{display:flex;gap:6px}
+.lv-empty{color:var(--muted);padding:12px 2px;font-size:13px}
+.hlv{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:13px}
+.hlv b{font:600 12px var(--mono)}.hlv .lvt{display:flex;gap:8px;align-items:baseline;min-width:0}.hlv .lvt span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlv .ds{font:600 12px var(--mono);font-variant-numeric:tabular-nums}.hlv .ds.near{color:var(--warn)}
+@media(max-width:760px){.lv-form{grid-template-columns:1fr 1fr}.lv-row{grid-template-columns:1fr 1fr auto}.lv-row .nt,.lv-row .ds{grid-column:span 2}}
 /* the prices slide past in a loop: two identical sets side by side, the track moves left by exactly one set, then starts again unseen */
 .hticker .tk-track{display:flex;width:max-content;padding:12px 0;animation:tkslide var(--tkdur,50s) linear infinite;will-change:transform}
 .hticker:hover .tk-track,.hticker:focus-within .tk-track{animation-play-state:paused}
@@ -896,7 +912,7 @@ table{font:400 12px var(--mono)}
 #cmd::placeholder{color:var(--muted)}#cmd:focus{border-color:var(--hover);outline:none}
 #cmdhelp{position:fixed;z-index:70;background:var(--panel);border:1px solid var(--line);padding:4px;min-width:230px;display:none;font:12px var(--mono)}
 #cmdhelp button{display:flex;gap:10px;justify-content:space-between;width:100%;text-align:left;background:none;border:0;padding:5px 8px;color:var(--text);cursor:pointer;border-radius:0}
-#cmdhelp button:hover,#cmdhelp button.on{background:var(--glowsoft)}#cmdhelp span{color:var(--muted)}
+#cmdhelp{min-width:420px;max-width:calc(100vw - 16px);box-shadow:0 18px 50px rgba(0,0,0,.45);padding:6px}#cmdhelp button{padding:8px 10px;gap:16px}#cmdhelp button b{flex:none}#cmdhelp button span{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cmdfoot{padding:8px 10px 4px;margin-top:4px;border-top:1px solid var(--line);color:var(--muted);font:11px var(--mono)}#cmdhelp button:hover,#cmdhelp button.on{background:var(--glowsoft)}#cmdhelp span{color:var(--muted)}
 .bar .brainbtn{margin-left:0}
 #statusbar{position:fixed;left:0;right:0;bottom:0;height:26px;z-index:55;display:flex;align-items:center;gap:18px;padding:0 14px;background:var(--bgc);border-top:1px solid var(--line);font:500 11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden}
 #statusbar b{color:var(--text);font-weight:500}
@@ -1566,7 +1582,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <button role="tab" aria-selected="false" data-tab="alerts">Alerts</button>
 <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
 </nav>
-<input id="cmd" type="text" placeholder="` to type a command" autocomplete="off" spellcheck="false" aria-label="Command">
+<input id="cmd" type="text" placeholder="Ctrl+K  commands" autocomplete="off" spellcheck="false" aria-label="Command">
 <button class="brainbtn" type="button" aria-selected="false" data-tab="brain">Second Brain</button>
 <button class="themebtn" id="theme" type="button">Light mode</button>
 </div>
@@ -1714,6 +1730,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="tiles" id="h-tiles" aria-label="Prices"></div>
 <div class="hnums" id="h-nums"></div>
 <div class="hpanel hweek" id="h-week" hidden></div>
+<div class="hpanel" id="h-levels" hidden><div class="hp-h"><h3>Key levels</h3><button class="btn small ghost" id="h-lv-go" type="button">Edit levels</button></div><div id="h-lv-rows"></div></div>
 <div class="hgrid3">
 <div class="hpanel"><div class="hp-h"><h3>Quote monitor</h3><span class="mute" id="qm-note" style="font-size:11px"></span></div><div class="qmwrap"><table class="qm" id="h-qm"></table></div></div>
 <div class="hpanel"><div class="hp-h"><h3>News feed</h3></div><div class="news hscroll" id="h-news"></div></div>
@@ -1937,6 +1954,17 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 </div>
 <div class="err" id="mk-err" style="display:none"></div>
 <div class="mk-grid" id="mk-grid" data-c="3"></div>
+<div class="card" id="mk-lv">
+<h3 class="jh">Key levels</h3>
+<p class="sub" style="margin-bottom:6px">Levels you care about. They are drawn on the charts, ranked by distance on Home, and one click turns a level into an alert. Saved on the server, so every device sees them.</p>
+<form class="lv-form" id="lv-form" autocomplete="off">
+<div><label for="lv-s">Market</label><input id="lv-s" list="lv-list" placeholder="GC=F" maxlength="16" spellcheck="false"><datalist id="lv-list"></datalist></div>
+<div><label for="lv-p">Price</label><input id="lv-p" type="number" step="any" placeholder="3950"></div>
+<div><label for="lv-k">Kind</label><select id="lv-k"><option value="support">Support</option><option value="resistance">Resistance</option><option value="target">Target</option><option value="note">Note</option></select></div>
+<div><label for="lv-n">Note (optional)</label><input id="lv-n" maxlength="40" placeholder="daily demand, prior high..."></div>
+<button class="btn small" type="submit">Add level</button></form>
+<div class="err" id="lv-err" style="display:none"></div>
+<div id="lv-rows"></div></div>
 <div class="card" id="mk-corr">
 <h3 class="jh">Correlations</h3>
 <p class="sub" id="mk-corr-sub" style="margin-bottom:6px">Checking how the markets move together...</p>
@@ -4050,7 +4078,7 @@ function liveTick(){
 setInterval(liveTick,2000);
 function homeRender(d){
   $("h-asof").textContent="Prices as of "+d.as_of;briefNote();
-  hWeek();
+  hWeek();lvHome();
   var s=$("h-sessions");s.textContent="";s.appendChild(sessionStrip(d));
   homeNums();
   var mk=$("h-mkts");mk.textContent="";
@@ -4427,7 +4455,7 @@ fdInit();
 
 /* ---------------- markets: a board of live charts you choose ---------------- */
 var MK={lay:null,data:{},busy:false,sugg:[],grids:["1x1","2x1","2x2","3x2","3x3","4x3"],tfs:["1m","5m","15m","1h","1d"],hover:{},cv:[],saveT:0,okAt:0,last:{},ro:null};
-var MK_DEF={grid:"3x2",tf:"5m",style:"area",tiles:[{s:"GC=F",tf:"5m",style:"area"},{s:"NQ=F",tf:"5m",style:"area"},{s:"EURUSD=X",tf:"5m",style:"area"},{s:"GBPUSD=X",tf:"5m",style:"area"},{s:"DX-Y.NYB",tf:"5m",style:"area"},{s:"CL=F",tf:"5m",style:"area"}]};
+var MK_DEF={grid:"3x2",tf:"5m",style:"candles",tiles:[{s:"GC=F",tf:"5m",style:"candles"},{s:"NQ=F",tf:"5m",style:"candles"},{s:"EURUSD=X",tf:"5m",style:"candles"},{s:"GBPUSD=X",tf:"5m",style:"candles"},{s:"DX-Y.NYB",tf:"5m",style:"candles"},{s:"CL=F",tf:"5m",style:"candles"}]};
 var MK_SYM=/^[A-Za-z0-9^.=\-]{1,16}$/;
 function mkKey(t){return t.s+"|"+t.tf}
 function mkNum(v,dg){return Number(v).toLocaleString("en-US",{minimumFractionDigits:dg,maximumFractionDigits:dg})}
@@ -4439,6 +4467,8 @@ function mkLive(ok){var b=$("mk-live"),t=$("mk-live-t");if(!b)return;b.className
 function mkLoad(){
   fetch("/api/mkt/layout").then(function(r){return r.json()}).then(function(j){
     if(!j||!j.tiles)throw new Error("bad");MK.lay={grid:j.grid,tf:j.tf,style:j.style,tiles:j.tiles};
+    /* charts open as candles: once per browser an older all-line layout is switched over, and the Line button switches it back any time */
+    try{if(!store("zd.mk.candles1")){store("zd.mk.candles1","1");if(MK.lay.tiles.every(function(t){return t.style==="area"})){MK.lay.style="candles";MK.lay.tiles.forEach(function(t){t.style="candles"});mkSave()}}}catch(e){}
     MK.sugg=j.suggest||[];MK.grids=j.grids||MK.grids;MK.tfs=j.tfs||MK.tfs}).catch(function(){if(!MK.lay)MK.lay=JSON.parse(JSON.stringify(MK_DEF))})
   .then(function(){mkBar();mkBuild();mkFetch()})}
 function mkCols(){return +MK.lay.grid.split("x")[0]||3}
@@ -4595,6 +4625,10 @@ function mkDraw(i){
   var akey=MK_KEYS[t.s];if(akey){AL.price.forEach(function(a){if(a.sym!==akey||a.done||a.level<lo||a.level>hi)return;var ya=Math.round(Y(a.level))+0.5;
     g.save();g.setLineDash([6,3]);g.strokeStyle="#f5b83d";g.globalAlpha=0.9;g.lineWidth=1;g.beginPath();g.moveTo(pl,ya);g.lineTo(pl+pw,ya);g.stroke();g.restore();
     g.font="600 10px "+MONO;g.fillStyle="#f5b83d";g.textAlign="right";g.textBaseline="bottom";g.fillText("\u25CF Alert "+mkNum(a.level,d.digits),pl+pw-4,ya-3);g.font="500 11px "+MONO})}
+  /* your saved key levels on this market */
+  lvFor(t.s).forEach(function(L){if(L.p<lo||L.p>hi)return;var yl=Math.round(Y(L.p))+0.5,lc=L.k==="support"?UP:L.k==="resistance"?DN:L.k==="target"?"#6aa7ff":MU;
+    g.save();g.setLineDash([2,4]);g.strokeStyle=lc;g.globalAlpha=0.85;g.lineWidth=1;g.beginPath();g.moveTo(pl,yl);g.lineTo(pl+pw,yl);g.stroke();g.restore();
+    g.font="600 10px "+MONO;g.fillStyle=lc;g.textAlign="left";g.textBaseline="bottom";g.fillText(LV_NAME[L.k]+" "+mkNum(L.p,d.digits)+(L.n?"  "+L.n:""),pl+4,yl-3);g.font="500 11px "+MONO});
   /* last price: dotted guide, a pulsing dot and the tag */
   var xl=X(n-1);g.save();g.setLineDash([1,3]);g.strokeStyle=col;g.globalAlpha=0.8;g.beginPath();g.moveTo(pl,Math.round(yPx)+0.5);g.lineTo(pl+pw,Math.round(yPx)+0.5);g.stroke();g.restore();
   if(!cand){g.fillStyle=col;g.globalAlpha=0.22;g.beginPath();g.arc(xl,yPx,7,0,6.283);g.fill();g.globalAlpha=1;g.beginPath();g.arc(xl,yPx,3.2,0,6.283);g.fillStyle=col;g.fill();g.strokeStyle=cs.getPropertyValue("--panel").trim()||"#000";g.lineWidth=1.5;g.stroke()}
@@ -4700,6 +4734,87 @@ function crAlertCheck(){
       alFire(p.label+": the link is breaking","They usually move "+(p.usual<0?"against each other":"together")+" ("+crFmt(p.usual)+"). Over the last few hours it is "+crFmt(p.short)+".")})})
   .catch(function(){})}
 setTimeout(crAlertCheck,25000);setInterval(crAlertCheck,300000);
+
+/* ---------------- saved notes (shared with every device) and key levels ---------------- */
+var WS={d:{},t:{}},WS_KEYS=["levels","openrisk","goal","wrapups","cooldown","startday"];
+WS_KEYS.forEach(function(k){try{var v=store("zd.ws."+k);if(v)WS.d[k]=JSON.parse(v)}catch(e){}});
+function wsGet(k,def){return WS.d[k]===undefined?def:WS.d[k]}
+function wsSet(k,v){WS.d[k]=v;store("zd.ws."+k,JSON.stringify(v));clearTimeout(WS.t[k]);
+  WS.t[k]=setTimeout(function(){fetch("/api/workspace",{method:"POST",headers:HDRS,body:JSON.stringify({key:k,value:v})}).catch(function(){})},400)}
+var wsHooks=[];
+function wsLoad(){fetch("/api/workspace").then(function(r){return r.ok?r.json():null}).then(function(j){
+  if(!j)return;WS_KEYS.forEach(function(k){if(j[k]!==undefined)WS.d[k]=j[k];else if(WS.d[k]!==undefined)wsSet(k,WS.d[k])});wsHooks.forEach(function(f){try{f()}catch(e){}})}).catch(function(){})}
+var LV_NAME={support:"Support",resistance:"Resistance",target:"Target",note:"Note"};
+function lvAll(){var a=wsGet("levels",[]);return Array.isArray(a)?a.filter(function(x){return x&&typeof x.s==="string"&&isFinite(x.p)}):[]}
+function lvFor(sym){return lvAll().filter(function(x){return x.s===sym})}
+function lvPrice(sym){
+  for(var k in MK.data){if(k.indexOf(sym+"|")===0&&MK.data[k]&&!MK.data[k].error&&isFinite(MK.data[k].price))return{p:MK.data[k].price,dg:MK.data[k].digits}}
+  var key=MK_KEYS[sym],q=key&&macroData?quoteBy(macroData,key):null;return q?{p:q.price,dg:q.digits}:null}
+function lvDist(L){var q=lvPrice(L.s);if(!q)return null;return{pct:(L.p-q.p)/q.p*100,dg:q.dg}}
+function lvText(d){return d===null?"no price yet":(d.pct>=0?"+":"")+d.pct.toFixed(2)+"% "+(d.pct>=0?"above":"below")+" price"}
+function lvSave(a){wsSet("levels",a.slice(0,60));lvRender();lvHome();mkAllDraw()}
+function mkAllDraw(){if(MK.lay)for(var i=0;i<MK.lay.tiles.length;i++)mkDraw(i)}
+function lvAlert(L){
+  var key=MK_KEYS[L.s],q=lvPrice(L.s);if(!key){return"No alert for this market: alerts cover the markets on Home. Use the level lines on the chart."}
+  var dir=q&&L.p<q.p?"below":"above";
+  if(q&&(dir==="above"?q.p>=L.p:q.p<=L.p))return"Price is already at that level.";
+  if(AL.price.some(function(a){return a.sym===key&&a.dir===dir&&a.level===L.p&&!a.done}))return"That alert is already set.";
+  if(AL.price.length>=30)return"Up to 30 price alerts.";
+  AL.price.push({sym:key,dir:dir,level:L.p,done:""});alSave();if(tabNow==="alerts")alRender();return""}
+function lvRender(){
+  var box=$("lv-rows");if(!box)return;box.textContent="";
+  var all=lvAll().slice().sort(function(a,b){return a.s<b.s?-1:a.s>b.s?1:a.p-b.p});
+  var dl=$("lv-list");if(dl&&!dl.children.length){var seen={};MK.lay&&MK.lay.tiles.forEach(function(t){seen[t.s]=1});Object.keys(MK_KEYS).forEach(function(k){seen[k]=1});Object.keys(seen).forEach(function(k){var o=el("option");o.value=k;dl.appendChild(o)})}
+  if(!all.length){box.appendChild(el("div","lv-empty","No levels yet. Add the zones and prices you plan around, for example gold 3,950 support."));return}
+  all.forEach(function(L){
+    var r=el("div","lv-row"),d=lvDist(L),px=lvPrice(L.s);
+    r.appendChild(el("span","sym",L.s));r.appendChild(el("span","px",px?mkNum(L.p,px.dg):String(L.p)));
+    r.appendChild(el("span","lv-chip "+L.k,LV_NAME[L.k]||"Note"));r.appendChild(el("span","nt",L.n||""));
+    r.appendChild(el("span","ds"+(d&&Math.abs(d.pct)<0.3?" near":""),lvText(d)));
+    var act=el("div","lv-act"),al=el("button","btn small ghost","Alert");al.type="button";al.title="Alert me when price reaches this level";
+    al.onclick=function(){var m=lvAlert(L);var e=$("lv-err");e.textContent=m||"";e.style.display=m?"":"none";if(!m){al.textContent="Alert set";al.disabled=true}};
+    var x=el("button","btn small ghost","Remove");x.type="button";x.onclick=function(){lvSave(lvAll().filter(function(y){return y.id!==L.id}))};
+    act.appendChild(al);act.appendChild(x);r.appendChild(act);box.appendChild(r)})}
+function lvHome(){
+  var box=$("h-lv-rows"),pan=$("h-levels");if(!box||!pan)return;
+  var all=lvAll();pan.hidden=!all.length;box.textContent="";if(!all.length)return;
+  var rows=all.map(function(L){return{L:L,d:lvDist(L)}}).filter(function(x){return x.d}).sort(function(a,b){return Math.abs(a.d.pct)-Math.abs(b.d.pct)}).slice(0,6);
+  if(!rows.length){box.appendChild(el("div","lv-empty","Waiting for prices..."));return}
+  rows.forEach(function(x){var r=el("div","hlv"),t=el("div","lvt");r.appendChild(el("b",null,(MK_KEYS[x.L.s]||x.L.s)));
+    t.appendChild(el("span","lv-chip "+x.L.k,LV_NAME[x.L.k]));t.appendChild(el("b",null,mkNum(x.L.p,x.d.dg)));if(x.L.n)t.appendChild(el("span",null,x.L.n));r.appendChild(t);
+    r.appendChild(el("span","ds"+(Math.abs(x.d.pct)<0.3?" near":""),(x.d.pct>=0?"+":"")+x.d.pct.toFixed(2)+"%"));box.appendChild(r)})}
+$("lv-form").onsubmit=function(e){e.preventDefault();
+  var s=$("lv-s").value.trim().toUpperCase(),p=parseFloat($("lv-p").value),err=$("lv-err");
+  function bad(m){err.textContent=m;err.style.display=""}
+  if(!MK_SYM.test(s)){bad("Enter a market symbol such as GC=F or EURUSD=X.");return}
+  if(!isFinite(p)||p<=0){bad("Enter the price of the level.");return}
+  if(lvAll().length>=60){bad("Up to 60 levels.");return}
+  err.style.display="none";var a=lvAll();a.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),s:s,p:p,k:$("lv-k").value,n:$("lv-n").value.trim().slice(0,40)});
+  $("lv-p").value="";$("lv-n").value="";lvSave(a)};
+$("h-lv-go").onclick=function(){showTab("markets");var e=$("mk-lv");if(e)e.scrollIntoView({behavior:"smooth",block:"start"})};
+wsHooks.push(function(){lvRender();lvHome();mkAllDraw()});
+setInterval(function(){if(!document.hidden){if(tabNow==="home")lvHome();if(tabNow==="markets")lvRender()}},4000);
+wsLoad();
+/* what the command box (a separate script) may ask of the page */
+window.KT={
+  go:function(t){showTab(t)},
+  keys:function(){return Object.keys(MK_KEYS).map(function(k){return MK_KEYS[k]})},
+  yahoo:function(key){for(var k in MK_KEYS)if(MK_KEYS[k]===key)return k;return null},
+  price:function(key){var q=macroData?quoteBy(macroData,key):null;return q?{p:q.price,dg:q.digits}:null},
+  alert:function(key,dir,level){
+    var q=macroData?quoteBy(macroData,key):null;if(!q)return"No price for "+key+" yet.";
+    if(!dir)dir=level>q.price?"above":"below";
+    if(dir==="above"?q.price>=level:q.price<=level)return key+" is already "+dir+" "+level+".";
+    if(AL.price.length>=30)return"Up to 30 price alerts.";
+    AL.price.push({sym:key,dir:dir,level:level,done:""});alSave();if(tabNow==="alerts")alRender();return""},
+  level:function(sym,p,kind,note){var a=lvAll();if(a.length>=60)return"Up to 60 levels.";
+    a.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),s:sym,p:p,k:kind||"note",n:String(note||"").slice(0,40)});lvSave(a);return""},
+  chart:function(sym){showTab("markets");if(!MK.lay){mkLoad();return}
+    var have=MK.lay.tiles.some(function(t){return t.s===sym});if(!have)mkAdd(sym)},
+  style:function(st){showTab("markets");if(!MK.lay)return;MK.lay.style=st;MK.lay.tiles.forEach(function(x){x.style=st});mkSave();mkBar();mkBuild()},
+  toast:function(t,m){alFire(t,m)},
+  jump:function(id){var e=$(id);if(e)e.scrollIntoView({behavior:"smooth",block:"start"})}
+};
 
 /* health and backups (Settings) */
 var HL={data:null,list:null,at:0,busy:false};
@@ -4989,14 +5104,37 @@ jLoad();
     ["calendar","Economic calendar","",function(){go("macro")}],["checklist","Pre-trade checklist","",function(){go("home")}],["risk","Position size and risk","",function(){go("trades")}]];
   var cmd=$("cmd"),help=$("cmdhelp"),sel=0,shown=[];
   function typing(t){return t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT"||t.isContentEditable)}
+  /* words that stand for a market, then what you typed turned into things the box can do */
+  var NAMES={gold:"XAUUSD",xau:"XAUUSD",xauusd:"XAUUSD",silver:"XAGUSD",xag:"XAGUSD",nq:"NQ",nasdaq:"NQ",eurusd:"EURUSD",eur:"EURUSD",gbpusd:"GBPUSD",gbp:"GBPUSD",cable:"GBPUSD",
+    dxy:"DXY",dollar:"DXY",oil:"OIL",wti:"OIL",jpy:"USDJPY",usdjpy:"USDJPY",spx:"SPX",sp500:"SPX",vix:"VIX",us10y:"US10Y"};
+  var PRETTY={XAUUSD:"Gold",XAGUSD:"Silver",NQ:"Nasdaq",EURUSD:"EUR/USD",GBPUSD:"GBP/USD",DXY:"Dollar index",OIL:"Oil",USDJPY:"USD/JPY",SPX:"S&P 500",VIX:"VIX",US10Y:"US 10-year"};
+  function nf(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:5})}
+  function dyn(q){
+    var out=[],KT=window.KT,m;if(!KT||!q)return out;
+    if((m=/^alert\s+([a-z0-9\/]+)\s+(?:(above|below|over|under)\s+)?([0-9][0-9,]*\.?[0-9]*)$/.exec(q))){
+      var key=NAMES[m[1].replace("/","")]||m[1].toUpperCase(),lv=parseFloat(m[3].replace(/,/g,"")),dir=m[2]==="over"?"above":m[2]==="under"?"below":m[2],pr=KT.price(key);
+      if(isFinite(lv)&&pr){var d=dir||(lv>pr.p?"above":"below");out.push(["alert","Alert when "+(PRETTY[key]||key)+" goes "+d+" "+nf(lv)+" (now "+nf(pr.p)+")","",function(){var e=KT.alert(key,dir,lv);KT.toast(e?"Alert not set":"Alert set",e||(PRETTY[key]||key)+" "+d+" "+nf(lv))}])}
+      else if(isFinite(lv))out.push(["alert","Alert needs a market it knows: gold, nq, eurusd, gbpusd, dxy, oil, usdjpy, spx","",function(){}])}
+    if((m=/^level\s+([a-z0-9\/]+)\s+([0-9][0-9,]*\.?[0-9]*)(?:\s+(support|resistance|target|note))?(?:\s+(.+))?$/.exec(q))){
+      var k2=NAMES[m[1].replace("/","")],sym=k2?KT.yahoo(k2):m[1].toUpperCase(),p2=parseFloat(m[2].replace(/,/g,""));
+      var lk=m[3]||"note",ln=m[4]||"";
+      if(sym&&isFinite(p2))out.push(["level","Save "+lk+" level "+nf(p2)+" on "+(k2?PRETTY[k2]:sym)+(ln?" ("+ln+")":""),"",function(){var e=KT.level(sym,p2,lk,ln);KT.toast(e?"Level not saved":"Level saved",e||(PRETTY[k2]||sym)+" "+nf(p2));KT.go("markets");setTimeout(function(){KT.jump("mk-lv")},300)}])}
+    if((m=/^(?:chart|open)\s+([a-z0-9^.=\-]{1,16})$/.exec(q))||(/^[a-z0-9^.=\-]{2,10}$/.test(q)&&!CMDS.some(function(c){return c[0].indexOf(q)===0})&&(m=[q,q]))){
+      var raw=m[1],yk=NAMES[raw]?KT.yahoo(NAMES[raw]):raw.toUpperCase();if(yk)out.push(["chart","Open the "+(NAMES[raw]?PRETTY[NAMES[raw]]:yk)+" chart on Markets","",function(){KT.chart(yk)}])}
+    return out}
+  var EXTRA=[["candles","Charts as candles","",function(){window.KT&&KT.style("candles")}],["line","Charts as lines","",function(){window.KT&&KT.style("area")}],
+    ["levels","Key levels","",function(){go("markets");setTimeout(function(){window.KT&&KT.jump("mk-lv")},250)}],["log","Log a trade","",function(){go("journal");setTimeout(function(){window.KT&&KT.jump("j-form")},250)}],
+    ["backup","Backups and health","",function(){go("settings");setTimeout(function(){window.KT&&KT.jump("set-health")},250)}]];
+  CMDS=CMDS.concat(EXTRA);
   function draw(){
-    var q=cmd.value.trim().toLowerCase();
-    shown=CMDS.filter(function(c){return !q||c[0].indexOf(q)===0||c[1].toLowerCase().indexOf(q)>=0}).slice(0,8);
+    var raw=cmd.value.trim(),q=raw.toLowerCase();
+    shown=dyn(q).concat(CMDS.filter(function(c){return !q||c[0].indexOf(q)===0||c[1].toLowerCase().indexOf(q)>=0})).slice(0,9);
     help.textContent="";
     shown.forEach(function(c,i){var b=document.createElement("button");b.type="button";b.className=i===sel?"on":"";
       var a=document.createElement("b");a.textContent=c[0];a.style.fontWeight="500";var s2=document.createElement("span");s2.textContent=c[1];b.appendChild(a);b.appendChild(s2);
       b.onmousedown=function(e){e.preventDefault();run(c)};help.appendChild(b)});
-    var r=cmd.getBoundingClientRect();help.style.left=Math.max(8,r.right-230)+"px";help.style.top=(r.bottom+4)+"px";help.style.display=shown.length?"block":"none"}
+    if(shown.length){var hint=document.createElement("div");hint.className="cmdfoot";hint.textContent="Enter to run   Up and Down to choose   Esc to close   Try: alert gold below 3950";help.appendChild(hint)}
+    var r=cmd.getBoundingClientRect();help.style.left=Math.max(8,r.right-420)+"px";help.style.top=(r.bottom+4)+"px";help.style.display=shown.length?"block":"none"}
   function run(c){cmd.value="";cmd.blur();help.style.display="none";c[3]()}
   cmd.addEventListener("focus",function(){sel=0;draw()});
   cmd.addEventListener("input",function(){sel=0;draw()});
@@ -5007,6 +5145,7 @@ jLoad();
     else if(e.key==="Enter"){if(shown[sel])run(shown[sel]);e.preventDefault()}
     else if(e.key==="Escape"){cmd.value="";cmd.blur()}});
   document.addEventListener("keydown",function(e){
+    if((e.ctrlKey||e.metaKey)&&(e.key==="k"||e.key==="K")){e.preventDefault();cmd.focus();cmd.select();return}
     if(e.metaKey||e.ctrlKey||e.altKey||typing(e.target))return;
     if(e.key==="`"||e.key==="/"){e.preventDefault();cmd.focus();return}
     var n=+e.key;if(n>=1&&n<=9&&e.key.length===1){var c=CMDS[n-1];if(c){c[3]();e.preventDefault()}}});

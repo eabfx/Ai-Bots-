@@ -33,9 +33,9 @@ SUGGEST = [
     ("^DJI", "Dow Jones"), ("^FTSE", "FTSE 100"), ("^GDAXI", "DAX"), ("BTC-USD", "Bitcoin"), ("ETH-USD", "Ethereum"),
     ("AAPL", "Apple"), ("NVDA", "Nvidia"), ("MSFT", "Microsoft"), ("TSLA", "Tesla"), ("AMZN", "Amazon"),
 ]
-DEFAULT = {"grid": "3x2", "tf": "5m", "style": "area", "tiles": [
-    {"s": "GC=F", "tf": "5m", "style": "area"}, {"s": "NQ=F", "tf": "5m", "style": "area"}, {"s": "EURUSD=X", "tf": "5m", "style": "area"},
-    {"s": "GBPUSD=X", "tf": "5m", "style": "area"}, {"s": "DX-Y.NYB", "tf": "5m", "style": "area"}, {"s": "CL=F", "tf": "5m", "style": "area"}]}
+DEFAULT = {"grid": "3x2", "tf": "5m", "style": "candles", "tiles": [
+    {"s": "GC=F", "tf": "5m", "style": "candles"}, {"s": "NQ=F", "tf": "5m", "style": "candles"}, {"s": "EURUSD=X", "tf": "5m", "style": "candles"},
+    {"s": "GBPUSD=X", "tf": "5m", "style": "candles"}, {"s": "DX-Y.NYB", "tf": "5m", "style": "candles"}, {"s": "CL=F", "tf": "5m", "style": "candles"}]}
 
 
 class MarketsError(Exception):

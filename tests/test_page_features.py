@@ -8,6 +8,7 @@ from _load import load
 dash = load("riskdesk", "dashboard")     # loaded first: it puts the zones folder on the import path
 import zones as z
 macro = load("riskdesk", "macro")
+markets = load("riskdesk", "markets")
 
 
 class PageFeatures(unittest.TestCase):
@@ -96,6 +97,23 @@ class PageFeatures(unittest.TestCase):
     def test_a_broken_market_link_can_raise_an_alert(self):
         for needle in ('id="al-corr"', 'corr:true,dayLoss:0', '["al-corr","corr","b"]', 'function crAlertCheck()', 'alOnce("corr|"+p.label)',
                        'setInterval(crAlertCheck,300000)', '"news","sess","check","corr","sound"'):
+            self.assertIn(needle, self.page)
+
+    def test_charts_open_as_candles_and_keep_the_line_button(self):
+        self.assertIn('var MK_DEF={grid:"3x2",tf:"5m",style:"candles"', self.page)
+        self.assertIn('[["area","Line"],["candles","Candles"]]', self.page)
+        self.assertIn('zd.mk.candles1', self.page)
+        self.assertEqual(markets.DEFAULT["style"], "candles")
+        self.assertTrue(all(t["style"] == "candles" for t in markets.DEFAULT["tiles"]))
+
+    def test_key_levels_are_saved_drawn_ranked_and_turn_into_alerts(self):
+        for needle in ('id="mk-lv"', 'id="h-levels"', 'function lvAlert(L)', 'function lvHome()', 'lvFor(t.s).forEach', 'wsSet("levels"', '"/api/workspace"',
+                       'WS_KEYS=["levels","openrisk","goal","wrapups","cooldown","startday"]'):
+            self.assertIn(needle, self.page)
+
+    def test_the_command_box_takes_alerts_levels_charts_and_ctrl_k(self):
+        for needle in ('placeholder="Ctrl+K  commands"', 'window.KT={', 'e.key==="k"||e.key==="K"', 'function dyn(q)', 'Alert when "+(PRETTY[key]||key)',
+                       '["candles","Charts as candles"', 'var lk=m[3]||"note"'):
             self.assertIn(needle, self.page)
 
     def test_market_tiles_use_plain_names(self):

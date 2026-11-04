@@ -42,6 +42,7 @@ import signin        # noqa: E402
 import store         # noqa: E402
 import tradezella_import  # noqa: E402
 import vault         # noqa: E402
+import workspace     # noqa: E402
 
 PORT = 8765
 
@@ -170,7 +171,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 < size <= store.MAX_IMAGE:
                     raise store.StoreError("the image is empty or larger than %d MB" % (store.MAX_IMAGE // 1024 // 1024))
                 return self.send_json(200, {"name": store.save_image(self.data_dir, self.rfile.read(size))})
-            limit = 150000 if route in ("/api/coach", "/api/chat") else 12000000 if route in ("/api/journal", "/api/brain", "/api/vault/doc") else 20000
+            limit = 150000 if route in ("/api/coach", "/api/chat") else 80000 if route == "/api/workspace" else 12000000 if route in ("/api/journal", "/api/brain", "/api/vault/doc") else 20000
             if not 0 < size <= limit:
                 raise z.ZoneError("the request body is empty or too large")
             try:
@@ -235,6 +236,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json(400, {"error": str(e)})
             elif path == "/api/mkt/layout":
                 return self.send_json(200, markets.save_layout(self.data_dir, body))
+            elif path == "/api/workspace":
+                try:
+                    return self.send_json(200, workspace.save(self.data_dir, str(body.get("key") or ""), body.get("value")))
+                except workspace.WorkspaceError as exc:
+                    return self.send_json(400, {"error": str(exc)})
             elif path == "/api/import/tradezella":
                 return self.tradezella(bool(body.get("apply")))
             elif path == "/api/macro/brief":
@@ -281,6 +287,8 @@ class Handler(BaseHTTPRequestHandler):
             self.macro(parse_qs(url.query))
         elif url.path == "/api/funding":
             self.send_json(200, self.funding.state())
+        elif url.path == "/api/workspace":
+            self.send_json(200, workspace.load(self.data_dir))
         elif url.path == "/api/mkt/layout":
             self.send_json(200, dict(markets.load_layout(self.data_dir), suggest=markets.SUGGEST, grids=list(markets.GRIDS), tfs=list(markets.TIMEFRAMES)))
         elif url.path == "/api/mkt/charts":
