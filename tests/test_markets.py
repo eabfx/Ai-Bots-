@@ -150,6 +150,31 @@ class Routes(unittest.TestCase):
         self.assertEqual(out["GC=F|5m"]["price"], 100.0)
         self.assertEqual(self.get("/api/mkt/charts")[0], 400)
 
+    def test_a_slow_request_does_not_make_the_others_wait(self):
+        import time
+        started = threading.Event()
+
+        def slow(path):
+            started.set()
+            time.sleep(1.5)
+            return chart()
+        self.srv.RequestHandlerClass.mkt_fetch = staticmethod(slow)
+        first = []
+        t = threading.Thread(target=lambda: first.append(self.get("/api/mkt/charts?c=GC%3DF:5m")))
+        t.start()
+        self.assertTrue(started.wait(5))
+        t0 = time.time()
+        code, doc = self.get("/version.json")                       # asked while the slow chart is still being fetched
+        self.assertEqual(code, 200)
+        self.assertLess(time.time() - t0, 1.0)
+        t.join(10)
+        self.assertEqual(first[0][0], 200)
+
+    def test_saves_are_taken_one_at_a_time(self):
+        self.assertTrue(hasattr(self.srv.RequestHandlerClass, "WRITE_LOCK"))
+        self.assertNotIn("/api/journal", self.srv.RequestHandlerClass.SLOW_POSTS)
+        self.assertIn("/api/chat", self.srv.RequestHandlerClass.SLOW_POSTS)    # the AI answer never holds the saves back
+
 
 if __name__ == "__main__":
     unittest.main()

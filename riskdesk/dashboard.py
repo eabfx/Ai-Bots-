@@ -14,6 +14,7 @@ import html
 import json
 import os
 import sys
+import socketserver
 import threading
 import time
 import webbrowser
@@ -142,7 +143,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
         return True
 
+    SLOW_POSTS = ("/api/chat", "/api/coach", "/api/macro/brief", "/api/notion/refresh", "/api/import/notion", "/api/import/tradezella")
+    WRITE_LOCK = threading.Lock()
+    timeout = 120                                                # a connection that sends nothing for two minutes is dropped, so it cannot hold a thread
+
     def do_POST(self):
+        """Saves run one at a time (two at once could overwrite each other); the slow AI and import routes do not wait for that lock."""
+        if urlparse(self.path).path in self.SLOW_POSTS:
+            return self._post()
+        with self.WRITE_LOCK:
+            return self._post()
+
+    def _post(self):
         if not self.host_ok():
             return self.send_json(403, {"error": "this dashboard only answers requests from this computer"})
         if self.blocked(True):
@@ -412,10 +424,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
 
 
-class DashboardServer(HTTPServer):
+class DashboardServer(socketserver.ThreadingMixIn, HTTPServer):
     # On Windows, address reuse lets a second dashboard bind a port that is already in use and run beside the
     # first without any error, so it is turned off there. Elsewhere it only helps a quick restart.
     allow_reuse_address = os.name != "nt"
+    # Every request gets its own thread, so a slow price refresh or an AI answer never makes the page, the live ticks or the
+    # charts wait or be refused behind it. Saves are still taken one at a time (WRITE_LOCK in Handler.do_POST).
+    daemon_threads = True
+    request_queue_size = 64
 
 
 def configured_hosts(config_path, extra=()):
