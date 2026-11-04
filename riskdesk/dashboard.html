@@ -2074,7 +2074,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="card" id="j-heat"></div>
 
 <div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
-<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
+<div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="mistake">Mistake</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
 <div id="j-groups"></div></div>
 
 <div class="card" id="j-form">
@@ -2102,11 +2102,12 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="np"><label>Profit</label><div><input type="number" id="j-pl" placeholder="800 (money, optional when R/R and Risk are filled)" step="any"></div></div>
 <div class="np"><label>Trade No.</label><div><input type="number" id="j-no" min="0" step="1" placeholder="auto"></div></div>
 </div>
-<details class="jmore"><summary>More (optional): time, grade, plan, feeling, no-trade day</summary><div class="nprops">
+<details class="jmore"><summary>More (optional): time, grade, plan, feeling, mistake, no-trade day</summary><div class="nprops">
 <div class="np"><label>Time</label><div><input type="time" id="j-time"></div></div>
 <div class="np"><label>Setup grade</label><div><select id="j-grade"><option value="">Not graded</option><option value="A">A: textbook</option><option value="B">B: good</option><option value="C">C: weak</option><option value="D">D: forced</option></select></div></div>
 <div class="np"><label>Followed the plan</label><div><select id="j-plan"><option value="">Not set</option><option value="followed">Followed the plan</option><option value="deviated">Deviated from it</option></select></div></div>
 <div class="np"><label>Feeling</label><div><select id="j-emo"><option value="">Not set</option><option>calm</option><option>patient</option><option>confident</option><option>focused</option><option>bored</option><option>tired</option><option>anxious</option><option>fomo</option><option>revenge</option><option>greedy</option></select></div></div>
+<div class="np"><label>Mistake</label><div><select id="j-mis"><option value="">None, a clean trade</option></select></div></div>
 <div class="np"><label>Counts in my numbers?</label><div><select id="j-kind"><option value="">Yes, a normal trade</option><option value="none">No-trade day (kept, not counted)</option><option value="invalid">Invalid trade (kept, not counted)</option></select></div></div>
 </div></details>
 <div class="btnrow">
@@ -2425,6 +2426,8 @@ function jLoad(){                              /* the file on your PC is the jou
     if(!x.j.exists&&trades.length){jPushNow()}             /* first run: move the browser's trades onto the PC */
     jRender();if(typeof macroData!=="undefined"&&macroData)homeNums();planRender();hWeek()})
   .catch(function(e){jStatus("Could not reach the journal file on your PC ("+e.message+"). Trades are kept in this browser only.",true)})}
+/* the mistakes a trade can be marked with; a trade with none is a clean one */
+var MISTAKES=["Early entry","Late entry","Chased price","Moved stop","No stop","Too big","Cut winner early","Held loser too long","Broke daily limit","Overtraded","Revenge trade","Off plan"];
 function cleanTrade(t){
   if(!t||typeof t!=="object")return null;
   var pl=parseFloat(t.pl),risk=parseFloat(t.risk),g=String(t.grade||"").toUpperCase().slice(0,1);
@@ -2439,6 +2442,7 @@ function cleanTrade(t){
   var b=String(t.bias||"").toLowerCase();if(b==="bullish"||b==="bearish"||b==="neutral")o.bias=b;
   ["zone","strategy","session"].forEach(function(k){var s=String(t[k]||"").trim().slice(0,k==="zone"?40:30);if(s)o[k]=s});
   if(t.partials==="yes"||t.partials==="no")o.partials=t.partials;
+  if(MISTAKES.indexOf(t.mistake)>=0)o.mistake=t.mistake;
   var at=String(t.acctType||"").trim().slice(0,24);if(at)o.acctType=at;
   if(t.skip==="none"||t.skip==="invalid"||t.skip==="test")o.skip=t.skip;          /* kept in the journal but left out of every number */
   var r=parseFloat(t.r),rp=parseFloat(t.riskPct),no=parseInt(t.no,10);
@@ -2562,11 +2566,11 @@ function jWeek(list){
   bars(box,rows,mx||1)}
 function jGroups(list){
   var box=$("j-groups");box.textContent="";
-  var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},
+  var key={inst:function(t){return t.inst||"-"},tag:function(t){return t.tag||""},emotion:function(t){return t.emotion||""},mistake:function(t){return t.mistake||""},
     plan:function(t){return t.plan==="followed"?"Followed the plan":t.plan==="deviated"?"Deviated from it":""},grade:function(t){return t.grade?"Grade "+t.grade:""},
     zone:function(t){return t.zone||""},bias:function(t){return t.bias?t.bias.charAt(0).toUpperCase()+t.bias.slice(1):""},strategy:function(t){return t.strategy||""},
     session:function(t){return t.time?jSession(t.time):(t.session||"")},hour:function(t){return t.time?t.time.slice(0,2)+":00":""}}[jBy],
-    hint={zone:"Add a zone to your trades (for example 15m demand zone) to see which zones pay.",bias:"Add your bias to your trades to see whether it pays.",strategy:"Add a strategy name to your trades to compare strategies.",tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",
+    hint={zone:"Add a zone to your trades (for example 15m demand zone) to see which zones pay.",bias:"Add your bias to your trades to see whether it pays.",strategy:"Add a strategy name to your trades to compare strategies.",tag:"Give your trades a setup tag to see which setup pays.",emotion:"Pick how you felt when you log a trade to see what it costs or earns.",mistake:"Mark the mistake on a trade (More, Mistake) to see which one costs you most.",
       plan:"Mark whether you followed your plan to see what discipline is worth.",grade:"Grade your setups A to D to see whether the good ones really are.",
       session:"Add the time to your trades, or import them with times, to see which session pays.",hour:"Add the time to your trades, or import them with times, to see which hours pay."}[jBy],
     g={},unset=0;
@@ -2613,6 +2617,9 @@ function jReview(){
   facts.forEach(function(s){var p=el("div","jfact",s);box.appendChild(p)});
   var fix=[];
   if(de.n&&de.net<0)fix.push("Trades where you deviated from the plan lost "+jm(-de.net)+". Following the plan is the first thing to protect.");
+  var mk={};list.forEach(function(t){if(t.mistake)(mk[t.mistake]=mk[t.mistake]||[]).push(t)});
+  var mkw=Object.keys(mk).map(function(k){return{k:k,n:mk[k].length,net:jStats(mk[k]).net}}).filter(function(m){return m.net<0}).sort(function(a,c){return a.net-c.net})[0];
+  if(mkw)fix.push("\""+mkw.k+"\" cost you "+jm(-mkw.net)+" over "+pl(mkw.n,"trade")+" this week. It is the mistake to catch first.");
   var heavy=dn.filter(function(d){return d.n>=3&&d.net<0}).sort(function(a,c){return a.net-c.net})[0];
   if(heavy)fix.push(dshort(dparse(heavy.k))+" had "+heavy.n+" trades and lost "+jm(-heavy.net)+". Check whether you kept trading after the day had gone wrong; a stop-after-losses rule can cap this.");
   if(st.avgW!==null&&st.avgL!==null&&-st.avgL>st.avgW)fix.push("Your average loss ("+jm(-st.avgL)+") is bigger than your average win ("+jm(st.avgW)+"). Look at whether stops are moved or winners cut short.");
@@ -3137,7 +3144,8 @@ function ssPreview(name){
   if(name){var im=el("img");im.src="/api/img/"+name;im.alt="Trade screenshot";im.onclick=function(){if(jEditing)openLb(jEditing);else window.open(im.src,"_blank","noopener")};box.appendChild(im)}
   else box.appendChild(el("span",null,"No screenshot yet"))}
 function ssTitle(){var a=$("j-strat").value.trim(),b=$("j-tag").value.trim();$("j-sstitle").value=[a,b].filter(Boolean).join(" + ")}
-function fillLists(){
+function fillMistakes(){var sel=$("j-mis");if(sel.options.length>1)return;MISTAKES.forEach(function(m){var o=el("option",null,m);o.value=m;sel.appendChild(o)})}
+function fillLists(){fillMistakes();
   function put(id,vals){var dl=$(id);dl.textContent="";var seen={};vals.forEach(function(v){v=String(v||"").trim();if(v&&v!=="-"&&!seen[v]){seen[v]=1;var o=el("option");o.value=v;dl.appendChild(o)}})}
   function uniq(k){var c={};trades.forEach(function(t){if(t[k])c[t[k]]=(c[t[k]]||0)+1});return Object.keys(c).sort(function(a,b){return c[b]-c[a]})}
   put("j-instlist",uniq("inst"));put("j-stratlist",uniq("strategy"));put("j-taglist",uniq("tag"));put("j-zonelist",uniq("zone"));
@@ -3154,7 +3162,7 @@ function readTradeForm(){
   else return{error:"Fill in R/R and Risk (for example 3 and 0.5), or the Profit. Pick WIN or LOSS and the minus sign is handled for you."};
   var live=jType==="live",t=cleanTrade({date:$("j-date").value||today(),inst:$("j-inst").value.trim().toUpperCase()||"-",dir:$("j-dir").value,
     tag:$("j-tag").value.trim(),risk:risk,pl:pl,notes:$("j-notes").value.trim(),time:$("j-time").value,grade:$("j-grade").value,plan:$("j-plan").value,
-    emotion:$("j-emo").value,acct:live?"live":"backtest",acctType:live?$("j-at").value.trim():jType==="forward"?"Forward-Test":"Backtest",
+    emotion:$("j-emo").value,mistake:$("j-mis").value,acct:live?"live":"backtest",acctType:live?$("j-at").value.trim():jType==="forward"?"Forward-Test":"Backtest",
     bias:$("j-bias").value,zone:$("j-zone").value.trim(),strategy:$("j-strat").value.trim(),session:$("j-ses").value.trim(),partials:$("j-part").value,
     no:$("j-no").value,skip:kind,unit:unit,r:rv,riskPct:rp,profit:profit,img:pendingImg||(jEditing&&jEditing.img)||""});
   return t?{trade:t}:{error:"That trade could not be read. Check the date and the numbers."}}
@@ -3162,7 +3170,7 @@ function jOk(msg,page){
   var b=$("j-ok");b.textContent=msg;b.hidden=false;
   if(page&&page!==tabNow){var go=el("button","btn small ghost","Open "+(page==="backtest"?"Backtest":page==="forward"?"Forward Test":"Journal")+" \u203a");go.type="button";go.onclick=function(){showTab(page)};b.appendChild(go)}}
 function jResetForm(){
-  ["j-pl","j-notes","j-grade","j-plan","j-emo","j-time","j-r","j-zone","j-bias","j-part","j-ses"].forEach(function(i){$(i).value=""});
+  ["j-pl","j-notes","j-grade","j-plan","j-emo","j-mis","j-time","j-r","j-zone","j-bias","j-part","j-ses"].forEach(function(i){$(i).value=""});
   $("j-kind").value="";setOut("");pendingImg="";ssPreview("");imgState("Or paste an image (Ctrl+V) while this form is open.");$("j-no").value=nextNo();ssTitle()}
 function jLeaveEdit(){jEditing=null;jDropImg=false;$("j-form").classList.remove("editing");$("j-formtitle").textContent="Add a trade";$("j-add").textContent="Add trade";$("j-editcancel").hidden=true}
 function jCancelEdit(){jLeaveEdit();jResetForm();setType(jType)}
@@ -3170,7 +3178,7 @@ function jEdit(t){
   jEditing=t;setType(typeOf(t));
   $("j-form").classList.add("editing");$("j-formtitle").textContent="Edit this trade";$("j-add").textContent="Save changes";$("j-editcancel").hidden=false;$("j-ok").hidden=true;
   var m={"j-date":t.date,"j-time":t.time,"j-no":t.no===undefined?"":t.no,"j-inst":t.inst==="-"?"":t.inst,"j-at":t.acctType||"","j-tag":t.tag,"j-zone":t.zone,"j-strat":t.strategy,
-    "j-ses":t.session,"j-bias":t.bias,"j-part":t.partials,"j-grade":t.grade,"j-plan":t.plan,"j-emo":t.emotion,"j-notes":t.notes,"j-kind":t.skip||""};
+    "j-ses":t.session,"j-bias":t.bias,"j-part":t.partials,"j-grade":t.grade,"j-plan":t.plan,"j-emo":t.emotion,"j-mis":t.mistake,"j-notes":t.notes,"j-kind":t.skip||""};
   for(var k in m)$(k).value=m[k]===undefined||m[k]===null?"":m[k];
   setDir(t.dir);setOut(t.skip?"":t.pl>0?"win":t.pl<0?"loss":"be");
   var rp=t.riskPct||(t.unit==="pct"?t.risk:0)||"",rr=t.r!==undefined?t.r:(t.unit==="pct"&&rp?Math.round(t.pl/rp*100)/100:"");

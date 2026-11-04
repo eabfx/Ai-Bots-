@@ -83,6 +83,11 @@ class PageFeatures(unittest.TestCase):
                        'id="h-newsbar"', "function nbTick", "setInterval(nbTick,1000)"):                          # countdown to the next high-impact release
             self.assertIn(needle, page)
 
+    def test_journal_can_name_the_mistake_on_a_trade(self):
+        for needle in ('id="j-mis"', 'data-by="mistake"', 'var MISTAKES=["Early entry"', 'if(MISTAKES.indexOf(t.mistake)>=0)o.mistake=t.mistake;',
+                       'mistake:$("j-mis").value', '"j-mis":t.mistake', 'mistake:function(t){return t.mistake||""}'):
+            self.assertIn(needle, self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

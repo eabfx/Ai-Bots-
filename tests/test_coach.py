@@ -207,6 +207,16 @@ class Reflection(unittest.TestCase):
             self.assertNotIn(key, plain)
 
 
+class Mistakes(unittest.TestCase):
+    def test_a_named_mistake_reaches_the_summary_only_when_used(self):
+        rows = coach.clean_trades([{"pl": -100, "risk": 100, "mistake": "Moved stop"}, {"pl": 200, "risk": 100}])
+        self.assertEqual(rows[0]["mistake"], "Moved stop")
+        self.assertNotIn("mistake", rows[1])
+        s = coach.summarise(rows)
+        self.assertEqual({r["name"]: r["net_pl"] for r in s["by_mistake"]}, {"Moved stop": -100.0, "(not set)": 200.0})
+        self.assertNotIn("by_mistake", coach.summarise(coach.clean_trades([{"pl": 5}])))
+
+
 class TimeOfDay(unittest.TestCase):
     def test_sessions_follow_the_dublin_clock(self):
         for clock, name in (("00:00", "Asia"), ("06:59", "Asia"), ("07:00", "London"), ("12:59", "London"), ("13:00", "New York"),
