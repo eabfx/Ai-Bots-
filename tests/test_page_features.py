@@ -88,6 +88,11 @@ class PageFeatures(unittest.TestCase):
                        'mistake:$("j-mis").value', '"j-mis":t.mistake', 'mistake:function(t){return t.mistake||""}'):
             self.assertIn(needle, self.page)
 
+    def test_the_price_line_at_the_bottom_of_home_slides_in_a_loop(self):
+        for needle in ('@keyframes tkslide', 'translateX(-50%)', 'class="tk-track"' if False else 'el("div","tk-track")', 'tkCopy<2',
+                       'animation-play-state:paused', '.hticker .tk-set+.tk-set{display:none}'):
+            self.assertIn(needle, self.page)
+
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
             self.assertIn(needle, self.page)

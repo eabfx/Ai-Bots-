@@ -533,10 +533,16 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hmood{display:flex;align-items:baseline;gap:12px}
 .hmood .k{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hmood b{font:600 28px var(--disp);letter-spacing:-.02em}
-.hticker{display:flex;gap:26px;overflow-x:auto;padding:12px 18px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;background:var(--panel);scrollbar-width:none}
-.hticker::-webkit-scrollbar{display:none}
-.hticker span{white-space:nowrap;font:500 13px var(--mono)}
-.hticker b{margin-right:8px;font-weight:600}.hticker em{font-style:normal}
+.hticker{display:block;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;background:var(--panel);-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+/* the prices slide past in a loop: two identical sets side by side, the track moves left by exactly one set, then starts again unseen */
+.hticker .tk-track{display:flex;width:max-content;padding:12px 0;animation:tkslide var(--tkdur,50s) linear infinite;will-change:transform}
+.hticker:hover .tk-track,.hticker:focus-within .tk-track{animation-play-state:paused}
+.hticker .tk-set{display:flex}
+@keyframes tkslide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.hticker span{white-space:nowrap;font:500 13px var(--mono);padding:0 13px;display:inline-flex;align-items:baseline;position:relative}
+.hticker span::after{content:"";position:absolute;right:-1px;top:50%;width:1px;height:12px;margin-top:-6px;background:var(--line)}
+@media(prefers-reduced-motion:reduce){.hticker{overflow-x:auto;-webkit-mask-image:none;mask-image:none;scrollbar-width:none}.hticker .tk-track{animation:none}.hticker .tk-set+.tk-set{display:none}}
+.hticker b{margin-right:8px;font-weight:600}.hticker em{font-style:normal}.hticker i{font-style:normal;margin-right:8px}
 .hscroll{max-height:400px;overflow:auto;padding-right:6px}
 .hcal{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .hcal:last-child{border-bottom:0}
@@ -4060,7 +4066,11 @@ function homeRender(d){
   var fr=el("div");fr.style.marginTop="10px";flowRows(fr,d,8);fl.appendChild(fr);
   tilesRender(d);qmRender(d);
   var tk=$("h-ticker");tk.textContent="";
-  d.quotes.forEach(function(q){var sp=el("span");sp.setAttribute("data-k",q.key);sp.appendChild(el("b",null,q.key));var tpx=el("i",null,fmt(q.price,q.digits));tpx.setAttribute("data-f","px");sp.appendChild(tpx);sp.appendChild(document.createTextNode(" "));var tem=el("em",pctClass(q.pct),pctText(q.pct));tem.setAttribute("data-f","pct");sp.appendChild(tem);tk.appendChild(sp)});
+  var tkTrack=el("div","tk-track");
+  for(var tkCopy=0;tkCopy<2;tkCopy++){var tkSet=el("div","tk-set");if(tkCopy){tkSet.setAttribute("aria-hidden","true")}
+    d.quotes.forEach(function(q){var sp=el("span");sp.setAttribute("data-k",q.key);sp.appendChild(el("b",null,q.key));var tpx=el("i",null,fmt(q.price,q.digits));tpx.setAttribute("data-f","px");sp.appendChild(tpx);sp.appendChild(document.createTextNode(" "));var tem=el("em",pctClass(q.pct),pctText(q.pct));tem.setAttribute("data-f","pct");sp.appendChild(tem);tkSet.appendChild(sp)});
+    tkTrack.appendChild(tkSet)}
+  tkTrack.style.setProperty("--tkdur",Math.max(24,d.quotes.length*4)+"s");tk.appendChild(tkTrack);
   newsBlock($("h-news"),d,12,"home");
   var st=$("h-strength");st.textContent="";
   if(d.strength&&d.strength.length){
