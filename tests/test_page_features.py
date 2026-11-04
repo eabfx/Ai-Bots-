@@ -136,6 +136,10 @@ class PageFeatures(unittest.TestCase):
     def test_funding_settings_can_be_copied_to_another_copy(self):
         for needle in ('id="fd-copy"', 'id="fd-paste"', 'action:"import"', 'Paste Funding settings', 'FD.settings'):
             self.assertIn(needle, self.page)
+        settings = self.page[self.page.index('id="tab-settings"'):self.page.index('id="tab-markets"')]
+        funding_tab = self.page[self.page.index('id="tab-funding"'):self.page.index('id="tab-alerts"')]
+        self.assertIn('id="fd-copy"', settings)                      # the buttons live in Settings
+        self.assertNotIn('id="fd-copy"', funding_tab)
 
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):
