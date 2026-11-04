@@ -7,7 +7,7 @@ import json
 import os
 
 FILE = "workspace.json"
-KEYS = ("levels", "openrisk", "goal", "wrapups", "cooldown", "startday")
+KEYS = ("levels", "openrisk", "goal", "wrapups", "cooldown", "startday", "newsdays")
 MAX_NOTE = 60000            # bytes of JSON per note
 MAX_TOTAL = 400000
 

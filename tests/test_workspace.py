@@ -26,6 +26,10 @@ class Notes(unittest.TestCase):
             workspace.save(d, "wrapups", {"x": "y" * (workspace.MAX_NOTE + 1)})
         self.assertFalse([n for n in os.listdir(d) if n.endswith(".tmp")])
 
+    def test_news_days_can_be_kept(self):
+        d = tempfile.mkdtemp()
+        self.assertEqual(workspace.save(d, "newsdays", {"2026-11-04": [2, 5, ["13:30"]]}), {"newsdays": {"2026-11-04": [2, 5, ["13:30"]]}})
+
     def test_a_damaged_file_reads_as_empty(self):
         d = tempfile.mkdtemp()
         with open(os.path.join(d, workspace.FILE), "w") as fh:

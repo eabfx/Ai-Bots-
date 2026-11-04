@@ -108,7 +108,7 @@ class PageFeatures(unittest.TestCase):
 
     def test_key_levels_are_saved_drawn_ranked_and_turn_into_alerts(self):
         for needle in ('id="mk-lv"', 'id="h-levels"', 'function lvAlert(L)', 'function lvHome()', 'lvFor(t.s).forEach', 'wsSet("levels"', '"/api/workspace"',
-                       'WS_KEYS=["levels","openrisk","goal","wrapups","cooldown","startday"]'):
+                       'WS_KEYS=["levels","openrisk","goal","wrapups","cooldown","startday","newsdays"]'):
             self.assertIn(needle, self.page)
 
     def test_the_command_box_takes_alerts_levels_charts_and_ctrl_k(self):
@@ -118,7 +118,14 @@ class PageFeatures(unittest.TestCase):
 
     def test_open_risk_cooldown_and_the_bad_run_simulator_are_in_the_page(self):
         for needle in ('id="h-open"', 'function oxBets(items)', 'are the same bet:', 'id="h-cool"', 'function cdStart(mins)', 'cdStart();\n  if(AL.check&&',
-                       'id="al-cool"', 'coolMins:10', 'id="j-sim"', 'function jSim(list)', 'jSim(list);jGroups(list);', 'It does not predict anything.'):
+                       'id="al-cool"', 'coolMins:10', 'id="j-sim"', 'function jSim(list)', 'jSim(list);jNews(list);jWall(list);jWraps();jGroups(list);', 'It does not predict anything.'):
+            self.assertIn(needle, self.page)
+
+    def test_start_of_day_wrap_up_goal_news_wall_report_and_pop_out_are_in_the_page(self):
+        for needle in ('id="kt-modal"', 'function ktOpen(title,build,foot)', 'id="sd-open"', 'function sdOpen()', 'wsSet("startday"', 'id="wu-open"', 'function wuOpen()',
+                       'wsSet("wrapups"', 'id="j-wraps"', 'id="h-goal"', 'function goalRender()', 'function goalDays()', 'Behind an even pace by', 'id="j-news"', 'function newsRecord(d)',
+                       'wsSet("newsdays"', 'function jNews(list)', 'id="j-wall"', 'function jWall(list)', 'openLb(t,shown)', 'id="j-report"', 'function repOpen()',
+                       'window.print()', '@media print', 'function popOut(slug)', '"#pop="', 'body.popout', 'id="mk-pop"', '["start","Start my day"', '["report","Monthly report"'):
             self.assertIn(needle, self.page)
 
     def test_market_tiles_use_plain_names(self):
