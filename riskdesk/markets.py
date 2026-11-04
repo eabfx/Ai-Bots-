@@ -185,3 +185,85 @@ def save_layout(data_dir, doc):
         json.dump(out, fh, indent=1)
     os.replace(tmp, os.path.join(data_dir, FILE))
     return out
+
+
+# ---- correlations between markets that normally move together (or against each other)
+CORR_PAIRS = [("GC=F", "DX-Y.NYB", "Gold and the dollar"), ("EURUSD=X", "GBPUSD=X", "EUR/USD and GBP/USD"),
+              ("NQ=F", "^GSPC", "Nasdaq and S&P 500"), ("GC=F", "SI=F", "Gold and silver"),
+              ("DX-Y.NYB", "EURUSD=X", "Dollar and EUR/USD"), ("JPY=X", "DX-Y.NYB", "USD/JPY and the dollar")]
+CORR_SECS = 60
+SHORT_BARS = 120            # the latest 120 five-minute returns that both markets traded together
+MIN_SHORT = 20              # fewer shared bars than this and there is nothing honest to say
+BREAK_BY = 0.5              # a move this far from the usual (on the -1 to +1 scale) is flagged
+_CORR = {"at": 0.0, "out": None}
+
+
+def pearson(a, b):
+    n = min(len(a), len(b))
+    if n < 3:
+        return None
+    a, b = a[-n:], b[-n:]
+    ma, mb = sum(a) / n, sum(b) / n
+    va = sum((x - ma) ** 2 for x in a)
+    vb = sum((y - mb) ** 2 for y in b)
+    if va <= 0 or vb <= 0:
+        return None
+    return sum((x - ma) * (y - mb) for x, y in zip(a, b)) / (va * vb) ** 0.5
+
+
+def _returns(bars, daily=False):
+    """{time: return from the previous bar} for one market. Daily bars start at different hours in different markets, so they are matched by day."""
+    out, prev = {}, None
+    for b in bars:
+        c = b[4]
+        if prev:
+            out[(b[0] + 3600) // 86400 if daily else b[0]] = c / prev - 1
+        prev = c
+    return out
+
+
+def _paired(ra, rb):
+    ts = sorted(set(ra) & set(rb))
+    return [ra[t] for t in ts], [rb[t] for t in ts]
+
+
+def correlations(fetch=None, clock=time.time):
+    """For each pair: how they have moved together over the latest few hours (short), and over the last months (usual). A big gap is a break."""
+    now = clock()
+    if _CORR["out"] is not None and now - _CORR["at"] < CORR_SECS:
+        return _CORR["out"]
+    syms = sorted({x for p in CORR_PAIRS for x in p[:2]})
+
+    def grab(job):
+        sym, tf = job
+        try:
+            return (sym, tf), _returns(one(sym, tf, fetch, clock, 30)["bars"], tf == "1d")
+        except (MarketsError, z.ZoneError):
+            return (sym, tf), None
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        got = dict(ex.map(grab, [(s_, tf) for s_ in syms for tf in ("5m", "1d")]))
+    rows = []
+    for a, b, label in CORR_PAIRS:
+        s_a, s_b, l_a, l_b = got.get((a, "5m")), got.get((b, "5m")), got.get((a, "1d")), got.get((b, "1d"))
+        short = usual = None
+        n_short = n_usual = 0
+        if s_a and s_b:
+            xa, xb = _paired(s_a, s_b)
+            xa, xb = xa[-SHORT_BARS:], xb[-SHORT_BARS:]
+            n_short = len(xa)
+            short = pearson(xa, xb) if n_short >= MIN_SHORT else None
+        if l_a and l_b:
+            ya, yb = _paired(l_a, l_b)
+            n_usual = len(ya)
+            usual = pearson(ya, yb) if n_usual >= 30 else None
+        state = "unknown"
+        if short is not None and usual is not None:
+            flipped = usual * short < 0 and abs(usual) >= 0.3 and abs(short) >= 0.2
+            state = "break" if abs(short - usual) >= BREAK_BY or flipped else "normal"
+        elif usual is not None:
+            state = "quiet"
+        rows.append({"a": a, "b": b, "label": label, "short": None if short is None else round(short, 2),
+                     "usual": None if usual is None else round(usual, 2), "n_short": n_short, "n_usual": n_usual, "state": state})
+    out = {"at": int(now), "pairs": rows}
+    _CORR["at"], _CORR["out"] = now, out
+    return out

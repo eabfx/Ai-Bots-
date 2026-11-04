@@ -176,5 +176,67 @@ class Routes(unittest.TestCase):
         self.assertIn("/api/chat", self.srv.RequestHandlerClass.SLOW_POSTS)    # the AI answer never holds the saves back
 
 
+class Correlations(unittest.TestCase):
+    def setUp(self):
+        markets._CORR.update(at=0.0, out=None)
+        markets._CACHE.clear()
+
+    def test_pearson(self):
+        self.assertAlmostEqual(markets.pearson([1, 2, 3, 4], [2, 4, 6, 8]), 1.0)
+        self.assertAlmostEqual(markets.pearson([1, 2, 3, 4], [8, 6, 4, 2]), -1.0)
+        self.assertIsNone(markets.pearson([1, 1, 1, 1], [1, 2, 3, 4]))            # no movement, no correlation
+        self.assertIsNone(markets.pearson([1, 2], [1, 2]))                       # too few
+
+    def series(self, n, step, wiggle):
+        day = 1_699_920_000
+        px, out = 100.0, []
+        for i in range(n):
+            px *= 1 + wiggle(i)
+            out.append([day + i * step, px, px, px, px, 0])
+        return out
+
+    def test_a_pair_that_moves_together_is_normal_and_one_that_flips_is_a_break(self):
+        import math
+
+        def wig(i):
+            return math.sin(i * 0.9) * 0.001
+
+        def opposite(i):
+            return -wig(i)
+
+        def mostly_same_then_flips(i):                    # follows the first market for the daily history, then goes against it in the latest hours
+            return wig(i) if i < 150 else -wig(i)
+
+        def fake(path):
+            sym = path.split("/chart/")[1].split("?")[0]
+            daily = "interval=1d" in path
+            n, step = (200, 86400) if daily else (200, 300)
+            f = {"GC%3DF": wig, "SI%3DF": wig if daily else opposite}.get(sym, wig)
+            return json.dumps({"chart": {"result": [{"meta": {"regularMarketPrice": 100, "previousClose": 99, "gmtoffset": 0},
+                                                     "timestamp": [b[0] for b in self.series(n, step, f)],
+                                                     "indicators": {"quote": [{k: [b[j] for b in self.series(n, step, f)] for k, j in
+                                                                              (("open", 1), ("high", 2), ("low", 3), ("close", 4), ("volume", 5))}]}}],
+                                        "error": None}})
+        out = markets.correlations(fake)
+        by = {p["label"]: p for p in out["pairs"]}
+        silver = by["Gold and silver"]                  # together all year, opposite lately: a break
+        self.assertGreater(silver["usual"], 0.9)
+        self.assertLess(silver["short"], -0.9)
+        self.assertEqual(silver["state"], "break")
+        self.assertEqual(by["Nasdaq and S&P 500"]["state"], "normal")
+        self.assertEqual(markets.correlations(fake), out)                           # reused for a minute
+
+    def test_no_data_is_unknown_not_invented(self):
+        def broken(path):
+            raise markets.z.ZoneError("no answer")
+        out = markets.correlations(broken)
+        self.assertTrue(all(p["state"] == "unknown" and p["short"] is None for p in out["pairs"]))
+
+    def test_the_route_and_the_page(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        self.assertIn("/api/mkt/corr", page)
+        self.assertIn('id="mk-corr"', page)
+
+
 if __name__ == "__main__":
     unittest.main()

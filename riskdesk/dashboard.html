@@ -1484,6 +1484,57 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 /* settings page */
 /* tablets: the menu drops to its own row so all ten items show */
 @media(min-width:641px) and (max-width:900px){.bar{height:auto!important;flex-wrap:wrap;row-gap:0;padding-top:8px}.bar nav{order:5;flex:1 1 100%!important;min-width:100%;overflow-x:auto}.bar nav button{flex:1 0 auto!important}}
+/* countdown to the next high-impact release */
+.nbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;text-align:left;padding:9px 14px;margin:0 0 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--text);font:500 13px var(--sans);cursor:pointer}
+.nbar[hidden]{display:none}
+.nbar i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.nbar b{font-weight:600}.nbar .nb-t{font:600 14px var(--mono);margin-left:auto;font-variant-numeric:tabular-nums}.nbar .nb-x{color:var(--muted);font-size:12px}
+.nbar.soon{border-color:var(--warn)}.nbar.soon i{background:var(--warn)}.nbar.soon .nb-t{color:var(--warn)}
+.nbar.now{border-color:var(--down);background:color-mix(in srgb,var(--down) 10%,var(--panel))}.nbar.now i{background:var(--down);animation:nbpulse 1.4s ease-in-out infinite}.nbar.now .nb-t{color:var(--down)}
+@keyframes nbpulse{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){.nbar.now i{animation:none}}
+@media(max-width:560px){.nbar .nb-t{margin-left:0}}
+/* last week, on Home from Saturday to Wednesday */
+.hweek{margin-bottom:16px}.hweek .hw-top{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+.hweek .jtotal{font-size:28px}.hweek .hw-facts{margin:10px 0 0}.hweek .hw-ai{margin-top:12px;white-space:pre-wrap;font-size:13px;line-height:1.55;max-width:80ch}
+.hweek .btnrow{margin-top:12px}
+/* when you make money: weekday by hour */
+.hm-wrap{overflow-x:auto;padding-bottom:4px}
+.hm{display:grid;gap:3px;min-width:420px;align-items:stretch}
+.hm-h{font:500 11px var(--mono);color:var(--muted);text-align:center;padding:2px 0}
+.hm-d{font:500 12px var(--mono);color:var(--muted);display:flex;align-items:center}
+.hm-c{min-height:34px;border-radius:6px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font:500 11px var(--mono);color:var(--text);line-height:1.25;cursor:default}
+.hm-c small{font-size:10px;color:var(--muted)}
+.hm-c.up{background:color-mix(in srgb,var(--up) calc(var(--a)*62%),transparent);border-color:color-mix(in srgb,var(--up) calc(var(--a)*70%),var(--line))}
+.hm-c.down{background:color-mix(in srgb,var(--down) calc(var(--a)*62%),transparent);border-color:color-mix(in srgb,var(--down) calc(var(--a)*70%),var(--line))}
+.hm-c.none{border-style:dashed;opacity:.55}
+.hm-sum{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0 0;font-size:13px}.hm-sum b{font-weight:600}
+.hm-sum b.up{color:var(--up)}.hm-sum b.down{color:var(--down)}
+/* chart alerts */
+.mk-cv{cursor:crosshair}
+.mk-pop{position:absolute;z-index:6;width:200px;padding:10px 12px;background:var(--panel2,#111);border:1px solid var(--hover);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:12px;line-height:1.45;cursor:default}
+/* correlations */
+#mk-corr{margin-top:16px}
+.cr-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(160px,2fr) minmax(130px,1fr) 108px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.cr-row:last-child{border-bottom:0}
+.cr-name{font-weight:600}.cr-name small{display:block;font:500 11px var(--mono);color:var(--muted);margin-top:2px}
+.cr-track{position:relative;height:22px}
+.cr-track::before{content:"";position:absolute;left:0;right:0;top:10px;height:2px;background:var(--line)}
+.cr-track::after{content:"";position:absolute;left:50%;top:5px;height:12px;width:1px;background:var(--hover)}
+.cr-use{position:absolute;top:5px;width:2px;height:12px;background:var(--muted);transform:translateX(-1px)}
+.cr-now{position:absolute;top:5px;width:12px;height:12px;border-radius:50%;background:var(--text);transform:translateX(-6px);border:2px solid var(--panel)}
+.cr-row.break .cr-now{background:var(--down,#ff5c5c)}
+.cr-nums{font:500 12px var(--mono);color:var(--muted);line-height:1.5}.cr-nums b{color:var(--text);font-weight:600}
+.cr-chip{justify-self:end;font:600 11px var(--mono);padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.cr-row.break .cr-chip{color:var(--down,#ff5c5c);border-color:var(--down,#ff5c5c)}.cr-row.normal .cr-chip{color:var(--up,#2ee59d)}
+.cr-scale{display:flex;justify-content:space-between;font:500 10px var(--mono);color:var(--muted);margin:4px 0 0;max-width:calc(100% - 0px)}
+@media(max-width:700px){.cr-row{grid-template-columns:1fr auto;grid-template-areas:"n c" "t t" "u u"}.cr-name{grid-area:n}.cr-chip{grid-area:c}.cr-track{grid-area:t}.cr-nums{grid-area:u}}
+/* health and backups */
+.hl td,.hl th{padding:7px 10px}.hl .rb{padding:3px 10px;font-size:12px}
+.hl-ev{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+.hl-ev:last-child{border-bottom:0}.hl-ev time{font:500 12px var(--mono);color:var(--muted);flex:none}.hl-ev span{flex:1;min-width:0}
+#hl-restore{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:var(--panel2)}
+#hl-restore b{font-weight:600}#hl-restore .btnrow{margin-top:10px}
 .set-nav{display:flex;gap:6px;margin:0 0 16px;flex-wrap:wrap}
 .set-nav button{appearance:none;background:transparent;border:1px solid var(--line);color:var(--muted);font:500 12px var(--mono);padding:6px 12px;border-radius:var(--radius);cursor:pointer}
 .set-nav button:hover{color:var(--text);border-color:var(--hover)}
@@ -1653,8 +1704,10 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="err" id="h-err" style="display:none"></div>
 <div class="custbar" id="cust-bar" hidden><span>Move panels with the arrows, hide the ones you do not use. Saved in this browser.</span><span class="custgap"></span><label class="ckrow" style="margin:0"><input type="checkbox" id="cust-compact"><span>Compact</span></label><button class="btn small ghost" id="cust-reset" type="button">Reset layout</button><button class="btn small" id="cust-done" type="button">Done</button></div>
 <div id="h-sessions" hidden></div>
+<button type="button" class="nbar" id="h-newsbar" hidden title="Open the calendar"></button>
 <div class="tiles" id="h-tiles" aria-label="Prices"></div>
 <div class="hnums" id="h-nums"></div>
+<div class="hpanel hweek" id="h-week" hidden></div>
 <div class="hgrid3">
 <div class="hpanel"><div class="hp-h"><h3>Quote monitor</h3><span class="mute" id="qm-note" style="font-size:11px"></span></div><div class="qmwrap"><table class="qm" id="h-qm"></table></div></div>
 <div class="hpanel"><div class="hp-h"><h3>News feed</h3></div><div class="news hscroll" id="h-news"></div></div>
@@ -1780,7 +1833,7 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <section class="tool" id="tab-settings" role="tabpanel" hidden>
 <h2 class="pt">Settings</h2>
 <p class="sub">How Kelly_Terminal looks and behaves, and where its data comes from.</p>
-<div class="set-nav" role="group" aria-label="Jump to"><button type="button" data-jump="set-prefs">Preferences</button><button type="button" data-jump="set-conn">Connections</button></div>
+<div class="set-nav" role="group" aria-label="Jump to"><button type="button" data-jump="set-prefs">Preferences</button><button type="button" data-jump="set-health">Health and backups</button><button type="button" data-jump="set-conn">Connections</button></div>
 <h3 class="set-h" id="set-prefs">Preferences</h3>
 <p class="sub">Saved in this browser.</p>
 <div class="set-rows">
@@ -1790,6 +1843,24 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 <div class="set-row"><div class="t"><b>Opening animation</b><div>The logo intro that plays when the app opens.</div></div><button class="btn small ghost" id="set-intro" type="button">Replay</button></div>
 <div class="set-row"><div class="t"><b>Home layout</b><div>Put the Home panels back in their original order and show any you hid.</div></div><button class="btn small ghost" id="set-home" type="button">Reset Home</button></div>
 <div class="set-row"><div class="t"><b>Market charts</b><div>Go back to the starter set: gold, Nasdaq, EUR/USD, GBP/USD, dollar index and oil.</div></div><button class="btn small ghost" id="set-mk" type="button">Reset charts</button></div>
+</div>
+<h3 class="set-h" id="set-health">Health and backups</h3>
+<p class="sub">Whether the server is running well, and the safety copies of your journal and settings.</p>
+<div class="hnums" id="hl-nums"></div>
+<div class="cgrid2">
+<div class="card" id="hl-bk-card">
+<h3 class="jh">Backups</h3>
+<p class="sub" id="hl-bk-sub" style="margin-bottom:10px">Checking...</p>
+<div class="btnrow"><button class="btn small" id="hl-bk-run" type="button">Back up now</button></div>
+<div class="err" id="hl-bk-err" style="display:none"></div>
+<div class="dqwrap"><table class="qm hl" id="hl-bk-list"></table></div>
+<div id="hl-restore" hidden></div>
+</div>
+<div class="card" id="hl-ev-card">
+<h3 class="jh">Recent restarts and alerts</h3>
+<p class="sub" id="hl-ev-sub" style="margin-bottom:10px">Checking...</p>
+<div id="hl-ev"></div>
+</div>
 </div>
 <h3 class="set-h" id="set-conn">Connections</h3>
 <p class="sub">Where Kelly_Terminal gets its data and where your trades come from. Imports live here so the Journal and Backtest pages stay clean.</p>
@@ -1860,7 +1931,12 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 </div>
 <div class="err" id="mk-err" style="display:none"></div>
 <div class="mk-grid" id="mk-grid" data-c="3"></div>
-<p class="hint" id="mk-note">Prices come from Yahoo. Forex is live, CME futures (symbols ending =F) run about ten minutes behind, and stocks follow their exchange. Any Yahoo symbol works. Your chart layout is saved on this computer.</p>
+<div class="card" id="mk-corr">
+<h3 class="jh">Correlations</h3>
+<p class="sub" id="mk-corr-sub" style="margin-bottom:6px">Checking how the markets move together...</p>
+<div id="mk-corr-rows"></div>
+</div>
+<p class="hint" id="mk-note">Prices come from Yahoo. Forex is live, CME futures (symbols ending =F) run about ten minutes behind, and stocks follow their exchange. Click a chart to set a price alert at that level. Any Yahoo symbol works. Your chart layout is saved on this computer.</p>
 </section>
 
 <section class="tool" id="tab-funding" role="tabpanel" hidden>
@@ -1994,6 +2070,8 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 </div>
 
 <div class="card" id="j-extras"></div>
+
+<div class="card" id="j-heat"></div>
 
 <div class="card"><div class="jcalhead" style="margin-bottom:8px"><h3 class="jh" style="margin:0">Where the results come from</h3>
 <div class="seg" id="j-by" role="group" aria-label="Group by"><button type="button" data-by="inst">Instrument</button><button type="button" data-by="tag">Setup</button><button type="button" data-by="emotion">Emotion</button><button type="button" data-by="plan">Plan</button><button type="button" data-by="grade">Grade</button><button type="button" data-by="zone">Zone</button><button type="button" data-by="bias">Bias</button><button type="button" data-by="strategy">Strategy</button><button type="button" data-by="session">Session</button><button type="button" data-by="hour">Hour</button></div></div>
@@ -2165,7 +2243,7 @@ function showTab(name){
   var ent=$("tab-"+section);ent.classList.remove("enter");void ent.offsetWidth;ent.classList.add("enter");clearTimeout(window.entT);window.entT=setTimeout(function(){ent.classList.remove("enter")},2200);
   if(isJ(name)){jAcct=name==="journal"?"live":name;jAT="";jShown=30;jFormTab(name);jRender()}
   if(name==="home"||name==="macro"||name==="settings")loadMacro(false);if(name==="trades")propCalc();
-  if(name==="funding")fdLoad();if(name==="alerts"){alRender();pushLoad()}if(name==="settings"){connRender();nlStatus()}if(name==="markets")mkShow();if(name==="brain")sbShow();
+  if(name==="funding")fdLoad();if(name==="alerts"){alRender();pushLoad()}if(name==="settings"){connRender();nlStatus();hlLoad()}if(name==="markets"){mkShow();crLoad()}if(name==="brain")sbShow();
   dockChat(name==="home");
   pgHead(section);
 }
@@ -2345,7 +2423,7 @@ function jLoad(){                              /* the file on your PC is the jou
     if(x.j.exists){trades=x.j.trades.map(cleanTrade).filter(function(t){return t});jset(JKEY,JSON.stringify(trades));jStatus(trades.length+" trades loaded from your PC.")}
     jReady=true;
     if(!x.j.exists&&trades.length){jPushNow()}             /* first run: move the browser's trades onto the PC */
-    jRender();if(typeof macroData!=="undefined"&&macroData)homeNums();planRender()})
+    jRender();if(typeof macroData!=="undefined"&&macroData)homeNums();planRender();hWeek()})
   .catch(function(e){jStatus("Could not reach the journal file on your PC ("+e.message+"). Trades are kept in this browser only.",true)})}
 function cleanTrade(t){
   if(!t||typeof t!=="object")return null;
@@ -2570,6 +2648,35 @@ function jExtras(list){
     box.appendChild(el("div","jsub","How your "+rs.length+" results are spread, in R"));
     var d=el("div","rdist");B.forEach(function(b,i){var c=el("div","rcol"),bar=el("i",B[i][2]<=0?"down":"up");bar.style.height=Math.max(cnt[i]?4:0,Math.round(cnt[i]/mx*72))+"px";
       c.appendChild(el("span","rn",String(cnt[i])));c.appendChild(bar);c.appendChild(el("span","rl",b[0]));d.appendChild(c)});box.appendChild(d)}}
+/* a map of when the money is made: weekday by hour of the day, from the time on each trade */
+function jHeat(list){
+  var box=$("j-heat");box.textContent="";box.appendChild(el("h3","jh","When you make money"));
+  var tt=list.filter(function(t){return t.time&&dparse(t.date)!==null}),notime=list.length-tt.length;
+  if(tt.length<5){box.appendChild(el("div","empty",tt.length?"Log a few more trades with a time to see which days and hours pay.":"Add the time to your trades (the time field when you log one) to see which days and hours pay."+(notime?" "+pl(notime,"trade")+" here "+(notime===1?"has":"have")+" no time.":"")));return}
+  var hrs=tt.map(function(t){return+t.time.slice(0,2)}),lo=Math.min.apply(null,hrs),hi=Math.max.apply(null,hrs),step=hi-lo>13?2:1;lo-=lo%step;
+  var cols=[];for(var h=lo;h<=hi;h+=step)cols.push(h);
+  var days=[0,1,2,3,4];if(tt.some(function(t){return wdOf(dparse(t.date))>4}))days=[0,1,2,3,4,5,6];
+  var cell={};tt.forEach(function(t){var d=wdOf(dparse(t.date)),c=Math.floor((+t.time.slice(0,2)-lo)/step),k=d+"|"+c,x=cell[k]||(cell[k]={n:0,w:0,pl:0});x.n++;if(t.pl>0)x.w++;x.pl+=t.pl});
+  var mx=0;for(var k0 in cell)mx=Math.max(mx,Math.abs(cell[k0].pl));mx=mx||1;
+  var wrap=el("div","hm-wrap"),g=el("div","hm");g.style.gridTemplateColumns="44px repeat("+cols.length+",minmax(40px,1fr))";g.setAttribute("role","table");
+  g.appendChild(el("div"));cols.forEach(function(h){g.appendChild(el("div","hm-h",("0"+h).slice(-2)+(step>1?"-"+("0"+(h+step)).slice(-2):"")))});
+  var best=null,worst=null;
+  days.forEach(function(d){g.appendChild(el("div","hm-d",WDAYS[d]));
+    cols.forEach(function(h,ci){var x=cell[d+"|"+ci],c;
+      if(!x){c=el("div","hm-c none","");c.title=WDAYS[d]+" "+("0"+h).slice(-2)+":00: no trades"}
+      else{c=el("div","hm-c "+(x.pl>0?"up":x.pl<0?"down":"none"));c.style.setProperty("--a",Math.max(0.18,Math.abs(x.pl)/mx).toFixed(2));
+        c.appendChild(document.createTextNode(signed(x.pl)));c.appendChild(el("small",null,x.n+(x.n===1?" trade":" trades")));
+        c.title=WDAYS[d]+" "+("0"+h).slice(-2)+":00"+(step>1?" to "+("0"+(h+step)).slice(-2)+":00":"")+": "+signed(x.pl)+" over "+pl(x.n,"trade")+", "+Math.round(x.w/x.n*100)+"% won";
+        if(x.n>=3){var slot={d:d,h:h,x:x};if(!best||x.pl>best.x.pl)best=slot;if(!worst||x.pl<worst.x.pl)worst=slot}}
+      g.appendChild(c)})});
+  wrap.appendChild(g);box.appendChild(wrap);
+  var sm=el("div","hm-sum");
+  function slotTxt(s){return WDAYS[s.d]+" "+("0"+s.h).slice(-2)+":00"+(step>1?" to "+("0"+(s.h+step)).slice(-2)+":00":"")+", "+signed(s.x.pl)+" over "+pl(s.x.n,"trade")}
+  if(best&&best.x.pl>0){var a=el("span");a.appendChild(document.createTextNode("Best time: "));var b1=el("b","up",slotTxt(best));a.appendChild(b1);sm.appendChild(a)}
+  if(worst&&worst.x.pl<0&&(!best||worst.d!==best.d||worst.h!==best.h)){var c2=el("span");c2.appendChild(document.createTextNode("Worst time: "));c2.appendChild(el("b","down",slotTxt(worst)));sm.appendChild(c2)}
+  if(!best)sm.appendChild(el("span","jsub","A day and hour needs at least 3 trades before it is named best or worst."));
+  if(notime)sm.appendChild(el("span","jsub",pl(notime,"trade")+" without a time "+(notime===1?"is":"are")+" left out."));
+  box.appendChild(sm)}
 /* ---------------- a clean report of the period, to print or save as a PDF ---------------- */
 function jReport(){
   var R=hRange(),pool=jPool(),list=jChron(R.all?pool:hBetween(pool,R.from,R.to));setUnit(list);
@@ -2608,6 +2715,58 @@ function jAiWeek(box,list){
     .catch(function(e){er.textContent="The dashboard did not answer: "+e;er.style.display=""}).then(function(){b.disabled=false;b.textContent="Write the AI review again"})};
   box.appendChild(b);box.appendChild(er);box.appendChild(out)}
 
+/* a bar on Home counting down to the next high-impact release: calm beyond an hour, amber inside it, red in the last 15 minutes and for 5 minutes after */
+function nbTick(){
+  var bar=$("h-newsbar");if(!bar)return;
+  if(tabNow!=="home"||!macroData||!macroData.events){bar.hidden=true;return}
+  var now=Date.now()/1000,ev=macroData.events.filter(function(e){return e.impact==="High"&&typeof e.t==="number"&&e.t>now-300}).sort(function(a,b){return a.t-b.t});
+  if(!ev.length){bar.hidden=true;return}
+  var e=ev[0],left=e.t-now,state=left<=0?"now":left<=900?"now":left<=3600?"soon":"";
+  var txt;if(left<=0)txt="released "+Math.max(0,Math.round(-left/60))+" min ago";
+  else if(left<=900)txt=("0"+Math.floor(left/60)).slice(-2)+":"+("0"+Math.floor(left%60)).slice(-2);
+  else txt=dur(Math.round(left/60));
+  var sig=(e.country+" "+e.title)+"|"+state,first=bar.getAttribute("data-s")!==sig;
+  if(first){bar.setAttribute("data-s",sig);bar.textContent="";bar.appendChild(el("i"));
+    var nm=el("span");nm.appendChild(el("b",null,e.country+" "+e.title));bar.appendChild(nm);
+    var ex=[];if(e.forecast)ex.push("forecast "+e.forecast);if(e.previous)ex.push("previous "+e.previous);ex.push(e.when+" Dublin");
+    bar.appendChild(el("span","nb-x",ex.join(", ")));bar.appendChild(el("span","nb-t",""));bar.className="nbar"+(state?" "+state:"")}
+  var t=bar.querySelector(".nb-t");var lbl=left>0?"in "+txt:txt;if(t.textContent!==lbl)t.textContent=lbl;
+  var nx=ev[1];bar.title=nx?"Next after this: "+nx.country+" "+nx.title+" at "+nx.when+" Dublin":"Open the calendar";bar.hidden=false}
+setInterval(nbTick,1000);
+$("h-newsbar").onclick=function(){showTab("macro")};
+/* last week at a glance on Home (Saturday to Wednesday), with the AI review written once for the week when an AI key is set */
+function hWeek(){
+  var box=$("h-week");if(!box||!jReady)return;
+  var now=dparse(today()),wd=wdOf(now),show=wd>=5||wd<=2;
+  var off=wd>=5?0:1,start=now-wd*DAY-off*7*DAY,end=start+6*DAY,key=String(start);
+  if(!show||store("zd.wk.hide")===key){box.hidden=true;return}
+  var live=liveOnly(),list=live.filter(function(t){var d=dparse(t.date);return d!==null&&d>=start&&d<=end});
+  if(!list.length){box.hidden=true;return}
+  setUnit(list);var st=jStats(list),prev=jStats(live.filter(function(t){var d=dparse(t.date);return d!==null&&d>=start-7*DAY&&d<=end-7*DAY}));
+  box.hidden=false;box.textContent="";
+  var h=el("div","hp-h");h.appendChild(el("h3",null,off?"Last week":"This week so far"));h.appendChild(el("span","mute",dshort(start)+" to "+dshort(end)));
+  var x=el("button","btn small ghost","Hide");x.type="button";x.title="Hide until next week";x.onclick=function(){store("zd.wk.hide",key);box.hidden=true};h.appendChild(x);box.appendChild(h);
+  var top=el("div","hw-top"),tot=el("div","jtotal "+cls(st.net),signed(st.net));top.appendChild(tot);
+  top.appendChild(el("div","jsub",pl(st.n,"trade")+", "+st.w+"W / "+st.l+"L, "+fmt(st.winrate,0)+"% won"+(st.avgR===null?"":", "+fmt(st.avgR,2)+"R average")+(prev.n?". The week before: "+signed(prev.net)+".":".")));box.appendChild(top);
+  var days={};list.forEach(function(t){(days[t.date]=days[t.date]||[]).push(t)});
+  var dn=Object.keys(days).sort().map(function(k){return{k:k,net:jStats(days[k]).net}}),facts=[];
+  if(dn.length>1){var b=dn.slice().sort(function(a,c){return c.net-a.net})[0],w=dn.slice().sort(function(a,c){return a.net-c.net})[0];
+    facts.push("Best day "+dshort(dparse(b.k))+" "+signed(b.net)+", worst day "+dshort(dparse(w.k))+" "+signed(w.net)+".")}
+  var fo=jStats(list.filter(function(t){return t.plan==="followed"})),de=jStats(list.filter(function(t){return t.plan==="deviated"}));
+  if(fo.n&&de.n)facts.push("Plan followed "+signed(fo.net)+" over "+pl(fo.n,"trade")+"; deviated "+signed(de.net)+" over "+pl(de.n,"trade")+".");
+  if(de.n&&de.net<0)facts.push("Deviating from the plan cost "+jm(-de.net)+" this week.");
+  var fw=el("div","hw-facts");facts.forEach(function(s){fw.appendChild(el("div","jfact",s))});box.appendChild(fw);
+  var ai=el("div","hw-ai");ai.hidden=true;box.appendChild(ai);
+  var cached=store("zd.wk.ai."+key);if(cached){ai.textContent=cached;ai.hidden=false}
+  var row=el("div","btnrow"),open=el("button","btn small","Open the full review");open.type="button";
+  open.onclick=function(){jWk=off?1:0;showTab("journal")};row.appendChild(open);box.appendChild(row);
+  /* once for the week, and only if the AI key works; a failed try is not repeated until tomorrow */
+  var tk="zd.wk.try."+key+"."+today();
+  if(!cached&&!store(tk)&&!hWeek.busy){hWeek.busy=true;store(tk,"1");
+    fetch("/api/coach/status").then(function(r){return r.json()}).then(function(c){if(!c||!c.ready)throw 0;
+      return fetch("/api/coach",{method:"POST",headers:HDRS,body:JSON.stringify({trades:list.slice(0,200),question:"Write a short review of this week for me: what worked, what hurt, one pattern you can see, and one thing to do differently next week. Keep it under 160 words and do not predict price."})})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(r){if(!r.ok||!r.j.answer)throw 0;store("zd.wk.ai."+key,r.j.answer);hWeek()})
+    .catch(function(){}).then(function(){hWeek.busy=false})}}
 /* the P&L hero: one period at a time (a month by default), worked out from the same trades as everything else */
 var hPer="month",hOff=0,hAuto=true;          /* hAuto: open on the newest period that has trades, not an empty one */
 function hBetween(list,a,b){return list.filter(function(t){var d=dparse(t.date);return d!==null&&d>=a&&d<=b})}
@@ -2808,7 +2967,7 @@ function jRender(){
   var box=$("j-stats");box.textContent="";
   cards.forEach(function(s){var c=el("div","stat");c.appendChild(el("div","k",s[0]));var v=el("div","v",s[1]);if(s[3])v.className+=" "+s[3];c.appendChild(v);
     if(s[2])c.appendChild(el("div","jsub",s[2]));box.appendChild(c)});
-  jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jExtras(list);jGroups(list);
+  jReview();jScoreCard(st,list);jCurve(list);jCal();jWeek(list);jExtras(list);jHeat(list);jGroups(list);
   tRender(list);
   var sk=jSkipped().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}),sb=$("j-skiprows");sb.textContent="";
   $("j-skipcard").hidden=!sk.length;$("j-skiptitle").textContent="Kept but not counted ("+sk.length+")";
@@ -3876,6 +4035,7 @@ function liveTick(){
 setInterval(liveTick,2000);
 function homeRender(d){
   $("h-asof").textContent="Prices as of "+d.as_of;briefNote();
+  hWeek();
   var s=$("h-sessions");s.textContent="";s.appendChild(sessionStrip(d));
   homeNums();
   var mk=$("h-mkts");mk.textContent="";
@@ -4319,6 +4479,7 @@ function mkTile(i){
   var ft=el("div","mk-ft");box.appendChild(ft);
   wrap.addEventListener("pointermove",function(e){var d=MK.data[mkKey(t)];if(!d||!d.bars)return;var r=cv.getBoundingClientRect(),n=d.bars.length,pl=6,pw=r.width-pl-MK_PADR,j=Math.floor((e.clientX-r.left-pl)/pw*n);MK.hover[i]=Math.max(0,Math.min(n-1,j));mkDraw(i)});
   wrap.addEventListener("pointerleave",function(){MK.hover[i]=-1;mkDraw(i)});
+  wrap.addEventListener("click",function(e){mkAlertClick(i,e)});
   MK.cv[i]={box:box,wrap:wrap,cv:cv,ro:ro,msg:msg,ft:ft,nm:nm,pr:pr,ch:ch,sym:sym};
   return box}
 var MK_PADR=58,MK_PADB=20,MK_FMT={};
@@ -4375,6 +4536,7 @@ function mkDraw(i){
   if(d.prev>=lo-span0*0.6&&d.prev<=hi+span0*0.6){lo=Math.min(lo,d.prev);hi=Math.max(hi,d.prev)}
   var pad=(hi-lo)*0.1||1;lo-=pad;hi+=pad;
   function X(j){return pl+(j+0.5)/n*pw}function Y(v){return pt+(hi-v)/(hi-lo)*ph}
+  c.map={lo:lo,hi:hi,pt:pt,ph:ph,pl:pl,pw:pw,digits:d.digits};
   function tag(txt,y,fill,ink){var tw=Math.ceil(g.measureText(txt).width)+10;g.fillStyle=fill;g.beginPath();var x=pl+pw+3,hh=16,r=3;
     g.moveTo(x+r,y-hh/2);g.lineTo(x+tw-r,y-hh/2);g.quadraticCurveTo(x+tw,y-hh/2,x+tw,y-hh/2+r);g.lineTo(x+tw,y+hh/2-r);g.quadraticCurveTo(x+tw,y+hh/2,x+tw-r,y+hh/2);
     g.lineTo(x+r,y+hh/2);g.quadraticCurveTo(x,y+hh/2,x,y+hh/2-r);g.lineTo(x,y-hh/2+r);g.quadraticCurveTo(x,y-hh/2,x+r,y-hh/2);g.fill();
@@ -4410,6 +4572,10 @@ function mkDraw(i){
   function mark(j,v,above){var x=X(j),y=Y(v),txt=mkNum(v,d.digits),tw=g.measureText(txt).width;g.fillStyle=MU;g.textBaseline="middle";g.textAlign=x+tw+14>pl+pw?"right":"left";
     g.fillText(txt,x+(g.textAlign==="left"?7:-7),above?Math.max(pt+6,y-9):Math.min(pt+ph-4,y+9));g.beginPath();g.arc(x,y,2,0,6.283);g.fillStyle=MU;g.fill()}
   if(hiI!==n-1)mark(hiI,rHi,true);if(loI!==n-1&&Math.abs(Y(rLo)-Y(rHi))>30)mark(loI,rLo,false);
+  /* your armed price alerts on this market: an amber line with its level */
+  var akey=MK_KEYS[t.s];if(akey){AL.price.forEach(function(a){if(a.sym!==akey||a.done||a.level<lo||a.level>hi)return;var ya=Math.round(Y(a.level))+0.5;
+    g.save();g.setLineDash([6,3]);g.strokeStyle="#f5b83d";g.globalAlpha=0.9;g.lineWidth=1;g.beginPath();g.moveTo(pl,ya);g.lineTo(pl+pw,ya);g.stroke();g.restore();
+    g.font="600 10px "+MONO;g.fillStyle="#f5b83d";g.textAlign="right";g.textBaseline="bottom";g.fillText("\u25CF Alert "+mkNum(a.level,d.digits),pl+pw-4,ya-3);g.font="500 11px "+MONO})}
   /* last price: dotted guide, a pulsing dot and the tag */
   var xl=X(n-1);g.save();g.setLineDash([1,3]);g.strokeStyle=col;g.globalAlpha=0.8;g.beginPath();g.moveTo(pl,Math.round(yPx)+0.5);g.lineTo(pl+pw,Math.round(yPx)+0.5);g.stroke();g.restore();
   if(!cand){g.fillStyle=col;g.globalAlpha=0.22;g.beginPath();g.arc(xl,yPx,7,0,6.283);g.fill();g.globalAlpha=1;g.beginPath();g.arc(xl,yPx,3.2,0,6.283);g.fillStyle=col;g.fill();g.strokeStyle=cs.getPropertyValue("--panel").trim()||"#000";g.lineWidth=1.5;g.stroke()}
@@ -4426,11 +4592,48 @@ function mkDraw(i){
     else c.ro.appendChild(el("b",null,mkNum(b[4],d.digits)));
     var ce=el("b",chg>=0?"up":"down","  "+(chg>0?"+":"")+(d.prev?(chg/d.prev*100).toFixed(2):"0.00")+"%");c.ro.appendChild(ce);
     if(b[5]>0)c.ro.appendChild(document.createTextNode("   Vol "+(b[5]>=1e6?(b[5]/1e6).toFixed(1)+"M":b[5]>=1e3?(b[5]/1e3).toFixed(1)+"k":b[5])))}}
+/* click a chart to set a price alert at that level (markets that are on Home; the same alerts as the Alerts page and the phone alerts) */
+var MK_KEYS={"GC=F":"XAUUSD","NQ=F":"NQ","EURUSD=X":"EURUSD","GBPUSD=X":"GBPUSD","DX-Y.NYB":"DXY","^TNX":"US10Y","^VIX":"VIX","^GSPC":"SPX","CL=F":"OIL","JPY=X":"USDJPY","SI=F":"XAGUSD"};
+function mkPopClose(){var o=document.querySelectorAll(".mk-pop");for(var i=0;i<o.length;i++)if(o[i].parentNode)o[i].parentNode.removeChild(o[i])}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")mkPopClose()});
+document.addEventListener("pointerdown",function(e){if(!e.target.closest||!e.target.closest(".mk-pop"))mkPopClose()},true);
+function mkAlertClick(i,e){
+  var c=MK.cv[i],t=MK.lay&&MK.lay.tiles[i];if(!c||!t||!c.map)return;var d=MK.data[mkKey(t)];if(!d||d.error||!d.bars)return;
+  if(e.target.closest&&e.target.closest(".mk-pop"))return;
+  var r=c.cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,m=c.map;
+  if(x<m.pl||x>m.pl+m.pw+4||y<m.pt||y>m.pt+m.ph)return;
+  mkPopClose();
+  var level=+(m.hi-(y-m.pt)/m.ph*(m.hi-m.lo)).toFixed(Math.min(6,d.digits)),key=MK_KEYS[t.s],pop=el("div","mk-pop");
+  pop.style.left=Math.max(4,Math.min(r.width-210,x-100))+"px";pop.style.top=Math.max(4,Math.min(r.height-96,y+12))+"px";
+  function close(){if(pop.parentNode)pop.parentNode.removeChild(pop);MK.hover[i]=-1;mkDraw(i)}
+  function row(){var b=el("div","btnrow");b.style.margin="8px 0 0";return b}
+  if(!key){pop.appendChild(el("div",null,"Price alerts cover the markets on Home: gold, Nasdaq, S&P 500, EUR/USD, GBP/USD, USD/JPY, silver, dollar index, crude, VIX and the 10-year yield."));
+    var rw=row(),ok=el("button","btn small ghost","Close");ok.type="button";ok.onclick=close;rw.appendChild(ok);pop.appendChild(rw)}
+  else{
+    var near=null;AL.price.forEach(function(a,k){if(a.sym!==key||a.done)return;var ya=m.pt+(m.hi-a.level)/(m.hi-m.lo)*m.ph;if(Math.abs(ya-y)<=7)near=k});
+    if(near!==null){var a=AL.price[near];pop.appendChild(el("div",null,"Alert "+(a.dir==="above"?"above ":"below ")+mkNum(a.level,d.digits)));
+      var rw2=row(),rm=el("button","btn small","Remove alert");rm.type="button";rm.onclick=function(){AL.price.splice(near,1);alSave();if(tabNow==="alerts")alRender();close()};
+      var cn=el("button","btn small ghost","Keep");cn.type="button";cn.onclick=close;rw2.appendChild(rm);rw2.appendChild(cn);pop.appendChild(rw2)}
+    else{
+      var dir=level>d.price?"above":"below",armed=AL.price.filter(function(a){return!a.done}).length;
+      pop.appendChild(el("div",null,"Alert when "+mkLabel(t.s,d)[0]+" goes "+dir+" "+mkNum(level,d.digits)+"?"));
+      var rw3=row(),go=el("button","btn small","Set alert");go.type="button";
+      go.onclick=function(){if(AL.price.length>=30){pop.textContent="Up to 30 price alerts. Remove one on the Alerts page first.";return}
+        AL.price.push({sym:key,dir:dir,level:level,done:""});alSave();if(tabNow==="alerts")alRender();close()};
+      var no=el("button","btn small ghost","Cancel");no.type="button";no.onclick=close;rw3.appendChild(go);rw3.appendChild(no);pop.appendChild(rw3)}}
+  c.wrap.appendChild(pop)}
+/* an armed alert fires from the chart's own 3-second price while Markets is open, not only from the minute-by-minute price on Home */
+function mkAlertCheck(){
+  if(typeof AL==="undefined"||!MK.lay||dormant)return;var changed=false;
+  MK.lay.tiles.forEach(function(t){var key=MK_KEYS[t.s],d=MK.data[mkKey(t)];if(!key||!d||d.error||!isFinite(d.price))return;
+    AL.price.forEach(function(a){if(a.sym!==key||a.done)return;
+      if(a.dir==="above"?d.price>=a.level:d.price<=a.level){a.done=new Date().toISOString();changed=true;alFire(a.sym+" "+(a.dir==="above"?"above ":"below ")+a.level,"Price is now "+mkNum(d.price,d.digits)+".")}})});
+  if(changed){alSave();if(tabNow==="alerts")alRender();mkPaintAll()}}
 function mkFetch(){
   if(!MK.lay||MK.busy||!MK.lay.tiles.length){if(MK.lay&&!MK.lay.tiles.length)mkLive(true);return}
   MK.busy=true;var seen={},parts=[];MK.lay.tiles.forEach(function(t){var k=mkKey(t);if(!seen[k]){seen[k]=1;parts.push(encodeURIComponent(t.s)+":"+t.tf)}});
   fetch("/api/mkt/charts?c="+parts.join(",")).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"The charts did not load");return j})})
-  .then(function(j){for(var k in j)MK.data[k]=j[k];MK.okAt=Date.now();MK.gap=3000;mkLive(true);mkErr("");mkPaintAll()})
+  .then(function(j){for(var k in j)MK.data[k]=j[k];MK.okAt=Date.now();MK.gap=3000;mkLive(true);mkErr("");mkPaintAll();mkAlertCheck()})
   .catch(function(e){MK.gap=Math.min((MK.gap||3000)*2,20000);mkLive(false);mkErr("The prices did not load: "+e.message)})
   .then(function(){MK.busy=false})}
 function mkShow(){if(!MK.lay)mkLoad();else{mkBuild();mkFetch()}}
@@ -4441,6 +4644,96 @@ $("mk-addf").onsubmit=function(e){e.preventDefault();var i=$("mk-sym");if(!MK.la
 (function(){var q=0;function again(){cancelAnimationFrame(q);q=requestAnimationFrame(function(){if(tabNow==="markets"&&MK.lay)for(var i=0;i<MK.lay.tiles.length;i++)mkDraw(i)})}
   if(window.ResizeObserver)new ResizeObserver(again).observe($("mk-grid"));else window.addEventListener("resize",again);
   document.addEventListener("click",function(e){if(e.target&&e.target.id==="theme")setTimeout(again,60)})})();
+
+/* correlations on Markets: how markets have moved together lately against their usual, and a flag when the link is breaking */
+var CR={at:0,busy:false};
+function crLoad(){
+  if(CR.busy||Date.now()-CR.at<45000)return;CR.busy=true;
+  fetch("/api/mkt/corr").then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"no answer");return j})})
+  .then(function(j){CR.at=Date.now();crRender(j)})
+  .catch(function(e){$("mk-corr-sub").textContent="The correlations did not load: "+e.message})
+  .then(function(){CR.busy=false})}
+function crFmt(v){return v==null?"n/a":(v>0?"+":"")+v.toFixed(2)}
+function crRender(j){
+  var box=$("mk-corr-rows");box.textContent="";var br=0,ok=0;
+  j.pairs.forEach(function(p){
+    if(p.state==="break")br++;if(p.state!=="unknown")ok++;
+    var row=el("div","cr-row "+p.state),nm=el("div","cr-name",p.label);nm.appendChild(el("small",null,p.a.replace(/=.*|\^|-Y.NYB/g,"")+" and "+p.b.replace(/=.*|\^|-Y.NYB/g,"")));row.appendChild(nm);
+    var tr=el("div","cr-track");tr.setAttribute("role","img");tr.setAttribute("aria-label",p.label+": now "+crFmt(p.short)+", usually "+crFmt(p.usual));
+    if(p.usual!=null){var u=el("i","cr-use");u.style.left=((p.usual+1)/2*100)+"%";tr.appendChild(u)}
+    if(p.short!=null){var d=el("i","cr-now");d.style.left=((p.short+1)/2*100)+"%";tr.appendChild(d)}
+    row.appendChild(tr);
+    var n=el("div","cr-nums");n.appendChild(document.createTextNode("now "));n.appendChild(el("b",null,crFmt(p.short)));n.appendChild(el("br"));n.appendChild(document.createTextNode("usual "+crFmt(p.usual)));row.appendChild(n);
+    row.appendChild(el("span","cr-chip",p.state==="break"?"Breaking":p.state==="normal"?"As usual":p.state==="quiet"?"Market quiet":"No data"));
+    box.appendChild(row)});
+  var sc=el("div","cr-scale");["-1 moves opposite","0 unrelated","+1 moves together"].forEach(function(t){sc.appendChild(el("span",null,t))});box.appendChild(sc);
+  $("mk-corr-sub").textContent=!ok?"Not enough price history to compare the markets right now.":br?br+(br>1?" links are":" link is")+" breaking. The dot is the latest few hours, the line is the usual over the last months.":"Every link is behaving as usual. The dot is the latest few hours, the line is the usual over the last months."}
+setInterval(function(){if(tabNow==="markets"&&!document.hidden)crLoad()},60000);
+
+/* health and backups (Settings) */
+var HL={data:null,list:null,at:0,busy:false};
+function hlBytes(n){return n==null?"-":n>=1073741824?(n/1073741824).toFixed(1)+" GB":n>=1048576?Math.round(n/1048576)+" MB":Math.round(n/1024)+" KB"}
+function hlDur(s){return s<90?s+"s":s<5400?Math.round(s/60)+" min":s<172800?(s/3600).toFixed(1)+" h":Math.round(s/86400)+" days"}
+function hlWhen(t){var d=new Date(t*1000),n=new Date(),p=function(x){return("0"+x).slice(-2)},hm=p(d.getHours())+":"+p(d.getMinutes());
+  return d.toDateString()===n.toDateString()?"today "+hm:p(d.getDate())+"/"+p(d.getMonth()+1)+" "+hm}
+function hlLoad(){
+  if(HL.busy)return;HL.busy=true;
+  Promise.all([fetch("/api/health").then(function(r){return r.json()}),fetch("/api/backup/list").then(function(r){return r.json()})])
+  .then(function(a){HL.data=a[0];HL.list=a[1];HL.at=Date.now();hlRender();if(a[0].hosted&&a[0].hosted.ok===null)setTimeout(function(){if(tabNow==="settings")hlLoad()},2500)})
+  .catch(function(){$("hl-bk-sub").textContent="The dashboard did not answer."})
+  .then(function(){HL.busy=false})}
+function hlRender(){
+  var d=HL.data,l=HL.list;if(!d)return;
+  var box=$("hl-nums");box.textContent="";
+  function card(k,v,s,c){var x=el("div","hnum");x.style.cursor="default";x.appendChild(el("div","k",k));var y=el("div","v",v);y.style.fontSize="16px";if(c)y.className+=" "+c;x.appendChild(y);x.appendChild(el("div","s",s));box.appendChild(x)}
+  var r=d.log.restarts_24h;
+  card("Server","Running",("up "+hlDur(d.uptime)+", version "+(d.version||"?")),"up");
+  card("Restarts, 24 hours",String(r),r?"The keeper started the server again after a stop":"No crashes",r>2?"down":r?"flat":"up");
+  var bk=d.backup;
+  card("Last backup",bk.last?hlWhen(bk.last.at):"None yet",bk.error?bk.error:bk.count+" kept, "+(bk.last?hlBytes(bk.last.bytes):"-"),bk.error?"down":bk.last?"up":"flat");
+  var c=d.copy;
+  card("Second copy",c.folder?(c.last?hlWhen(c.last.at):"Waiting"):"Not set",c.folder?(c.error?c.error:c.count+" kept in "+c.folder):"Add backup_copy_to in the config file",c.error?"down":c.folder&&c.last?"up":"flat");
+  card("Disk",hlBytes(d.free_bytes)+" free","Your data takes "+hlBytes(d.data_bytes),d.free_bytes!=null&&d.free_bytes<5e9?"down":"flat");
+  var h=d.hosted;
+  if(h)card("kellyterminal.com",h.ok===null?"Checking...":h.ok?"Answering":"Not answering",h.ok?("version "+h.version+", "+h.ms+" ms"+(h.version&&h.version!==d.version?", PC is on "+d.version:"")):(h.error||"Checking"),h.ok===null?"flat":h.ok?"up":"down");
+  var tb=$("hl-bk-list");tb.textContent="";
+  $("hl-bk-sub").textContent=bk.last?"The newest "+bk.count+" daily copies are kept, and one more is made each day while the app runs.":"No backup yet. The first one is made a minute after the app starts.";
+  var hd=el("tr");["Backup","Size",""].forEach(function(t){hd.appendChild(el("th",null,t))});tb.appendChild(hd);
+  (l.files||[]).slice(0,8).forEach(function(f){var tr=el("tr");tr.appendChild(el("td",null,hlWhen(f.at)));tr.appendChild(el("td",null,hlBytes(f.bytes)));
+    var td=el("td"),b=el("button","btn small ghost rb","Restore...");b.type="button";b.onclick=function(){hlPreview(f.name,f.at)};td.appendChild(b);tr.appendChild(td);tb.appendChild(tr)});
+  var ev=$("hl-ev");ev.textContent="";var evs=d.log.events;
+  $("hl-ev-sub").textContent=evs.length?"From the keeper that restarts the server after a crash.":"Nothing to show. Crashes and phone alerts would be listed here.";
+  evs.forEach(function(e){var row=el("div","hl-ev "+e.kind);row.appendChild(el("time",null,hlWhen(e.at)));row.appendChild(el("span",null,e.text.replace(/^alert:\s*/,"Alert sent: ")));ev.appendChild(row)})}
+function hlPreview(name,at){
+  var box=$("hl-restore");box.hidden=false;box.textContent="Checking that backup...";
+  fetch("/api/backup/restore",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},body:JSON.stringify({name:name})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){box.textContent="";
+    if(!x.ok){box.appendChild(el("div","err",x.j.error||"That backup could not be checked."));return}
+    var j=x.j;box.appendChild(el("div",null,"Restore the backup from "+hlWhen(at)+"?"));
+    var t=el("div","sub",j.changes?(j.different+" files differ from now and "+j.new+" are missing ("+hlBytes(j.bytes)+"). Settings and keys are never changed. Your current data is saved first as a safety copy."):"Nothing would change: your files already match this backup.");
+    t.style.marginTop="6px";box.appendChild(t);
+    var row=el("div","btnrow");
+    if(j.changes){var go=el("button","btn","Restore now");go.type="button";go.onclick=function(){hlRestore(name)};row.appendChild(go)}
+    var no=el("button","btn ghost","Cancel");no.type="button";no.onclick=function(){box.hidden=true};row.appendChild(no);box.appendChild(row)})
+  .catch(function(){box.textContent="The dashboard did not answer."})}
+function hlRestore(name){
+  var box=$("hl-restore");box.textContent="Restoring...";
+  fetch("/api/backup/restore",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},body:JSON.stringify({name:name,apply:true})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){box.textContent="";
+    if(!x.ok){box.appendChild(el("div","err",x.j.error||"The restore did not finish."));return}
+    box.appendChild(el("div",null,x.j.restored+" files restored. Your previous data is saved as "+x.j.safety+" in the backups folder."));
+    var row=el("div","btnrow"),rl=el("button","btn","Reload the app");rl.type="button";rl.onclick=function(){location.reload()};row.appendChild(rl);box.appendChild(row);hlLoad()})
+  .catch(function(){box.textContent="The dashboard did not answer."})}
+$("hl-bk-run").onclick=function(){
+  var b=$("hl-bk-run"),e=$("hl-bk-err");b.disabled=true;b.textContent="Backing up...";e.style.display="none";
+  fetch("/api/backup/run",{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"zones-dashboard"},body:"{}"})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+  .then(function(x){if(!x.ok){e.textContent=x.j.error||"The backup did not finish.";e.style.display=""}hlLoad()})
+  .catch(function(){e.textContent="The dashboard did not answer.";e.style.display=""})
+  .then(function(){b.disabled=false;b.textContent="Back up now"})};
+setInterval(function(){if(tabNow==="settings"&&!document.hidden&&Date.now()-HL.at>15000)hlLoad()},5000);
 
 /* keeping an installed app current: the page remembers which version it loaded, asks the server which one is running, and reloads when they differ */
 var APPV=(document.querySelector('meta[name="kelly-version"]')||{}).content||"",verNew="",verAt=0,wasHidden=false;

@@ -44,7 +44,7 @@ class PageFeatures(unittest.TestCase):
 
     def test_markets_and_settings_pages_are_wired_in(self):
         for needle in ('data-tab="markets"', 'id="tab-markets"', 'id="mk-grid"', "function mkDraw", "function mkFetch", '"/api/mkt/charts?c="', '"/api/mkt/layout"',
-                       'if(name==="markets")mkShow()', 'data-tab="settings"', 'id="tab-settings"', 'id="set-conn"', 'id="h-mk-go"', 'class="fd-hero"'):
+                       'if(name==="markets"){mkShow();crLoad()}', 'data-tab="settings"', 'id="tab-settings"', 'id="set-conn"', 'id="h-mk-go"', 'class="fd-hero"'):
             self.assertIn(needle, self.page)
         self.assertNotIn('data-tab="connect"', self.page)               # Connections now lives inside Settings
         mk = self.page.split("/* ---------------- markets: a board of live charts you choose ---------------- */")[1].split("/* settings page */")[0]
@@ -66,6 +66,22 @@ class PageFeatures(unittest.TestCase):
         macro = load("riskdesk", "macro")
         for key, *_ in macro.WATCH:
             self.assertIn(key, live.KIND)                                  # every watched market says what kind of price it is
+
+    def test_a_chart_click_sets_a_price_alert(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        for needle in ("function mkAlertClick", "function mkAlertCheck", "var MK_KEYS=", '"GC=F":"XAUUSD"', "mk-pop", "c.map={lo:lo,hi:hi"):
+            self.assertIn(needle, page)
+        macro = load("riskdesk", "macro")
+        watched = {sym: key for key, _, sym, _ in macro.WATCH}
+        for sym, key in watched.items():                     # every watched market can take a chart alert, under the key the Alerts page uses
+            self.assertIn('"%s":"%s"' % (sym, key), page)
+
+    def test_journal_heatmap_last_week_panel_and_news_countdown_are_in_the_page(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        for needle in ('id="j-heat"', "function jHeat", "When you make money", "jExtras(list);jHeat(list);",       # weekday by hour map in the Journal
+                       'id="h-week"', "function hWeek", "zd.wk.ai.", "hWeek();",                                  # last week on Home, AI read written once a week
+                       'id="h-newsbar"', "function nbTick", "setInterval(nbTick,1000)"):                          # countdown to the next high-impact release
+            self.assertIn(needle, page)
 
     def test_market_tiles_use_plain_names(self):
         for needle in ("function mkLabel", '"GC=F":["Gold"', '"DX-Y.NYB":["US Dollar Index"', '"Forex \\u00B7 "'):

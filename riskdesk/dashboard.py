@@ -33,6 +33,7 @@ import notion_api     # noqa: E402
 import autobrief     # noqa: E402
 import backup        # noqa: E402
 import funding       # noqa: E402
+import health        # noqa: E402
 import live          # noqa: E402
 import markets       # noqa: E402
 import notion_import  # noqa: E402
@@ -52,6 +53,7 @@ class Handler(BaseHTTPRequestHandler):
     data_dir = TRADER                                # where the journal file, screenshots and import folder live
     coach_post = staticmethod(coach.api_post)       # the tests swap this so nothing goes out
     live = None                                      # last prices every few seconds while the page is open (live.py), set by make_server
+    health = None                                    # server health summary (health.py), set by make_server
     backups = None                                   # daily safety copy of the data folder (backup.py), set by make_server
     funding = None                                   # every prop-firm account and pay-out (funding.py), set by make_server
     mkt_fetch = None                                 # the Markets page asks Yahoo through this; tests put a fake here
@@ -221,6 +223,16 @@ class Handler(BaseHTTPRequestHandler):
                 raise z.ZoneError('action must be "enable", "disable", "test" or "rules"')
             elif path == "/api/funding":
                 return self.send_json(200, self.funding.act(body))
+            elif path == "/api/backup/run":
+                name = self.backups.run()
+                return self.send_json(200 if name else 500, {"name": name, "error": self.backups.error})
+            elif path == "/api/backup/restore":
+                try:
+                    if body.get("apply"):
+                        return self.send_json(200, self.backups.restore(str(body.get("name") or "")))
+                    return self.send_json(200, self.backups.preview(str(body.get("name") or "")))
+                except backup.RestoreError as e:
+                    return self.send_json(400, {"error": str(e)})
             elif path == "/api/mkt/layout":
                 return self.send_json(200, markets.save_layout(self.data_dir, body))
             elif path == "/api/import/tradezella":
@@ -283,6 +295,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(200, markets.many(pairs, self.mkt_fetch, ttl=2.5))
             except Exception as e:
                 self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
+        elif url.path == "/api/mkt/corr":
+            try:
+                self.send_json(200, markets.correlations(self.mkt_fetch))
+            except Exception as e:
+                self.send_json(500, {"error": "%s: %s" % (type(e).__name__, e)})
         elif url.path == "/api/push/status":
             self.send_json(200, self.pusher.state())
         elif url.path == "/api/notion/status":
@@ -315,6 +332,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, self.brief_keeper.state() if self.brief_keeper else {"brief": None, "error": "", "every": autobrief.EVERY, "next_at": 0})
         elif url.path == "/api/backup":
             self.send_json(200, self.backups.state() if self.backups else {"last": None, "count": 0, "error": ""})
+        elif url.path == "/api/backup/list":
+            files = self.backups.listing() if self.backups else []
+            self.send_json(200, {"files": files[::-1], "copy_to": self.backups._copy_to() if self.backups else ""})
+        elif url.path == "/api/health":
+            self.send_json(200, self.health.state(self.backups, bool(self.auth_settings)))
         elif url.path == "/api/notion/hub":
             self.send_json(200, self.notion_link.hub_doc if self.notion_link else {"at": "", "root": "", "pages": {}})
         elif url.path == "/api/tradezella/summary":
@@ -455,6 +477,7 @@ def make_server(port=PORT, config_path=os.path.join(TRADER, "config.json"), offl
     handler.vault = vault.Vault(handler.data_dir)
     handler.brief_keeper = autobrief.Keeper(handler.data_dir, config_path, handler.macro_net, lambda *a, **k: handler.coach_post(*a, **k))
     handler.backups = backup.Backups(handler.data_dir, config_path)
+    handler.health = health.Health(handler.data_dir, config_path, VERSION)
     handler.live = None if offline else live.LiveTicks(handler.macro_net)
     handler.pusher = pusher.Pusher(handler.data_dir, handler.macro_net)
     handler.funding = funding.Funding(handler.data_dir, lambda: handler.notion_link.hub_doc if handler.notion_link else {})

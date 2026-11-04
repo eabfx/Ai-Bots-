@@ -181,6 +181,15 @@ The **Funding** page totals every prop-firm account you hold, split into forex /
 - **Hosted copy.** kellyterminal.com pulls from GitHub hourly and restarts, so a new version reaches phones within about an hour.
 - **App icon.** Icons are cache-busted with `?v=k3` in the page and manifest. Android refreshes an installed icon on its own within about a day. iPhone and iPad copy the icon when the app is added, so remove it and add it again (Safari, Share, Add to Home Screen) to see a new icon.
 
+## Health, restore and the newer panels
+
+- **Settings, Health and backups.** Server uptime and version, restarts in the last 24 hours, the last backup and the second copy, free disk space, and whether kellyterminal.com answers. **Back up now** makes a copy at once. **Restore...** previews what would change, saves your current data first as `before-restore-*.zip` (the newest five are kept), then puts the chosen backup back. Settings and keys (`config.json`, files with "key" in the name, `push_topic.txt`) are never changed by a restore. Reload the app afterwards.
+- **Markets, Correlations.** How far six pairs have moved together over the latest few hours against their usual over the last months (gold and the dollar, EUR/USD and GBP/USD, Nasdaq and S&P 500, gold and silver, dollar and EUR/USD, USD/JPY and the dollar). A gap of 0.5 or more, or a reversal, is flagged as breaking. With too little data it says so instead of guessing.
+- **Markets, chart alerts.** Click a chart to set a price alert at that level (amber line on the chart); click the line to remove it. It uses the same alerts as the Alerts page and the phone alerts, so it works for the markets on Home (gold, Nasdaq, S&P 500, EUR/USD, GBP/USD, USD/JPY, silver, dollar index, crude, VIX, 10-year yield).
+- **Journal, When you make money.** Weekday by hour map from the time on each trade, with the best and worst time once a slot has three trades.
+- **Home, Last week.** Saturday to Wednesday, the week just finished (or this week so far) with its net result, best and worst day and plan discipline. If an AI key is set, the AI review is written once for the week and kept.
+- **Home, news countdown.** A bar counting down to the next high-impact release: amber inside an hour, red in the last 15 minutes and for 5 minutes after.
+
 ## Phone alerts
 
 Alerts normally fire only while the page is open. Turn on **Phone alerts** on the Alerts page and the server also watches your price levels, high-impact news and the London and New York opens once a minute and sends them through [ntfy](https://ntfy.sh) (free app for iPhone and Android). The page shows a private topic name (`kelly-` and 16 random characters, kept in `push_topic.txt` in the trader folder): subscribe the ntfy app to it. Turning the switch off deletes the file. Only run this on one machine (the server), or you will get each alert twice.
