@@ -2032,7 +2032,7 @@ window.addEventListener("error",function(e){try{var m=(e.message||"error")+(e.li
 
 <section class="tool" id="tab-markets" role="tabpanel" hidden>
 <div class="mk-head">
-<div><h2 class="pt">Markets</h2><p class="sub">Charts you choose, side by side, with live price action. Click a symbol to change it.</p></div>
+<div><h2 class="pt">Markets</h2><p class="sub">Charts you choose, side by side, with live price action. Click a chart to mark a level or set an alert, double-click a header (or press F over a chart) to open it big.</p></div>
 <div class="mk-live" id="mk-live"><i></i><span id="mk-live-t">Connecting...</span></div>
 </div>
 <div class="mk-bar">
@@ -4575,7 +4575,7 @@ function fdInit(){
 fdInit();
 
 /* ---------------- markets: a board of live charts you choose ---------------- */
-var MK={lay:null,data:{},busy:false,sugg:[],grids:["1x1","2x1","2x2","3x2","3x3","4x3"],tfs:["1m","5m","15m","1h","1d"],hover:{},cv:[],saveT:0,okAt:0,last:{},ro:null,focus:-1,solo:-1};
+var MK={lay:null,data:{},busy:false,sugg:[],grids:["1x1","2x1","2x2","3x2","3x3","4x3"],tfs:["1m","5m","15m","1h","1d"],hover:{},cv:[],saveT:0,okAt:0,last:{},ro:null,focus:-1,solo:-1,over:-1};
 var MK_DEF={grid:"3x2",tf:"5m",style:"candles",tiles:[{s:"GC=F",tf:"5m",style:"candles"},{s:"NQ=F",tf:"5m",style:"candles"},{s:"EURUSD=X",tf:"5m",style:"candles"},{s:"GBPUSD=X",tf:"5m",style:"candles"},{s:"DX-Y.NYB",tf:"5m",style:"candles"},{s:"CL=F",tf:"5m",style:"candles"}]};
 var MK_SYM=/^[A-Za-z0-9^.=\-]{1,16}$/;
 function mkKey(t){return t.s+"|"+t.tf}
@@ -4650,6 +4650,8 @@ function mkTile(i){
   var rm=el("button","nofocus","×");rm.type="button";rm.title="Remove this chart";rm.setAttribute("aria-label","Remove this chart");
   rm.onclick=function(){MK.lay.tiles.splice(i,1);mkSave();mkBar();mkBuild()};ctl.appendChild(rm);
   th.appendChild(ctl);box.appendChild(th);
+  th.ondblclick=function(e){if(!e.target.closest||!e.target.closest("button,input,select"))mkFocus(i)};
+  box.addEventListener("pointerenter",function(){MK.over=i});box.addEventListener("pointerleave",function(){if(MK.over===i)MK.over=-1});
   var lvbar=el("div","mk-lvbar");box.appendChild(lvbar);
   var wrap=el("div","mk-cv"),cv=document.createElement("canvas"),ro=el("div","mk-ro"),msg=el("div","mk-msg");msg.hidden=true;
   wrap.appendChild(cv);wrap.appendChild(ro);wrap.appendChild(msg);box.appendChild(wrap);
@@ -4776,7 +4778,9 @@ function mkDraw(i){
 /* click a chart to set a price alert at that level (markets that are on Home; the same alerts as the Alerts page and the phone alerts) */
 var MK_KEYS={"GC=F":"XAUUSD","NQ=F":"NQ","EURUSD=X":"EURUSD","GBPUSD=X":"GBPUSD","DX-Y.NYB":"DXY","^TNX":"US10Y","^VIX":"VIX","^GSPC":"SPX","CL=F":"OIL","JPY=X":"USDJPY","SI=F":"XAGUSD"};
 function mkPopClose(){var o=document.querySelectorAll(".mk-pop");for(var i=0;i<o.length;i++)if(o[i].parentNode)o[i].parentNode.removeChild(o[i])}
-document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;var had=document.querySelector(".mk-pop");mkPopClose();
+document.addEventListener("keydown",function(e){
+  if((e.key==="f"||e.key==="F")&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&tabNow==="markets"&&MK.focus<0&&MK.over>=0&&!(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))){e.preventDefault();mkFocus(MK.over);return}
+  if(e.key!=="Escape")return;var had=document.querySelector(".mk-pop");mkPopClose();
   if(!had&&MK.focus>=0&&MK.solo<0&&!(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)))mkUnfocus()});
 document.addEventListener("pointerdown",function(e){if(!e.target.closest||!e.target.closest(".mk-pop"))mkPopClose()},true);
 function mkAlertClick(i,e){

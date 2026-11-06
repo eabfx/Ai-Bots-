@@ -75,6 +75,8 @@ class PageFeatures(unittest.TestCase):
             self.assertIn(needle, page)
         for needle in ('id="pop-bar"', 'id="pop-back"', "function popBack()", "body.popout #pop-bar{display:flex"):   # a pop-out window can always get back to the terminal
             self.assertIn(needle, page)
+        for needle in ("th.ondblclick=function", "MK.over>=0", "press F over a chart"):               # double-click a header or press F to open a chart big
+            self.assertIn(needle, page)
         self.assertIn(".mk-zbar,.mk-lvbar{display:none}", page)         # the Back bar only shows while a chart is opened big
 
     def test_the_journal_says_when_notion_was_last_checked(self):
