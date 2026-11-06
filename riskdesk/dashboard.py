@@ -539,6 +539,15 @@ def already_running(port):
         return False
 
 
+def warm_up(handler):
+    """Fetch prices, calendar and news once in the background as the server starts, so the first page load after a restart finds
+    them ready instead of waiting for them (that wait was about 40 seconds). Any failure is ignored: the page just asks again."""
+    try:
+        macro.snapshot(z.parse_now(None), handler.macro_net)
+    except Exception:                                                   # a warm-up must never stop the server
+        pass
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="dashboard.py", description="Kelly Terminal local dashboard (signals only)")
     p.add_argument("--port", type=int, default=PORT)
@@ -573,6 +582,7 @@ def main(argv=None):
         if server.RequestHandlerClass.live and not args.offline:
             server.RequestHandlerClass.live.start()
         if not args.offline:
+            threading.Thread(target=warm_up, args=(server.RequestHandlerClass,), daemon=True, name="warm-up").start()
             server.RequestHandlerClass.brief_keeper.start()
             server.RequestHandlerClass.pusher.start()
         server.serve_forever()

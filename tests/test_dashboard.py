@@ -257,6 +257,17 @@ class MacroRoutes(Server):
 
     NOW = "2026-10-30 08:00"        # New York time: 12:00 UTC, the moment the macro fixtures are built around
 
+    def test_the_warm_up_fills_the_price_cache_before_the_first_page_asks(self):
+        self.assertEqual(dash.macro._cache, {})
+        dash.warm_up(self.server.RequestHandlerClass)
+        self.assertIn("quotes", dash.macro._cache)
+
+    def test_a_failing_warm_up_never_raises(self):
+        class Broken:
+            macro_net = None
+        with mock.patch.object(dash.macro, "snapshot", side_effect=RuntimeError("no internet")):
+            dash.warm_up(Broken)                       # must simply return
+
     def test_the_macro_route_returns_prices_calendar_headlines_sessions_and_mood(self):
         code, _, js = self.get("/api/macro?now=" + self.NOW.replace(" ", "+"))
         doc = json.loads(js)

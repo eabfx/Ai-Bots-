@@ -68,6 +68,19 @@ class PageFeatures(unittest.TestCase):
         for key, *_ in macro.WATCH:
             self.assertIn(key, live.KIND)                                  # every watched market says what kind of price it is
 
+    def test_charts_take_key_levels_and_open_big_with_a_back_button(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        for needle in ("function mkFocus(i)", "function mkUnfocus()", "function mkFocusBar(i)", "Back to charts", "mk-back", ".mk-tile.focus{position:fixed",
+                       'popOut("chart~"+i)', "#pop=chart~", "Mark \"+mkNum(level", "Alert here", 'k:k,n:nb2.value'):
+            self.assertIn(needle, page)
+        self.assertIn(".mk-zbar,.mk-lvbar{display:none}", page)         # the Back bar only shows while a chart is opened big
+
+    def test_the_journal_says_when_notion_was_last_checked(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        for needle in ('id="j-ns"', "function nsLine()", "var NSI="):
+            self.assertIn(needle, page)
+        self.assertLess(page.index("var NSI="), page.index("\njRender();\n\n/* ---------------- start"))  # declared before the first draw, or the page aborts at load
+
     def test_a_chart_click_sets_a_price_alert(self):
         page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
         for needle in ("function mkAlertClick", "function mkAlertCheck", "var MK_KEYS=", '"GC=F":"XAUUSD"', "mk-pop", "c.map={lo:lo,hi:hi"):

@@ -551,6 +551,7 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .hlv .ds{font:600 12px var(--mono);font-variant-numeric:tabular-nums}.hlv .ds.near{color:var(--warn)}
 @media(max-width:760px){.lv-form{grid-template-columns:1fr 1fr}.lv-row{grid-template-columns:1fr 1fr auto}.lv-row .nt,.lv-row .ds{grid-column:span 2}}
 /* pop-up window, start of day, wrap-up, goal, news days, wall, report, pop-out */
+#j-ns[hidden]{display:none}
 #kt-modal{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}#kt-modal[hidden]{display:none}
 .ktm-box{width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 30px 80px rgba(0,0,0,.55)}
 .ktm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}.ktm-head h3{margin:0;font:600 16px var(--sans)}
@@ -1572,6 +1573,34 @@ body.compact .card{padding:8px 12px;margin-bottom:8px}
 /* chart alerts */
 .mk-cv{cursor:crosshair}
 .mk-pop{position:absolute;z-index:6;width:200px;padding:10px 12px;background:var(--panel2,#111);border:1px solid var(--hover);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:12px;line-height:1.45;cursor:default}
+/* a chart opened big */
+.mk-zbar,.mk-lvbar{display:none}
+body.mk-zoom{overflow:hidden}
+.mk-tile.focus{position:fixed;inset:0;z-index:100;border:0;border-radius:0;background:var(--panel)}
+.mk-tile.focus .mk-zbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.mk-zbar button{appearance:none;background:transparent;border:1px solid var(--line);color:var(--text);font:500 12px var(--mono);height:30px;padding:0 12px;border-radius:var(--radius);cursor:pointer}
+.mk-zbar button:hover{border-color:var(--hover)}
+.mk-zhint{flex:1;min-width:0;color:var(--muted);font:500 12px var(--mono)}
+.mk-tile.solo .mk-back,.mk-tile.solo .mk-own{display:none}
+.mk-tile.focus .mk-th{padding:12px 18px 2px}
+.mk-tile.focus .mk-ctl{position:static;opacity:1;pointer-events:auto;grid-column:1/-1;padding:6px 0 4px}
+.mk-tile.focus .mk-ctl .nofocus{display:none}
+.mk-tile.focus .mk-lvbar{display:flex;flex-wrap:wrap;gap:6px;padding:6px 18px;align-items:center}
+.mk-tile.focus .mk-cv{flex:1;min-height:0}
+.mk-tile.focus .mk-price{font-size:28px}
+.mk-lc{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:var(--radius);padding:2px 4px 2px 9px;font:500 12px var(--mono);color:var(--text)}
+.mk-lc b{font-weight:600}.mk-lc.k-support b{color:var(--up)}.mk-lc.k-resistance b{color:var(--down)}.mk-lc.k-target b{color:#6aa7ff}.mk-lc.k-note b{color:var(--muted)}.mk-lc.alert b{color:#f5b83d}
+.mk-lc button{appearance:none;background:transparent;border:0;color:var(--muted);font:500 11px var(--mono);cursor:pointer;padding:2px 6px}
+.mk-lc button:hover{color:var(--text)}
+.mk-lnone{color:var(--muted);font:500 12px var(--mono)}
+.mk-pop{width:232px}
+.mk-pt{font-weight:600;margin-bottom:6px}
+.mk-note{width:100%;box-sizing:border-box;font:500 12px var(--mono);padding:4px 7px;min-height:0;height:28px;border-radius:var(--radius)}
+.mk-kinds{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:7px}
+.mk-kinds button{appearance:none;margin:0;padding:0;line-height:1;background:transparent;border:1px solid var(--line);color:var(--text);font:500 11px var(--mono);height:26px;border-radius:var(--radius);cursor:pointer}
+.mk-kinds button:hover,.mk-kinds button.on{border-color:var(--hover)}
+.mk-kinds .k-support{color:var(--up)}.mk-kinds .k-resistance{color:var(--down)}.mk-kinds .k-target{color:#6aa7ff}.mk-kinds .k-note{color:var(--muted)}
+.mk-pn{margin-top:7px;color:var(--muted);font-size:11px}
 /* correlations */
 #mk-corr{margin-top:16px}
 .cr-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(160px,2fr) minmax(130px,1fr) 108px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
@@ -2123,7 +2152,7 @@ window.addEventListener("error",function(e){try{var m=(e.message||"error")+(e.li
 <section class="tool" id="tab-journal" role="tabpanel" hidden>
 <div class="jhead">
 <div><h2 class="pt" id="j-title">Journal</h2>
-<p class="sub" id="j-sub">Your trades, your numbers.</p></div>
+<p class="sub" id="j-sub">Your trades, your numbers.</p><p class="mute" id="j-ns" hidden style="font-size:12px;margin:4px 0 0"></p></div>
 <div class="btnrow" style="margin:0"><button class="btn small ghost nsb" data-nsync type="button">Sync Notion</button><div class="seg" id="j-range" role="group" aria-label="Period"><button type="button" data-r="all">All</button><button type="button" data-r="90">90d</button><button type="button" data-r="30">30d</button><button type="button" data-r="7">7d</button></div><button class="btn small" id="j-log-go" type="button">Add a trade</button></div>
 </div>
 
@@ -3562,6 +3591,9 @@ function nsSync(force){
       if(!o.img&&n.img){o.img=n.img;ch=true}
       if(ch)upd++});
     var res={rows:fresh.length,live:add.filter(function(t){return typeOf(t)==="live"}).length,fw:add.filter(function(t){return typeOf(t)==="forward"}).length,bt:add.filter(function(t){return typeOf(t)==="backtest"}).length,upd:upd,at:j.at};
+    NSI.checked=j.at;NSI.rows=fresh.length;
+    if(add.length||upd){var nw=new Date();NSI.newTxt=(nsWhere(res)+(upd?(add.length?", ":"")+upd+" updated":"")).replace(/^, /,"");NSI.newAt=("0"+nw.getHours()).slice(-2)+":"+("0"+nw.getMinutes()).slice(-2)}
+    nsLine();
     if(!add.length&&!upd)return res;
     if(trades.length+add.length>20000)return res;
     trades=add.concat(trades).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
@@ -3587,10 +3619,13 @@ function nsPull(silent){
   .catch(function(){if(!silent)nsNote("Could not reach Notion","The dashboard did not answer. Try again in a moment.")})
   .then(function(){nsBusy=false;var b2=document.querySelectorAll("[data-nsync],#nl-sync");for(var k=0;k<b2.length;k++)b2[k].classList.remove("busy");nlStatus()})}
 Array.prototype.forEach.call(document.querySelectorAll("[data-nsync]"),function(b){b.onclick=function(){nsPull(false)}});
-fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){if(s&&s.connected)document.body.classList.add("hasnotion")}).catch(function(){});
+fetch("/api/notion/status").then(function(r){return r.json()}).then(function(s){if(s&&s.connected)document.body.classList.add("hasnotion");nsLine()}).catch(function(){});
 /* coming back to the dashboard after using Notion: pull quietly, and say so only if something new arrived */
 function nsBack(){if(document.hidden||dormant||Date.now()-nsLast<90000||!document.body.classList.contains("hasnotion"))return;nsPull(true)}
 document.addEventListener("visibilitychange",nsBack);window.addEventListener("focus",nsBack);
+function nsLine(){var e=$("j-ns");if(!e)return;
+  if(!document.body.classList.contains("hasnotion")||!NSI.checked){e.hidden=true;return}
+  e.hidden=false;e.textContent="Notion: last checked "+NSI.checked.slice(11,16)+", "+NSI.rows+" rows"+(NSI.newTxt?". Last new: "+NSI.newTxt+" at "+NSI.newAt+".":". Nothing new since this page was opened.")}
 function nsWhere(r){return [r.live?r.live+" new in Journal":"",r.fw?r.fw+" new in Forward Test":"",r.bt?r.bt+" new in Backtest":""].filter(Boolean).join(", ")}
 function nsAuto(){nsSync().then(function(r){if(r&&(r.live||r.fw||r.bt))nsNote("New from Notion",nsWhere(r)+".")})}
 setInterval(function(){if(!document.hidden)nsAuto()},60000);setTimeout(nsAuto,4000);
@@ -3640,6 +3675,7 @@ $("j-restore").onchange=function(ev){
   };
   rd.readAsText(f);
 };
+var NSI={checked:"",rows:0,newAt:"",newTxt:""};   /* the Notion line under the Journal title; set up here for the same reason as WL below */
 var WL={f:"all",setup:"",n:24};   /* must exist before the first jRender() below, which draws the screenshot wall */
 jRender();
 
@@ -4532,7 +4568,7 @@ function fdInit(){
 fdInit();
 
 /* ---------------- markets: a board of live charts you choose ---------------- */
-var MK={lay:null,data:{},busy:false,sugg:[],grids:["1x1","2x1","2x2","3x2","3x3","4x3"],tfs:["1m","5m","15m","1h","1d"],hover:{},cv:[],saveT:0,okAt:0,last:{},ro:null};
+var MK={lay:null,data:{},busy:false,sugg:[],grids:["1x1","2x1","2x2","3x2","3x3","4x3"],tfs:["1m","5m","15m","1h","1d"],hover:{},cv:[],saveT:0,okAt:0,last:{},ro:null,focus:-1,solo:-1};
 var MK_DEF={grid:"3x2",tf:"5m",style:"candles",tiles:[{s:"GC=F",tf:"5m",style:"candles"},{s:"NQ=F",tf:"5m",style:"candles"},{s:"EURUSD=X",tf:"5m",style:"candles"},{s:"GBPUSD=X",tf:"5m",style:"candles"},{s:"DX-Y.NYB",tf:"5m",style:"candles"},{s:"CL=F",tf:"5m",style:"candles"}]};
 var MK_SYM=/^[A-Za-z0-9^.=\-]{1,16}$/;
 function mkKey(t){return t.s+"|"+t.tf}
@@ -4576,7 +4612,8 @@ function mkBuild(){
       var ch=el("div","chips");mkSuggestFree(4).forEach(function(s){var b=el("button",null,s[0]);b.type="button";b.title=s[1];b.onclick=function(){mkAdd(s[0])};ch.appendChild(b)});
       sl.appendChild(ch);g.appendChild(sl);continue}
     g.appendChild(mkTile(i))}
-  mkPaintAll()}
+  if(MK.focus>=MK.lay.tiles.length)MK.focus=-1;
+  mkPaintAll();if(MK.focus>=0)mkFocusApply()}
 function mkTile(i){
   var t=MK.lay.tiles[i],box=el("div","mk-tile"),th=el("div","mk-th"),id=el("div","mk-id"),sym=el("button","mk-sym",mkLabel(t.s,null)[0]);sym.type="button";sym.title="Change this chart's symbol";
   sym.onclick=function(){
@@ -4588,26 +4625,32 @@ function mkTile(i){
     id.replaceChild(inp,sym);inp.focus();inp.select()};
   id.appendChild(sym);var nm=el("span","mk-nm","");id.appendChild(nm);th.appendChild(id);
   var px=el("div","mk-px"),pr=el("span","mk-price","-"),ch=el("span","mk-chg","");px.appendChild(pr);px.appendChild(ch);th.appendChild(px);
+  var zbar=el("div","mk-zbar"),back=el("button","mk-back","\u2190 Back to charts");back.type="button";back.title="Back to all the charts (Esc)";back.onclick=mkUnfocus;
+  zbar.appendChild(back);zbar.appendChild(el("span","mk-zhint","Click the chart to mark a key level or set an alert there."));
+  var own=el("button","mk-own","\u2197 Own window");own.type="button";own.title="Open this chart in its own window";own.onclick=function(){popOut("chart~"+i)};zbar.appendChild(own);
+  box.appendChild(zbar);
   var ctl=el("div","mk-ctl"),sel=el("select");sel.setAttribute("aria-label","Timeframe");
   MK.tfs.forEach(function(f){var o=el("option",null,f);o.value=f;if(f===t.tf)o.selected=true;sel.appendChild(o)});
   sel.onchange=function(){t.tf=sel.value;mkSave();mkBar();mkPaint(i);mkFetch()};ctl.appendChild(sel);
   var sty=el("button",null,t.style==="candles"?"Candles":"Line");sty.type="button";sty.title="Switch between a line and candles";
   sty.onclick=function(){t.style=t.style==="candles"?"area":"candles";sty.textContent=t.style==="candles"?"Candles":"Line";mkSave();mkBar();mkDraw(i)};ctl.appendChild(sty);
   ctl.appendChild(el("span","gap"));
-  var lf=el("button",null,"‹");lf.type="button";lf.title="Move earlier";lf.setAttribute("aria-label","Move earlier");lf.disabled=i===0;
+  var ex=el("button","nofocus","\u2922 Expand");ex.type="button";ex.title="Open this chart big, to mark levels and set alerts";ex.setAttribute("aria-label","Expand this chart");ex.onclick=function(){mkFocus(i)};ctl.appendChild(ex);
+  var lf=el("button","nofocus","‹");lf.type="button";lf.title="Move earlier";lf.setAttribute("aria-label","Move earlier");lf.disabled=i===0;
   lf.onclick=function(){var a=MK.lay.tiles;a.splice(i-1,0,a.splice(i,1)[0]);mkSave();mkBuild()};ctl.appendChild(lf);
-  var rt=el("button",null,"›");rt.type="button";rt.title="Move later";rt.setAttribute("aria-label","Move later");rt.disabled=i>=MK.lay.tiles.length-1;
+  var rt=el("button","nofocus","›");rt.type="button";rt.title="Move later";rt.setAttribute("aria-label","Move later");rt.disabled=i>=MK.lay.tiles.length-1;
   rt.onclick=function(){var a=MK.lay.tiles;a.splice(i+1,0,a.splice(i,1)[0]);mkSave();mkBuild()};ctl.appendChild(rt);
-  var rm=el("button",null,"×");rm.type="button";rm.title="Remove this chart";rm.setAttribute("aria-label","Remove this chart");
+  var rm=el("button","nofocus","×");rm.type="button";rm.title="Remove this chart";rm.setAttribute("aria-label","Remove this chart");
   rm.onclick=function(){MK.lay.tiles.splice(i,1);mkSave();mkBar();mkBuild()};ctl.appendChild(rm);
   th.appendChild(ctl);box.appendChild(th);
+  var lvbar=el("div","mk-lvbar");box.appendChild(lvbar);
   var wrap=el("div","mk-cv"),cv=document.createElement("canvas"),ro=el("div","mk-ro"),msg=el("div","mk-msg");msg.hidden=true;
   wrap.appendChild(cv);wrap.appendChild(ro);wrap.appendChild(msg);box.appendChild(wrap);
   var ft=el("div","mk-ft");box.appendChild(ft);
   wrap.addEventListener("pointermove",function(e){var d=MK.data[mkKey(t)];if(!d||!d.bars)return;var r=cv.getBoundingClientRect(),n=d.bars.length,pl=6,pw=r.width-pl-MK_PADR,j=Math.floor((e.clientX-r.left-pl)/pw*n);MK.hover[i]=Math.max(0,Math.min(n-1,j));mkDraw(i)});
   wrap.addEventListener("pointerleave",function(){MK.hover[i]=-1;mkDraw(i)});
   wrap.addEventListener("click",function(e){mkAlertClick(i,e)});
-  MK.cv[i]={box:box,wrap:wrap,cv:cv,ro:ro,msg:msg,ft:ft,nm:nm,pr:pr,ch:ch,sym:sym};
+  MK.cv[i]={box:box,wrap:wrap,cv:cv,ro:ro,msg:msg,ft:ft,nm:nm,pr:pr,ch:ch,sym:sym,lvbar:lvbar};
   return box}
 var MK_PADR=58,MK_PADB=20,MK_FMT={};
 /* plain names for the usual symbols; anything else gets Yahoo's name with the contract month and exchange clutter taken off */
@@ -4726,7 +4769,8 @@ function mkDraw(i){
 /* click a chart to set a price alert at that level (markets that are on Home; the same alerts as the Alerts page and the phone alerts) */
 var MK_KEYS={"GC=F":"XAUUSD","NQ=F":"NQ","EURUSD=X":"EURUSD","GBPUSD=X":"GBPUSD","DX-Y.NYB":"DXY","^TNX":"US10Y","^VIX":"VIX","^GSPC":"SPX","CL=F":"OIL","JPY=X":"USDJPY","SI=F":"XAGUSD"};
 function mkPopClose(){var o=document.querySelectorAll(".mk-pop");for(var i=0;i<o.length;i++)if(o[i].parentNode)o[i].parentNode.removeChild(o[i])}
-document.addEventListener("keydown",function(e){if(e.key==="Escape")mkPopClose()});
+document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;var had=document.querySelector(".mk-pop");mkPopClose();
+  if(!had&&MK.focus>=0&&MK.solo<0&&!(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)))mkUnfocus()});
 document.addEventListener("pointerdown",function(e){if(!e.target.closest||!e.target.closest(".mk-pop"))mkPopClose()},true);
 function mkAlertClick(i,e){
   var c=MK.cv[i],t=MK.lay&&MK.lay.tiles[i];if(!c||!t||!c.map)return;var d=MK.data[mkKey(t)];if(!d||d.error||!d.bars)return;
@@ -4735,24 +4779,69 @@ function mkAlertClick(i,e){
   if(x<m.pl||x>m.pl+m.pw+4||y<m.pt||y>m.pt+m.ph)return;
   mkPopClose();
   var level=+(m.hi-(y-m.pt)/m.ph*(m.hi-m.lo)).toFixed(Math.min(6,d.digits)),key=MK_KEYS[t.s],pop=el("div","mk-pop");
-  pop.style.left=Math.max(4,Math.min(r.width-210,x-100))+"px";pop.style.top=Math.max(4,Math.min(r.height-96,y+12))+"px";
-  function close(){if(pop.parentNode)pop.parentNode.removeChild(pop);MK.hover[i]=-1;mkDraw(i)}
+  pop.style.left=Math.max(4,Math.min(r.width-244,x-110))+"px";pop.style.top=Math.max(4,Math.min(r.height-190,y+12))+"px";
+  function close(){if(pop.parentNode)pop.parentNode.removeChild(pop);MK.hover[i]=-1;mkDraw(i);if(MK.focus===i)mkFocusBar(i)}
+  function yOf(p){return m.pt+(m.hi-p)/(m.hi-m.lo)*m.ph}
   function row(){var b=el("div","btnrow");b.style.margin="8px 0 0";return b}
-  if(!key){pop.appendChild(el("div",null,"Price alerts cover the markets on Home: gold, Nasdaq, S&P 500, EUR/USD, GBP/USD, USD/JPY, silver, dollar index, crude, VIX and the 10-year yield."));
-    var rw=row(),ok=el("button","btn small ghost","Close");ok.type="button";ok.onclick=close;rw.appendChild(ok);pop.appendChild(rw)}
+  function btn(txt,cls,fn){var b=el("button",cls||"btn small",txt);b.type="button";b.onclick=fn;return b}
+  function armed(dir,lv){if(AL.price.length>=30){pop.textContent="Up to 30 price alerts. Remove one on the Alerts page first.";return}
+    AL.price.push({sym:key,dir:dir,level:lv,done:""});alSave();if(tabNow==="alerts")alRender();close()}
+  function noteBox(v){var n=el("input","mk-note");n.type="text";n.maxLength=40;n.placeholder="Note (optional)";n.value=v||"";n.setAttribute("aria-label","Note for this level");n.spellcheck=false;return n}
+  function kinds(cur,fn){var k=el("div","mk-kinds");["support","resistance","target","note"].forEach(function(kk){var b=el("button","k-"+kk+(kk===cur?" on":""),LV_NAME[kk]);b.type="button";b.onclick=function(){fn(kk)};k.appendChild(b)});return k}
+  var nearL=null;lvFor(t.s).forEach(function(L){if(Math.abs(yOf(L.p)-y)<=7)nearL=L});
+  var nearA=null;if(key)AL.price.forEach(function(a,k){if(a.sym!==key||a.done)return;if(Math.abs(yOf(a.level)-y)<=7)nearA=k});
+  if(nearL){
+    var L=nearL;pop.appendChild(el("div","mk-pt",LV_NAME[L.k]+" level "+mkNum(L.p,d.digits)));
+    var nb=noteBox(L.n);pop.appendChild(nb);
+    function upd(k){var all=lvAll();all.forEach(function(z){if(z.id===L.id){z.k=k;z.n=nb.value.trim().slice(0,40)}});lvSave(all);close()}
+    nb.onkeydown=function(ev){if(ev.key==="Enter")upd(L.k)};
+    pop.appendChild(kinds(L.k,upd));
+    var rw=row();if(key){rw.appendChild(btn("Alert here","btn small",function(){var msg=lvAlert(L);if(msg){pop.textContent=msg;return}close()}))}
+    rw.appendChild(btn("Remove","btn small",function(){lvSave(lvAll().filter(function(z){return z.id!==L.id}));close()}));
+    rw.appendChild(btn("Close","btn small ghost",close));pop.appendChild(rw)}
+  else if(nearA!==null){var a=AL.price[nearA];pop.appendChild(el("div",null,"Alert "+(a.dir==="above"?"above ":"below ")+mkNum(a.level,d.digits)));
+    var rw2=row();rw2.appendChild(btn("Remove alert","btn small",function(){AL.price.splice(nearA,1);alSave();if(tabNow==="alerts")alRender();close()}));
+    rw2.appendChild(btn("Keep","btn small ghost",close));pop.appendChild(rw2)}
   else{
-    var near=null;AL.price.forEach(function(a,k){if(a.sym!==key||a.done)return;var ya=m.pt+(m.hi-a.level)/(m.hi-m.lo)*m.ph;if(Math.abs(ya-y)<=7)near=k});
-    if(near!==null){var a=AL.price[near];pop.appendChild(el("div",null,"Alert "+(a.dir==="above"?"above ":"below ")+mkNum(a.level,d.digits)));
-      var rw2=row(),rm=el("button","btn small","Remove alert");rm.type="button";rm.onclick=function(){AL.price.splice(near,1);alSave();if(tabNow==="alerts")alRender();close()};
-      var cn=el("button","btn small ghost","Keep");cn.type="button";cn.onclick=close;rw2.appendChild(rm);rw2.appendChild(cn);pop.appendChild(rw2)}
-    else{
-      var dir=level>d.price?"above":"below",armed=AL.price.filter(function(a){return!a.done}).length;
-      pop.appendChild(el("div",null,"Alert when "+mkLabel(t.s,d)[0]+" goes "+dir+" "+mkNum(level,d.digits)+"?"));
-      var rw3=row(),go=el("button","btn small","Set alert");go.type="button";
-      go.onclick=function(){if(AL.price.length>=30){pop.textContent="Up to 30 price alerts. Remove one on the Alerts page first.";return}
-        AL.price.push({sym:key,dir:dir,level:level,done:""});alSave();if(tabNow==="alerts")alRender();close()};
-      var no=el("button","btn small ghost","Cancel");no.type="button";no.onclick=close;rw3.appendChild(go);rw3.appendChild(no);pop.appendChild(rw3)}}
-  c.wrap.appendChild(pop)}
+    pop.appendChild(el("div","mk-pt","Mark "+mkNum(level,d.digits)+" on "+mkLabel(t.s,d)[0]));
+    var nb2=noteBox("");pop.appendChild(nb2);
+    function mark(k){var a2=lvAll();if(a2.length>=60){pop.textContent="Up to 60 levels. Remove one first.";return}
+      a2.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),s:t.s,p:level,k:k,n:nb2.value.trim().slice(0,40)});lvSave(a2);close()}
+    nb2.onkeydown=function(ev){if(ev.key==="Enter")mark("note")};
+    pop.appendChild(kinds("",mark));
+    var rw3=row();
+    if(key){var dir=level>d.price?"above":"below";rw3.appendChild(btn("Alert "+dir+" "+mkNum(level,d.digits),"btn small",function(){armed(dir,level)}))}
+    rw3.appendChild(btn("Cancel","btn small ghost",close));pop.appendChild(rw3);
+    if(!key)pop.appendChild(el("div","mk-pn","Price alerts cover the markets on Home. Key levels work on any chart."))}
+  c.wrap.appendChild(pop);
+  var fi=pop.querySelector("input");if(fi&&window.matchMedia&&!window.matchMedia("(hover:none)").matches)setTimeout(function(){fi.focus()},0)}
+/* a chart opened big: mark levels, set alerts, change timeframe and style, then Back (or Esc). The same chart can open in its own window. */
+function mkFocus(i){if(!MK.lay||!MK.cv[i])return;mkPopClose();MK.focus=i;mkFocusApply()}
+function mkFocusApply(){
+  var i=MK.focus,c=MK.cv[i];if(!c)return;
+  for(var k=0;k<MK.cv.length;k++)if(MK.cv[k])MK.cv[k].box.classList.remove("focus","solo");
+  c.box.classList.add("focus");if(MK.solo>=0)c.box.classList.add("solo");
+  document.body.classList.add("mk-zoom");mkFocusBar(i);
+  requestAnimationFrame(function(){mkDraw(i);if(c.box.scrollIntoView&&MK.solo<0)window.scrollTo(0,window.scrollY)});setTimeout(function(){mkDraw(i)},120)}
+function mkUnfocus(){
+  if(MK.solo>=0)return;mkPopClose();MK.focus=-1;document.body.classList.remove("mk-zoom");
+  for(var k=0;k<MK.cv.length;k++)if(MK.cv[k])MK.cv[k].box.classList.remove("focus","solo");
+  requestAnimationFrame(mkAllDraw);setTimeout(mkAllDraw,120)}
+function mkFocusBar(i){
+  var c=MK.cv[i],t=MK.lay&&MK.lay.tiles[i];if(!c||!t||!c.lvbar)return;var bar=c.lvbar;bar.textContent="";
+  var d=MK.data[mkKey(t)],dg=d&&!d.error?d.digits:2,key=MK_KEYS[t.s],n=0;
+  lvFor(t.s).slice().sort(function(a,b){return b.p-a.p}).forEach(function(L){n++;
+    var chip=el("span","mk-lc k-"+L.k);chip.appendChild(el("b",null,LV_NAME[L.k]||"Note"));chip.appendChild(el("span",null,mkNum(L.p,dg)+(L.n?"  "+L.n:"")));
+    if(key){var ab=el("button",null,"Alert");ab.type="button";ab.title="Alert me when price reaches this level";
+      ab.onclick=function(){var msg=lvAlert(L);if(msg){ab.textContent=msg.length>28?msg.slice(0,26)+"…":msg;ab.title=msg}else mkFocusBar(i)};chip.appendChild(ab)}
+    var x=el("button",null,"×");x.type="button";x.title="Remove this level";x.setAttribute("aria-label","Remove this level");
+    x.onclick=function(){lvSave(lvAll().filter(function(z){return z.id!==L.id}))};chip.appendChild(x);bar.appendChild(chip)});
+  if(key)AL.price.forEach(function(a,k){if(a.sym!==key||a.done)return;n++;
+    var chip=el("span","mk-lc alert");chip.appendChild(el("b",null,"Alert"));chip.appendChild(el("span",null,(a.dir==="above"?"above ":"below ")+mkNum(a.level,dg)));
+    var x=el("button",null,"×");x.type="button";x.title="Remove this alert";x.setAttribute("aria-label","Remove this alert");
+    x.onclick=function(){AL.price.splice(k,1);alSave();if(tabNow==="alerts")alRender();mkFocusBar(i);mkDraw(i)};chip.appendChild(x);bar.appendChild(chip)});
+  if(!n)bar.appendChild(el("span","mk-lnone","No levels or alerts on this chart yet. Click it where you want one."))}
+window.addEventListener("resize",function(){if(MK.focus>=0)requestAnimationFrame(function(){mkDraw(MK.focus)})});
 /* an armed alert fires from the chart's own 3-second price while Markets is open, not only from the minute-by-minute price on Home */
 function mkAlertCheck(){
   if(typeof AL==="undefined"||!MK.lay||dormant)return;var changed=false;
@@ -4762,7 +4851,7 @@ function mkAlertCheck(){
   if(changed){alSave();if(tabNow==="alerts")alRender();mkPaintAll()}}
 function mkFetch(){
   if(!MK.lay||MK.busy||!MK.lay.tiles.length){if(MK.lay&&!MK.lay.tiles.length)mkLive(true);return}
-  MK.busy=true;var seen={},parts=[];MK.lay.tiles.forEach(function(t){var k=mkKey(t);if(!seen[k]){seen[k]=1;parts.push(encodeURIComponent(t.s)+":"+t.tf)}});
+  MK.busy=true;var seen={},parts=[];MK.lay.tiles.forEach(function(t,ix){if(MK.solo>=0&&ix!==MK.solo)return;var k=mkKey(t);if(!seen[k]){seen[k]=1;parts.push(encodeURIComponent(t.s)+":"+t.tf)}});
   fetch("/api/mkt/charts?c="+parts.join(",")).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"The charts did not load");return j})})
   .then(function(j){for(var k in j)MK.data[k]=j[k];MK.okAt=Date.now();MK.gap=3000;mkLive(true);mkErr("");mkPaintAll();mkAlertCheck()})
   .catch(function(e){MK.gap=Math.min((MK.gap||3000)*2,20000);mkLive(false);mkErr("The prices did not load: "+e.message)})
@@ -4831,7 +4920,7 @@ function lvPrice(sym){
 function lvDist(L){var q=lvPrice(L.s);if(!q)return null;return{pct:(L.p-q.p)/q.p*100,dg:q.dg}}
 function lvText(d){return d===null?"no price yet":(d.pct>=0?"+":"")+d.pct.toFixed(2)+"% "+(d.pct>=0?"above":"below")+" price"}
 function lvSave(a){wsSet("levels",a.slice(0,60));lvRender();lvHome();mkAllDraw()}
-function mkAllDraw(){if(MK.lay)for(var i=0;i<MK.lay.tiles.length;i++)mkDraw(i)}
+function mkAllDraw(){if(MK.lay){for(var i=0;i<MK.lay.tiles.length;i++)mkDraw(i);if(MK.focus>=0)mkFocusBar(MK.focus)}}
 function lvAlert(L){
   var key=MK_KEYS[L.s],q=lvPrice(L.s);if(!key){return"No alert for this market: alerts cover the markets on Home. Use the level lines on the chart."}
   var dir=q&&L.p<q.p?"below":"above";
@@ -5106,14 +5195,17 @@ $("j-report").onclick=repOpen;
 
 /* ---------------- pop-out panels ---------------- */
 function popSlug(t){return String(t).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}
-function popOut(slug){try{window.open(location.pathname+"#pop="+slug,"kt-"+slug,"popup=yes,width="+(slug==="charts"?1200:560)+",height=780")}catch(e){}}
+function popOut(slug){try{window.open(location.pathname+"#pop="+slug,"kt-"+slug,"popup=yes,width="+(slug==="charts"||/^chart~/.test(slug)?1200:560)+",height=780")}catch(e){}}
 function popInit(){
   var ps=document.querySelectorAll("#tab-home .hpanel");
   for(var i=0;i<ps.length;i++){var h=ps[i].querySelector(".hp-h h3");if(!h)continue;var slug=popSlug(h.textContent);ps[i].setAttribute("data-pop",slug);
     (function(sl,bar){var b=el("button","popbtn","↗");b.type="button";b.title="Open in its own window";b.setAttribute("aria-label","Pop out "+sl);b.onclick=function(){popOut(sl)};bar.appendChild(b)})(slug,ps[i].querySelector(".hp-h"))}
   $("mk-pop").onclick=function(){popOut("charts")};
   var hash=location.hash||"";
-  if(hash.indexOf("#pop=")===0){
+  if(/^#pop=chart~\d+$/.test(hash)){
+    MK.solo=MK.focus=parseInt(hash.slice(11),10);document.body.classList.add("popout");showTab("markets");
+    var n0=$("mk-grid");while(n0&&n0!==document.body&&n0.parentNode){Array.prototype.forEach.call(n0.parentNode.children,function(c){if(c!==n0&&c.nodeType===1)c.classList.add("pop-hide")});n0=n0.parentNode}}
+  else if(hash.indexOf("#pop=")===0){
     var slug2=popSlug(hash.slice(5));document.body.classList.add("popout");showTab(slug2==="charts"?"markets":"home");
     var t=slug2==="charts"?$("mk-grid"):document.querySelector('[data-pop="'+slug2+'"]');
     if(t){var n=t;while(n&&n!==document.body&&n.parentNode){Array.prototype.forEach.call(n.parentNode.children,function(c){if(c!==n&&c.nodeType===1)c.classList.add("pop-hide")});n=n.parentNode}}}}
