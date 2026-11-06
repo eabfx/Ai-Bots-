@@ -275,7 +275,7 @@ class MacroRoutes(Server):
         for key in ("quotes", "events", "headlines", "sessions", "mood", "notes", "as_of"):
             self.assertIn(key, doc)
         self.assertEqual(doc["as_of"], "Fri 30 Oct 12:00")
-        self.assertEqual(len(doc["events"]), 3)
+        self.assertEqual(len(doc["events"]), 4)
 
     def test_a_dead_feed_is_a_note_not_an_error(self):
         self.server.RequestHandlerClass.macro_net = self.tm.FakeNet(fail=["calendar"], errors=dash.macro)

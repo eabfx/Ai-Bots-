@@ -79,6 +79,13 @@ class PageFeatures(unittest.TestCase):
             self.assertIn(needle, page)
         self.assertIn(".mk-zbar,.mk-lvbar{display:none}", page)         # the Back bar only shows while a chart is opened big
 
+    def test_the_calendar_shows_two_weeks(self):
+        page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
+        for needle in ('[384,"Next 2 weeks"]', "calSpan=384", "14*24*60", "Full calendar"):
+            self.assertIn(needle, page)
+        macro = load("riskdesk", "macro")
+        self.assertGreaterEqual(macro.CAL_DAYS, 14)
+
     def test_the_journal_says_when_notion_was_last_checked(self):
         page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
         for needle in ('id="j-ns"', "function nsLine()", "var NSI="):

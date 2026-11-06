@@ -35,6 +35,7 @@ CALENDAR_URLS = ["https://nfs.faireconomy.media/ff_calendar_thisweek.json",
                  "https://nfs.faireconomy.media/ff_calendar_nextweek.json"]
 CURRENCIES = ("USD", "EUR", "GBP")
 IMPACTS = ("High", "Medium")
+CAL_DAYS = 16          # the feeds hold this week and next week: show everything they have, at least two weeks on a Monday
 TTL = {"quotes": 60, "calendar": 900, "headlines": 600, "strength": 60}
 
 # (key, name, Yahoo symbol, decimals)
@@ -191,7 +192,7 @@ def fetch_quote(net, item):
 # ---------------------------------------------------------------- calendar
 
 def parse_calendar(text, now):
-    """Releases for the currencies and impacts that matter, from about two hours ago to a week ahead."""
+    """Releases for the currencies and impacts that matter, from about two hours ago to CAL_DAYS ahead (all the feed holds)."""
     try:
         rows = json.loads(text)
     except ValueError:
@@ -206,7 +207,7 @@ def parse_calendar(text, now):
             t = int(datetime.datetime.fromisoformat(str(r.get("date"))).timestamp())
         except (ValueError, TypeError):
             continue
-        if not now - 2 * 3600 <= t <= now + 7 * 86400:
+        if not now - 2 * 3600 <= t <= now + CAL_DAYS * 86400:
             continue
         out.append({"t": t, "when": z.to_dublin(t).strftime("%a %d %b %H:%M"), "minutes": round((t - now) / 60),
                     "title": str(r.get("title") or "")[:120], "country": r["country"], "impact": r["impact"],

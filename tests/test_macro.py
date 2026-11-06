@@ -33,7 +33,8 @@ CALENDAR = json.dumps([
     event("Yen thing", utc(30, 14), country="JPY"),                          # a currency nobody here trades: left out
     event("German GDP", utc(30, 7), country="EUR"),                          # five hours ago: left out
     event("UK Retail Sales", utc(30, 23, 30), country="GBP", impact="Medium"),
-    event("Far away", utc(30, 12) + datetime.timedelta(days=9)),             # over a week ahead: left out
+    event("Far away", utc(30, 12) + datetime.timedelta(days=17)),            # past the 16 days shown: left out
+    event("Two weeks out", utc(30, 12) + datetime.timedelta(days=13)),       # inside the window: kept
     {"title": "no date", "country": "USD", "impact": "High"},
 ])
 
@@ -197,7 +198,7 @@ class Parsing(unittest.TestCase):
 
     def test_the_calendar_keeps_the_releases_that_matter_in_dublin_time(self):
         events = macro.parse_calendar(CALENDAR, NOW)
-        self.assertEqual([e["title"] for e in events], ["Core PCE Price Index m/m", "Unemployment Claims", "UK Retail Sales"])
+        self.assertEqual([e["title"] for e in events], ["Core PCE Price Index m/m", "Unemployment Claims", "UK Retail Sales", "Two weeks out"])
         first = events[0]
         self.assertEqual((first["when"], first["minutes"], first["forecast"], first["previous"]),
                          ("Fri 30 Oct 12:30", 30, "0.2%", "0.3%"))
@@ -293,7 +294,7 @@ class Snapshot(unittest.TestCase):
     def test_all_three_sources_together(self):
         s = macro.snapshot(NOW, FakeNet())
         self.assertEqual(len(s["quotes"]), len(macro.WATCH))
-        self.assertEqual(len(s["events"]), 3)
+        self.assertEqual(len(s["events"]), 4)
         self.assertTrue(s["headlines"])
         self.assertEqual(s["notes"], [])
         self.assertEqual(s["as_of"], "Fri 30 Oct 12:00")

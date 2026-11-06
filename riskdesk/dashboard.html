@@ -101,6 +101,7 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
   font-weight:500;font-size:13px;padding:6px 14px;cursor:pointer}
 .seg button:hover{color:var(--text);border-color:var(--hover)}
 .seg button.on{background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:600}
+.seg button.btn:not(.ghost){background:var(--accent);border-color:var(--accent);color:var(--onaccent);font-weight:600}
 .btn{appearance:none;border:1px solid var(--accent);border-radius:99px;background:var(--accent);color:var(--onaccent);
   font-weight:600;font-size:14px;padding:9px 20px;cursor:pointer}
 .btn:hover{opacity:.85}
@@ -1816,7 +1817,7 @@ window.addEventListener("error",function(e){try{var m=(e.message||"error")+(e.li
 <div class="hgrid3">
 <div class="hpanel"><div class="hp-h"><h3>Quote monitor</h3><span class="mute" id="qm-note" style="font-size:11px"></span></div><div class="qmwrap"><table class="qm" id="h-qm"></table></div></div>
 <div class="hpanel"><div class="hp-h"><h3>News feed</h3></div><div class="news hscroll" id="h-news"></div></div>
-<div class="hpanel"><div class="hp-h"><h3>Calendar</h3><button class="btn small ghost" id="h-cal-go" type="button">Full week</button></div><div id="h-cal" class="hscroll"></div></div>
+<div class="hpanel"><div class="hp-h"><h3>Calendar</h3><button class="btn small ghost" id="h-cal-go" type="button">Full calendar</button></div><div id="h-cal" class="hscroll"></div></div>
 </div>
 <div class="hgrid1">
 <div class="hpanel"><div class="hp-h"><h3>Markets</h3><span class="fd-tools"><button class="btn small ghost" id="h-mk-go" type="button" title="Your own board of live charts">Live charts</button><button class="btn small" id="h-brief" type="button" title="The AI market read and bias also write themselves every hour">Write today's brief</button></span></div>
@@ -3689,7 +3690,7 @@ jRender();
 /* ---------------- start ---------------- */
 
 /* ---------------- macro desk ---------------- */
-var macroData=null,macroAt=0,macroBusy=false,macroBrief=null,calSpan=24;
+var macroData=null,macroAt=0,macroBusy=false,macroBrief=null,calSpan=384;
 var EXTRA_MARKETS=[["DXY","US Dollar Index","Dollar (DXY)"],["US10Y","US 10 year yield","US 10Y yield"],["VIX","VIX","VIX"],["SPX","S&P 500","S&P 500"],["OIL","Crude oil (CL)","Crude oil (CL)"],["USDJPY","USD/JPY","USDJPY"],["XAGUSD","Silver futures (SI)","Silver (SI)"]];
 var MARKETS=[["XAUUSD","Gold (XAUUSD, MGC)","Gold and MGC"],["NQ","Nasdaq 100 (NQ)","Nasdaq (NQ)"],["EURUSD","EUR/USD","EURUSD"],["GBPUSD","GBP/USD","GBPUSD"]];
 var MARKETS_ALL=MARKETS.concat(EXTRA_MARKETS);
@@ -3993,10 +3994,12 @@ function macroRender(d){
   /* calendar */
   var cc=el("div","card"),ch=el("div");ch.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap";
   ch.appendChild(el("h2",null,"Economic calendar"));var seg=el("div","seg");
-  [[24,"Next 24 hours"],[168,"This week"]].forEach(function(o){var b=el("button","btn small"+(calSpan===o[0]?"":" ghost"),o[1]);b.type="button";
+  [[24,"Next 24 hours"],[168,"Next 7 days"],[384,"Next 2 weeks"]].forEach(function(o){var b=el("button","btn small"+(calSpan===o[0]?"":" ghost"),o[1]);b.type="button";
     b.onclick=function(){calSpan=o[0];macroRender(d)};seg.appendChild(b)});
   ch.appendChild(seg);cc.appendChild(ch);
-  cc.appendChild(el("div","sub","High and medium impact USD, EUR and GBP releases, Dublin time. Be careful around them: price can jump."));
+  cc.appendChild(el("div","sub","High and medium impact USD, EUR and GBP releases, Dublin time, refreshed every 15 minutes. Be careful around them: price can jump."));
+  var lastE=d.events.length?d.events[d.events.length-1].t:0,nowC=Math.round(Date.now()/1000);
+  if(lastE&&lastE-nowC<14*86400){var cov=el("div","sub","Listed through "+dayLabel(lastE)+". The free calendar feed publishes this week and next week, so the days after that fill in by themselves when it posts the next week (Sundays).");cov.style.opacity=".75";cc.appendChild(cov)}
   var evs=d.events.filter(function(e){return e.minutes<=calSpan*60});
   if(!evs.length)cc.appendChild(el("div","empty","Nothing listed in this window."));
   else{var nowS=Math.round(Date.now()/1000);
@@ -4216,8 +4219,8 @@ function homeRender(d){
     st.appendChild(box);requestAnimationFrame(function(){requestAnimationFrame(function(){grow.forEach(function(g,n){g[0].style.transitionDelay=(n*45)+"ms";g[0].style.width=g[1]+"%"})})})}
   else st.appendChild(el("div","empty","Currency strength is not available right now."));
   var cal=$("h-cal");cal.textContent="";
-  var evs=d.events.filter(function(e){return e.minutes>=-30&&e.minutes<=24*60}).slice(0,7);
-  if(!evs.length){cal.appendChild(el("div","empty","Nothing listed in the next 24 hours."));
+  var evs=d.events.filter(function(e){return e.minutes>=-30&&e.minutes<=14*24*60}).slice(0,14);
+  if(!evs.length){cal.appendChild(el("div","empty","Nothing listed in the next two weeks."));
     var nx=null;d.events.forEach(function(e){if(!nx&&e.minutes>=0)nx=e});
     if(nx)cal.appendChild(el("div","jsub","Next: "+nx.country+" "+nx.title+", "+nx.when+" Dublin, in "+dur(nx.minutes)+"."))}
   var lastDay=null;
