@@ -360,6 +360,15 @@ class CalendarResilience(unittest.TestCase):
         self.assertTrue([n for n in s["notes"] if n.startswith("Calendar: the calendar feed did not answer")])
         self.assertIn("last saved copy", " ".join(s["notes"]))
 
+    def test_an_empty_answer_from_the_feed_does_not_wipe_the_saved_calendar(self):
+        class Empty(FakeNet):
+            def get(self, url, timeout=20):
+                return "[]" if "faireconomy" in url else super().get(url, timeout)
+        macro.snapshot(NOW, FakeNet())                                         # a good fetch, kept
+        s = macro.snapshot(NOW, Empty(), force=True)                           # the feed answers with nothing (it is limiting us)
+        self.assertTrue(s["events"])
+        self.assertIn("came back empty", " ".join(s["notes"]))
+
     def test_with_nothing_saved_it_still_says_unavailable(self):
         s = macro.snapshot(NOW, FakeNet(fail=["calendar"]))
         self.assertEqual(s["events"], [])

@@ -225,6 +225,8 @@ def fetch_calendar(net, now):
             if i == 0:                                    # next week's file may simply not be published yet
                 raise MacroError("the calendar feed said %s" % e)
             notes.append(str(e))
+    if not events:                                        # a real week always has releases: an empty answer is the feed being limited or down
+        raise MacroError("the calendar feed came back empty")
     seen, unique = set(), []
     for e in events:
         k = (e["t"], e["country"], e["title"])
@@ -390,10 +392,10 @@ def snapshot(now, net=None, force=False):
             except (MacroError, z.ZoneError) as e:
                 results[kind] = None
                 notes.append("%s unavailable: %s" % (kind.capitalize(), e))
-    if stale:                                              # try the feed again in a minute, not after the usual 15
+    if stale:                                              # try the feed again in five minutes (it limits how often it answers), not after the usual 15
         hit = _cache.get("calendar")
         if hit:
-            _cache["calendar"] = (hit[0] - TTL["calendar"] + 60, hit[1])
+            _cache["calendar"] = (hit[0] - TTL["calendar"] + 300, hit[1])
         notes.append("Calendar: " + stale[0])
     quotes, qbad = results["quotes"] or ([], [])
     heads, hbad = results["headlines"] or ([], [])
