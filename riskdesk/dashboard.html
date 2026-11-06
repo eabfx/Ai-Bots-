@@ -567,7 +567,13 @@ footer{border-top:1px solid var(--line);padding:26px 20px 38px}
 .wall-i span{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;font:600 11px var(--mono);color:#fff;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.78))}.wall-i span.up{color:#7fe6b0}.wall-i span.down{color:#f5a39b}
 .wrap-i{padding:10px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.5}.wrap-i .wd{display:flex;gap:10px;align-items:baseline}.wrap-i .wd b{font:600 13px var(--mono)}.wrap-i p{margin:3px 0 0}.wrap-i p span{color:var(--muted)}
 .popbtn{appearance:none;background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:1px 7px;font:12px var(--mono);cursor:pointer;margin-left:8px}.popbtn:hover{color:var(--text);border-color:var(--hover)}
-.pop-hide{display:none!important}body.popout .popbtn,body.popout .nbar{display:none!important}body.popout main{padding-top:10px}
+.pop-hide{display:none!important}body.popout .popbtn,body.popout .nbar{display:none!important}body.popout main{padding-top:46px}
+#pop-bar{display:none}
+body.popout #pop-bar{display:flex;align-items:center;gap:12px;position:fixed;top:0;left:0;right:0;height:36px;z-index:120;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+#pop-bar button{appearance:none;background:transparent;border:1px solid var(--line);color:var(--text);font:500 12px var(--mono);height:26px;padding:0 11px;border-radius:var(--radius);cursor:pointer}
+#pop-bar button:hover{border-color:var(--hover)}
+#pop-what{flex:1;color:var(--muted);font:500 12px var(--mono)}
+body.popout .mk-tile.focus{top:36px}
 .rep h2{font:600 22px var(--sans);margin:4px 0}.rep .rep-big{font:600 34px var(--mono)}.rep table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}.rep th,.rep td{text-align:left;padding:5px 6px;border-top:1px solid var(--line)}.rep td.n,.rep th.n{text-align:right;font-variant-numeric:tabular-nums}
 @media print{
   body.printing>*:not(#kt-modal){display:none!important}
@@ -1790,6 +1796,7 @@ window.addEventListener("error",function(e){try{var m=(e.message||"error")+(e.li
 </script>
 
 <div id="kt-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ktm-title"><div class="ktm-box"><div class="ktm-head"><h3 id="ktm-title"></h3><button class="btn small ghost" id="ktm-x" type="button">Close</button></div><div class="ktm-body" id="ktm-body"></div><div class="ktm-foot" id="ktm-foot"></div></div></div>
+<div id="pop-bar"><button type="button" id="pop-back" title="Go back to the full terminal">← Back to terminal</button><span id="pop-what">Charts</span><button type="button" id="pop-close" title="Close this window">Close window</button></div>
 <main>
 
 <section class="tool active" id="tab-home" role="tabpanel">
@@ -5209,7 +5216,11 @@ function popInit(){
     var slug2=popSlug(hash.slice(5));document.body.classList.add("popout");showTab(slug2==="charts"?"markets":"home");
     var t=slug2==="charts"?$("mk-grid"):document.querySelector('[data-pop="'+slug2+'"]');
     if(t){var n=t;while(n&&n!==document.body&&n.parentNode){Array.prototype.forEach.call(n.parentNode.children,function(c){if(c!==n&&c.nodeType===1)c.classList.add("pop-hide")});n=n.parentNode}}}}
-setTimeout(popInit,60);
+/* a pop-out window gets a bar to get back to the full terminal: it closes itself and brings the terminal window forward, or turns into the terminal if it was not opened from one */
+function popBack(){try{if(window.opener&&!window.opener.closed)window.opener.focus()}catch(e){}
+  try{window.close()}catch(e){}setTimeout(function(){try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}location.reload()},250)}
+$("pop-back").onclick=popBack;$("pop-close").onclick=function(){try{window.close()}catch(e){}};
+setTimeout(function(){popInit();var pb=$("pop-bar");if(pb)pb.classList.remove("pop-hide");if(MK.solo>=0)$("pop-what").textContent="One chart, in its own window. Click it to mark levels or set alerts."},60);
 wsHooks.push(function(){if(tabNow==="journal")jRender()});
 window.KT.sd=sdOpen;window.KT.wu=wuOpen;window.KT.report=repOpen;window.KT.pop=popOut;
 

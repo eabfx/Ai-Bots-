@@ -73,6 +73,8 @@ class PageFeatures(unittest.TestCase):
         for needle in ("function mkFocus(i)", "function mkUnfocus()", "function mkFocusBar(i)", "Back to charts", "mk-back", ".mk-tile.focus{position:fixed",
                        'popOut("chart~"+i)', "#pop=chart~", "Mark \"+mkNum(level", "Alert here", 'k:k,n:nb2.value'):
             self.assertIn(needle, page)
+        for needle in ('id="pop-bar"', 'id="pop-back"', "function popBack()", "body.popout #pop-bar{display:flex"):   # a pop-out window can always get back to the terminal
+            self.assertIn(needle, page)
         self.assertIn(".mk-zbar,.mk-lvbar{display:none}", page)         # the Back bar only shows while a chart is opened big
 
     def test_the_journal_says_when_notion_was_last_checked(self):
