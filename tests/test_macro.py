@@ -369,6 +369,13 @@ class CalendarResilience(unittest.TestCase):
         self.assertTrue(s["events"])
         self.assertIn("came back empty", " ".join(s["notes"]))
 
+    def test_a_refused_calendar_is_left_alone_for_a_few_minutes(self):
+        bad = FakeNet(fail=["calendar"])
+        macro.snapshot(NOW, bad)
+        first = len([c for c in bad.calls if "faireconomy" in c])
+        macro.snapshot(NOW, bad)                                               # the page asks again a minute later: no new request
+        self.assertEqual(len([c for c in bad.calls if "faireconomy" in c]), first)
+
     def test_with_nothing_saved_it_still_says_unavailable(self):
         s = macro.snapshot(NOW, FakeNet(fail=["calendar"]))
         self.assertEqual(s["events"], [])

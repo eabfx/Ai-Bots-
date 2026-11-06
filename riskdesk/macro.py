@@ -368,9 +368,15 @@ def snapshot(now, net=None, force=False):
 
         def calendar():
             """The live calendar. When the feed does not answer, the last good copy (this session, or the file kept on disk)."""
+            blocked = _cache.get("calendar_fail")                # the feed limits how often it answers: after a refusal, leave it alone for 5 minutes
             try:
+                if blocked and time.time() - blocked[0] < (30 if force else 300):
+                    raise MacroError(blocked[1])
                 events = fetch_calendar(net, now)
+                _cache.pop("calendar_fail", None)
             except MacroError as e:
+                if not blocked or time.time() - blocked[0] >= (30 if force else 300):
+                    _cache["calendar_fail"] = (time.time(), str(e))
                 old = (_cache.get("calendar") or (0, None))[1]
                 saved = 0
                 if old is None:
