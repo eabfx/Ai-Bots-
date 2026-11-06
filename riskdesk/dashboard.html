@@ -3998,8 +3998,7 @@ function macroRender(d){
     b.onclick=function(){calSpan=o[0];macroRender(d)};seg.appendChild(b)});
   ch.appendChild(seg);cc.appendChild(ch);
   cc.appendChild(el("div","sub","High and medium impact USD, EUR and GBP releases, Dublin time, refreshed every 15 minutes. Be careful around them: price can jump."));
-  var lastE=d.events.length?d.events[d.events.length-1].t:0,nowC=Math.round(Date.now()/1000);
-  if(lastE&&lastE-nowC<14*86400){var cov=el("div","sub","Listed through "+dayLabel(lastE)+". The free calendar feed publishes this week and next week, so the days after that fill in by themselves when it posts the next week (Sundays).");cov.style.opacity=".75";cc.appendChild(cov)}
+  var cov=el("div","sub","Data releases come from a free feed that posts this week and next week (the new week appears by itself on Sundays). Fed meetings, minutes and speeches come from the Fed's own schedule and always run two weeks ahead.");cov.style.opacity=".75";cc.appendChild(cov);
   var evs=d.events.filter(function(e){return e.minutes<=calSpan*60});
   if(!evs.length)cc.appendChild(el("div","empty","Nothing listed in this window."));
   else{var nowS=Math.round(Date.now()/1000);

@@ -209,6 +209,31 @@ class Parsing(unittest.TestCase):
             with self.assertRaises(macro.MacroError):
                 macro.parse_calendar(text, NOW)
 
+    def test_the_fed_schedule_adds_meetings_and_speeches_in_dublin_time(self):
+        import json as _json
+        doc = _json.dumps({"events": [
+            {"title": "FOMC Minutes", "month": "2026-10", "days": "31", "time": "2:00 p.m.", "type": "FOMC"},
+            {"title": "Speech - Governor Michael S. Barr", "month": "2026-10", "days": "31", "time": "10:00 a.m.", "type": "Speeches"},
+            {"title": "Speech - Chair Jerome H. Powell", "month": "2026-10", "days": "31", "time": "11:00 a.m.", "type": "Speeches"},
+            {"title": "Speech - Governor Waller", "month": "2026-10", "days": "31", "type": "Speeches"},          # no time: skipped
+            {"title": "G.19 - Consumer Credit", "month": "2026-10", "days": "31", "time": "3:00 p.m.", "type": "Stat"},   # not a market mover
+            {"title": "Speech - Governor Far Away", "month": "2027-03", "days": "5", "time": "9:00 a.m.", "type": "Speeches"},
+        ]})
+        rows = macro.parse_fed("\ufeff" + doc, NOW)
+        self.assertEqual([r["title"] for r in rows], ["FOMC Minutes", "Fed Barr Speech", "Fed Powell Speech"])
+        self.assertEqual([r["impact"] for r in rows], ["High", "Medium", "High"])
+        self.assertEqual(rows[0]["when"].split()[-1], "18:00")                  # 14:00 New York (summer time) is 18:00 in Dublin
+        with self.assertRaises(macro.MacroError):
+            macro.parse_fed("nope", NOW)
+
+    def test_a_fed_row_the_main_feed_already_has_is_not_listed_twice(self):
+        main = [{"t": NOW + 3600, "when": "", "minutes": 60, "title": "Fed Barr Speaks", "country": "USD", "impact": "Medium", "forecast": "", "previous": ""}]
+        fed = [{"t": NOW + 3000, "when": "", "minutes": 50, "title": "Fed Barr Speech", "country": "USD", "impact": "Medium", "forecast": "", "previous": "", "_who": "Barr", "_fomc": False},
+               {"t": NOW + 7200, "when": "", "minutes": 120, "title": "Fed Jefferson Speech", "country": "USD", "impact": "Medium", "forecast": "", "previous": "", "_who": "Jefferson", "_fomc": False}]
+        out = macro.add_fed(main, fed)
+        self.assertEqual([e["title"] for e in out], ["Fed Barr Speaks", "Fed Jefferson Speech"])
+        self.assertFalse([k for e in out for k in e if k.startswith("_")])
+
     def test_headlines_are_cleaned_and_unsafe_links_dropped(self):
         heads = macro.parse_headlines(RSS, "Gold")
         self.assertEqual(len(heads), 2)                         # the empty title is skipped

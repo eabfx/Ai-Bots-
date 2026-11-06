@@ -36,7 +36,8 @@ CALENDAR_URLS = ["https://nfs.faireconomy.media/ff_calendar_thisweek.json",
 CURRENCIES = ("USD", "EUR", "GBP")
 IMPACTS = ("High", "Medium")
 CAL_DAYS = 16          # the feeds hold this week and next week: show everything they have, at least two weeks on a Monday
-TTL = {"quotes": 60, "calendar": 900, "headlines": 600, "strength": 60}
+TTL = {"quotes": 60, "calendar": 900, "headlines": 600, "strength": 60, "fed": 6 * 3600}
+FED_URL = "https://www.federalreserve.gov/json/calendar.json"   # the Fed's own schedule: meetings, minutes and speeches months ahead
 
 # (key, name, Yahoo symbol, decimals)
 WATCH = [("XAUUSD", "Gold futures (GC)", "GC=F", 2), ("NQ", "Nasdaq 100 futures (NQ)", "NQ=F", 2),
@@ -191,7 +192,7 @@ def fetch_quote(net, item):
 
 # ---------------------------------------------------------------- calendar
 
-def parse_calendar(text, now):
+def parse_calendar(text, now, strict=False):
     """Releases for the currencies and impacts that matter, from about two hours ago to CAL_DAYS ahead (all the feed holds)."""
     try:
         rows = json.loads(text)
@@ -199,6 +200,8 @@ def parse_calendar(text, now):
         raise MacroError("the calendar feed was not JSON")
     if not isinstance(rows, list):
         raise MacroError("the calendar feed was not a list")
+    if strict and not rows:                               # a published week is never an empty list: the feed is being limited
+        raise MacroError("the calendar feed came back empty")
     out = []
     for r in rows:
         if not isinstance(r, dict) or r.get("country") not in CURRENCIES or r.get("impact") not in IMPACTS:
@@ -216,17 +219,75 @@ def parse_calendar(text, now):
     return out
 
 
+def parse_fed(text, now):
+    """The Fed's own schedule as calendar rows: FOMC meetings and minutes (High), and speeches by the Chair and governors
+    (Chair High, others Medium), through CAL_DAYS ahead. Times on that page are New York time."""
+    try:
+        doc = json.loads(text.lstrip("\ufeff"))
+    except ValueError:
+        raise MacroError("the Fed calendar was not JSON")
+    rows = doc.get("events") if isinstance(doc, dict) else None
+    if not isinstance(rows, list):
+        raise MacroError("the Fed calendar had no events")
+    out = []
+    for r in rows:
+        if not isinstance(r, dict) or r.get("type") not in ("FOMC", "Speeches"):
+            continue
+        try:
+            y, mo = (int(x) for x in str(r.get("month")).split("-"))
+            d = int(re.findall(r"\d+", str(r.get("days")))[-1])
+            m = re.match(r"\s*(\d{1,2}):(\d{2})\s*([ap])", str(r.get("time") or ""), re.I)
+            if not m:
+                continue                                  # no time given: skip rather than guess
+            hh = int(m.group(1)) % 12 + (12 if m.group(3).lower() == "p" else 0)
+            t = int(z.eastern_to_ts(datetime.datetime(y, mo, d, hh, int(m.group(2)))))
+        except (ValueError, TypeError, IndexError):
+            continue
+        if not now - 2 * 3600 <= t <= now + CAL_DAYS * 86400:
+            continue
+        raw = str(r.get("title") or "")
+        if r["type"] == "FOMC":
+            title, impact, who = raw[:120], "High", ""
+        else:
+            kind = raw.split(" - ")[0].strip() or "Speech"
+            who = re.sub(r"[^A-Za-z'\- ]", "", raw.split(" - ", 1)[-1]).split()
+            who = who[-1] if who else ""
+            if not who:
+                continue
+            title = "Fed %s %s" % (who, kind)
+            impact = "High" if re.search(r"(?<!Vice )\bChair\b(?! for)", raw) and "Vice Chair" not in raw else "Medium"
+        out.append({"t": t, "when": z.to_dublin(t).strftime("%a %d %b %H:%M"), "minutes": round((t - now) / 60), "title": title,
+                    "country": "USD", "impact": impact, "forecast": "", "previous": "", "_who": who, "_fomc": r["type"] == "FOMC"})
+    return out
+
+
+def add_fed(events, fed):
+    """Fed rows that the main feed does not already list (same day, same speaker or FOMC item)."""
+    out = list(events)
+    for f in fed:
+        dup = False
+        for e in events:
+            if e["country"] != "USD" or abs(e["t"] - f["t"]) > 12 * 3600:
+                continue
+            low = e["title"].lower()
+            if (f["_fomc"] and "fomc" in low) or (f["_who"] and f["_who"].lower() in low):
+                dup = True
+                break
+        if not dup:
+            out.append({k: v for k, v in f.items() if not k.startswith("_")})
+    out.sort(key=lambda e: (e["t"], e["country"], e["title"]))
+    return out
+
+
 def fetch_calendar(net, now):
     events, notes = [], []
     for i, url in enumerate(CALENDAR_URLS):
         try:
-            events += parse_calendar(net.get(url), now)
+            events += parse_calendar(net.get(url), now, strict=(i == 0))
         except MacroError as e:
             if i == 0:                                    # next week's file may simply not be published yet
                 raise MacroError("the calendar feed said %s" % e)
             notes.append(str(e))
-    if not events:                                        # a real week always has releases: an empty answer is the feed being limited or down
-        raise MacroError("the calendar feed came back empty")
     seen, unique = set(), []
     for e in events:
         k = (e["t"], e["country"], e["title"])
@@ -366,13 +427,20 @@ def snapshot(now, net=None, force=False):
 
         stale = []
 
+        def fed_rows():
+            """The Fed's schedule, fetched every six hours. It only adds to the calendar, so any trouble is ignored."""
+            try:
+                return cached("fed", lambda: parse_fed(net.get(FED_URL, timeout=30), now))
+            except (MacroError, TypeError, ValueError):
+                return []
+
         def calendar():
             """The live calendar. When the feed does not answer, the last good copy (this session, or the file kept on disk)."""
             blocked = _cache.get("calendar_fail")                # the feed limits how often it answers: after a refusal, leave it alone for 5 minutes
             try:
                 if blocked and time.time() - blocked[0] < (30 if force else 300):
                     raise MacroError(blocked[1])
-                events = fetch_calendar(net, now)
+                events = add_fed(fetch_calendar(net, now), fed_rows())
                 _cache.pop("calendar_fail", None)
             except MacroError as e:
                 if not blocked or time.time() - blocked[0] >= (30 if force else 300):
@@ -383,7 +451,11 @@ def snapshot(now, net=None, force=False):
                     loaded = load_calendar(net)
                     old, saved = loaded if loaded else (None, 0)
                 if old is None:
-                    raise
+                    only = add_fed([], fed_rows())            # the main feed is down and nothing is saved: the Fed's own dates still show
+                    if not only:
+                        raise
+                    stale.append("the calendar feed did not answer (%s). Showing the Fed's schedule only" % e)
+                    return only
                 stale.append("the calendar feed did not answer (%s). Showing the last saved copy%s" % (
                     e, " from " + z.to_dublin(saved).strftime("%a %H:%M") if saved else ""))
                 return old

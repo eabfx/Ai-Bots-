@@ -81,7 +81,7 @@ class PageFeatures(unittest.TestCase):
 
     def test_the_calendar_shows_two_weeks(self):
         page = open(os.path.join(os.path.dirname(__file__), "..", "riskdesk", "dashboard.html"), encoding="utf-8").read()
-        for needle in ('[384,"Next 2 weeks"]', "calSpan=384", "14*24*60", "Full calendar"):
+        for needle in ('[384,"Next 2 weeks"]', "calSpan=384", "14*24*60", "Full calendar", "Fed's own schedule"):
             self.assertIn(needle, page)
         macro = load("riskdesk", "macro")
         self.assertGreaterEqual(macro.CAL_DAYS, 14)
